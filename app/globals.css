@@ -1,26 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d1f35;
+  --foreground: #f8f5f0;
+
+  /* Voya brand colours */
+  --voya-navy:      #0d1f35;
+  --voya-terracotta: #C97552;
+  --voya-cream:     #f8f5f0;
+
+  /* Font stacks */
+  --font-display: var(--font-cormorant), 'Cormorant Garamond', Georgia, serif;
+  --font-body:    var(--font-raleway), 'Raleway', system-ui, sans-serif;
+  --font-label:   var(--font-josefin), 'Josefin Sans', system-ui, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-raleway);
+  --font-serif: var(--font-cormorant);
+  --font-mono: ui-monospace, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--voya-navy);
+  color: var(--voya-cream);
+  font-family: var(--font-body);
 }
+
+/* Utility: Voya display font */
+.font-display { font-family: var(--font-display) }
+.font-label   { font-family: var(--font-label) }

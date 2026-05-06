@@ -1,12 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import Link from 'next/link'
 
 // ─── Root page ────────────────────────────────────────────────────────────────
 // Authenticated + onboarded  → /discover
 // Authenticated + incomplete → /signup
-// Not authenticated          → landing page (getvoya.net)
+// Not authenticated          → /landing.html (Santorini landing page)
 
 export default async function RootPage() {
   const cookieStore = await cookies()
@@ -37,7 +36,9 @@ export default async function RootPage() {
     redirect(profile?.onboarding_done ? '/discover' : '/signup')
   }
 
-  // ── Landing page ─────────────────────────────────────────────────────────────
+  redirect('/landing.html')
+
+  // Unreachable — TypeScript needs a return
   return (
     <div className="min-h-screen bg-[#0d1f35] flex flex-col">
 

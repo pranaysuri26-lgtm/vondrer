@@ -108,7 +108,9 @@ Prioritise the offbeat_score signal heavily — it is the most important dimensi
 // ─── Response validator ───────────────────────────────────────────────────────
 
 export function validateResponse(raw: string): RecommendedDestination[] {
-  const parsed: RecommendationResponse = JSON.parse(raw) // throws on invalid JSON
+  // Strip markdown code fences if Claude wraps response in ```json ... ```
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+  const parsed: RecommendationResponse = JSON.parse(cleaned)
 
   if (!parsed.destinations || !Array.isArray(parsed.destinations)) {
     throw new Error('Response missing destinations array')

@@ -7,7 +7,7 @@ import { createServerClient } from '@supabase/ssr'
 // Unauthenticated → serve /landing.html at getvoya.net (URL stays clean)
 // Authenticated   → let app/page.tsx handle redirect to /discover or /signup
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   try {
     let response = NextResponse.next({ request })
 

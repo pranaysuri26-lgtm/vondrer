@@ -2,10 +2,8 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// ─── Root router ──────────────────────────────────────────────────────────────
-// Authenticated + onboarded  → /discover
-// Authenticated + incomplete → /signup
-// Not authenticated          → /landing.html  (Santorini page in public/)
+// Middleware already handles unauthenticated users (rewrites to /landing.html)
+// This page only runs for authenticated users.
 
 export default async function RootPage() {
   const cookieStore = await cookies()
@@ -26,15 +24,13 @@ export default async function RootPage() {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('onboarding_done')
-      .eq('id', user.id)
-      .single()
+  if (!user) redirect('/landing.html')
 
-    redirect(profile?.onboarding_done ? '/discover' : '/signup')
-  }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('onboarding_done')
+    .eq('id', user.id)
+    .single()
 
-  redirect('/landing.html')
+  redirect(profile?.onboarding_done ? '/discover' : '/signup')
 }

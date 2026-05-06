@@ -26,11 +26,13 @@ export default async function RootPage() {
 
   if (!user) redirect('/landing.html')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('onboarding_done')
-    .eq('id', user.id)
+  // Check onboarding_responses — more reliable than profiles.onboarding_done flag
+  // If the user has answered onboarding questions, send them to /discover
+  const { data: onboarding } = await supabase
+    .from('onboarding_responses')
+    .select('user_id')
+    .eq('user_id', user.id)
     .single()
 
-  redirect(profile?.onboarding_done ? '/discover' : '/signup')
+  redirect(onboarding ? '/discover' : '/signup')
 }

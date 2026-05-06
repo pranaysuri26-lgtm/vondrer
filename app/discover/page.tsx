@@ -250,7 +250,7 @@ export default function DiscoverPage() {
       try {
         const res = await fetch('/api/recommendations', { method: 'POST' })
 
-        if (res.status === 401) { router.push('/signup'); return }
+        if (res.status === 401) { router.push('/login'); return }
 
         const data: ApiResponse = await res.json()
         if (cancelled) return

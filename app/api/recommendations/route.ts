@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-
-// Extend Vercel function timeout — Claude can take 15–30s on first call
-export const maxDuration = 60
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import {
@@ -12,6 +9,10 @@ import {
   type OnboardingData,
   type PastTrip,
 } from '@/lib/recommendations'
+
+// Route segment config — must be after imports
+// Extends Vercel function timeout to 60s (default is 10s on Hobby plan)
+export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 

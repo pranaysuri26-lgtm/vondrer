@@ -17,15 +17,32 @@ export const maxDuration = 60
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 // ─── POST /api/recommendations ────────────────────────────────────────────────
-// 1. Validate auth
-// 2. Fetch onboarding + past trips
-// 3. Hash profile — serve cache if hit
-// 4. Call Claude — validate response — store to DB
-// 5. Return destinations
+// Stale-while-revalidate strategy:
+//
+// First call  (force_refresh: false, default):
+//   - Exact hash match  → return cached, done
+//   - Stale cache exists → return stale immediately + needs_refresh: true
+//   - No cache at all   → call Claude, store, return fresh
+//
+// Second call (force_refresh: true) — fired by the client in the background
+// after it already has stale results on screen:
+//   - Always call Claude, store fresh results, return them
+//
+// This means returning users NEVER see a spinner or timeout error.
+// New users still wait for Claude once (first-ever visit).
 
 export async function POST(req: NextRequest) {
   try {
-    // ── Auth ────────────────────────────────────────────────────────────────
+    // ── Parse body ────────────────────────────────────────────────────────────
+    let force_refresh = false
+    try {
+      const body = await req.json()
+      force_refresh = !!body?.force_refresh
+    } catch {
+      // body is empty — that's fine, use defaults
+    }
+
+    // ── Auth ──────────────────────────────────────────────────────────────────
     const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,7 +60,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // ── Fetch profile inputs ─────────────────────────────────────────────────
+    // ── Fetch profile inputs ──────────────────────────────────────────────────
     const [onboardingResult, tripsResult] = await Promise.all([
       supabase
         .from('onboarding_responses')
@@ -61,26 +78,46 @@ export async function POST(req: NextRequest) {
     }
 
     const onboarding: OnboardingData = onboardingResult.data
-    const pastTrips: PastTrip[] = tripsResult.data || []
+    const pastTrips: PastTrip[]      = tripsResult.data || []
 
-    // ── Cache check ──────────────────────────────────────────────────────────
     const hash = buildProfileHash(onboarding, pastTrips)
-
-    const { data: cached } = await supabase
-      .from('recommendations')
-      .select('destinations')
-      .eq('user_id', user.id)
-      .eq('profile_hash', hash)
-      .single()
-
     const meta = { home_country: onboarding.home_country ?? '' }
 
-    // Cache hit — return immediately, no Claude call, generated_at unchanged
-    if (cached?.destinations) {
-      return NextResponse.json({ destinations: cached.destinations, cached: true, ...meta })
+    // ── Exact cache hit (and not forcing a refresh) ───────────────────────────
+    if (!force_refresh) {
+      const { data: exact } = await supabase
+        .from('recommendations')
+        .select('destinations')
+        .eq('user_id', user.id)
+        .eq('profile_hash', hash)
+        .single()
+
+      if (exact?.destinations) {
+        return NextResponse.json({ destinations: exact.destinations, cached: true, ...meta })
+      }
+
+      // No exact match — look for any stale result to return immediately
+      const { data: stale } = await supabase
+        .from('recommendations')
+        .select('destinations')
+        .eq('user_id', user.id)
+        .single()
+
+      if (stale?.destinations) {
+        // Return stale results right now. Client will fire force_refresh in background.
+        return NextResponse.json({
+          destinations:  stale.destinations,
+          cached:        false,
+          stale:         true,
+          needs_refresh: true,
+          ...meta,
+        })
+      }
+
+      // First-ever visit: no stale cache — fall through to Claude call below
     }
 
-    // ── Call Claude ──────────────────────────────────────────────────────────
+    // ── Call Claude ───────────────────────────────────────────────────────────
     const { system, user: userPrompt } = buildRecommendationPrompt(onboarding, pastTrips)
 
     let destinations = null
@@ -113,7 +150,7 @@ export async function POST(req: NextRequest) {
       } catch (secondErr) {
         console.error('[Recommendations] Both attempts failed:', secondErr)
 
-        // Fallback — return cached result ignoring hash (stale but better than blank screen)
+        // Last resort — return whatever stale cache exists
         const { data: stale } = await supabase
           .from('recommendations')
           .select('destinations')
@@ -124,7 +161,6 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ destinations: stale.destinations, fallback: true, ...meta })
         }
 
-        console.error('[Recommendations] Both attempts failed:', secondErr)
         return NextResponse.json(
           { error: 'Recommendation engine temporarily unavailable' },
           { status: 503 }
@@ -132,7 +168,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Store to DB (upsert — UNIQUE on user_id) ──────────────────────────────
+    // ── Store fresh results ───────────────────────────────────────────────────
     await supabase
       .from('recommendations')
       .upsert(

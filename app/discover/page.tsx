@@ -11,11 +11,13 @@ import type { RecommendedDestination } from '@/lib/recommendations'
 type LoadState = 'loading' | 'ready' | 'error'
 
 interface ApiResponse {
-  destinations?: RecommendedDestination[]
-  home_country?: string
-  cached?:       boolean
-  fallback?:     boolean
-  error?:        string
+  destinations?:  RecommendedDestination[]
+  home_country?:  string
+  cached?:        boolean
+  stale?:         boolean
+  needs_refresh?: boolean
+  fallback?:      boolean
+  error?:         string
 }
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -204,9 +206,9 @@ function UnlockBanner({ count }: { count: number }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-const FREE_TIER_LIMIT = 3
-const SLOW_THRESHOLD_MS = 10000  // show "taking longer" message after 10s
-const TIMEOUT_MS = 58000          // give up after 58s (server has 60s)
+const FREE_TIER_LIMIT    = 3
+const SLOW_THRESHOLD_MS  = 10000   // show "taking longer" message after 10s
+const TIMEOUT_MS         = 58000   // give up after 58s (server has 60s)
 
 export default function DiscoverPage() {
   const router = useRouter()
@@ -214,6 +216,7 @@ export default function DiscoverPage() {
   const [destinations, setDestinations] = useState<RecommendedDestination[]>([])
   const [currency, setCurrency]         = useState<CurrencyInfo>({ symbol: '$', code: 'USD', rate: 1 })
   const [isCached, setIsCached]         = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)  // silent background refresh
   const [errorMsg, setErrorMsg]         = useState('')
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
@@ -238,7 +241,7 @@ export default function DiscoverPage() {
       if (!cancelled) setSlow(true)
     }, SLOW_THRESHOLD_MS)
 
-    // Hard timeout after 45s
+    // Hard timeout after 58s — only relevant for first-ever visit (no stale cache)
     const hardTimer = setTimeout(() => {
       if (!cancelled) {
         setErrorMsg('This is taking too long. Please try again.')
@@ -248,7 +251,12 @@ export default function DiscoverPage() {
 
     async function fetchRecommendations() {
       try {
-        const res = await fetch('/api/recommendations', { method: 'POST' })
+        // ── First call: returns instantly if stale cache exists ────────────────
+        const res = await fetch('/api/recommendations', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ force_refresh: false }),
+        })
 
         if (res.status === 401) { router.push('/login'); return }
 
@@ -262,6 +270,32 @@ export default function DiscoverPage() {
           setIsCached(!!data.cached)
           if (data.home_country) setCurrency(detectCurrency(data.home_country))
           setState('ready')
+          clearTimeout(slowTimer)
+          clearTimeout(hardTimer)
+
+          // ── Background refresh if we got stale results ─────────────────────
+          if (data.needs_refresh) {
+            setIsRefreshing(true)
+            try {
+              const refreshRes = await fetch('/api/recommendations', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ force_refresh: true }),
+              })
+              if (!cancelled && refreshRes.ok) {
+                const refreshData: ApiResponse = await refreshRes.json()
+                if (!cancelled && refreshData.destinations && refreshData.destinations.length > 0) {
+                  setDestinations(refreshData.destinations)
+                  setIsCached(false)
+                  if (refreshData.home_country) setCurrency(detectCurrency(refreshData.home_country))
+                }
+              }
+            } catch {
+              // Silently ignore background refresh failures — user has stale results
+            } finally {
+              if (!cancelled) setIsRefreshing(false)
+            }
+          }
         } else {
           setErrorMsg('No destinations returned. Please try again.')
           setState('error')
@@ -329,6 +363,9 @@ export default function DiscoverPage() {
           <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">
             Your results
             {isCached && <span className="ml-2 text-[#C97552]/60">· cached</span>}
+            {isRefreshing && (
+              <span className="ml-2 text-white/25 animate-pulse">· updating…</span>
+            )}
           </p>
           <h1 className="font-serif italic text-4xl text-white leading-tight">
             {destinations.length} destinations

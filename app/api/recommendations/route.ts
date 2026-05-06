@@ -123,8 +123,10 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ destinations: stale.destinations, fallback: true, ...meta })
         }
 
+        const errMsg = secondErr instanceof Error ? secondErr.message : String(secondErr)
+        console.error('[Recommendations] FINAL ERROR:', errMsg)
         return NextResponse.json(
-          { error: 'Recommendation engine temporarily unavailable' },
+          { error: `Recommendation engine temporarily unavailable: ${errMsg}` },
           { status: 503 }
         )
       }

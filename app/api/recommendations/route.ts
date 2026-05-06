@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     // Attempt 1
     try {
       const response = await anthropic.messages.create({
-        model:      'claude-opus-4-5',
+        model:      'claude-sonnet-4-5',
         max_tokens: 2048,
         system,
         messages:   [{ role: 'user', content: userPrompt }],
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       // Attempt 2 — retry once
       try {
         const retry = await anthropic.messages.create({
-          model:      'claude-opus-4-5',
+          model:      'claude-sonnet-4-5',
           max_tokens: 2048,
           system,
           messages:   [{ role: 'user', content: userPrompt }],

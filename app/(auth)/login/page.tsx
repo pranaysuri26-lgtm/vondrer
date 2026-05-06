@@ -28,19 +28,6 @@ export default function LoginPage() {
 
     // Check if onboarding is complete — if not, redirect to finish it
     const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarding_done')
-        .eq('id', user.id)
-        .single()
-
-      if (!profile?.onboarding_done) {
-        router.push('/signup')
-        return
-      }
-    }
-
     router.push('/discover')
   }
 

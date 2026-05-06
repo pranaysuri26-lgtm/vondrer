@@ -206,7 +206,7 @@ function UnlockBanner({ count }: { count: number }) {
 
 const FREE_TIER_LIMIT = 3
 const SLOW_THRESHOLD_MS = 10000  // show "taking longer" message after 10s
-const TIMEOUT_MS = 45000          // give up after 45s
+const TIMEOUT_MS = 58000          // give up after 58s (server has 60s)
 
 export default function DiscoverPage() {
   const router = useRouter()

@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     try {
       const response = await anthropic.messages.create({
         model:      'claude-sonnet-4-5',
-        max_tokens: 2048,
+        max_tokens: 1500,
         system,
         messages:   [{ role: 'user', content: userPrompt }],
       })
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       try {
         const retry = await anthropic.messages.create({
           model:      'claude-sonnet-4-5',
-          max_tokens: 2048,
+          max_tokens: 1500,
           system,
           messages:   [{ role: 'user', content: userPrompt }],
         })
@@ -123,10 +123,9 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ destinations: stale.destinations, fallback: true, ...meta })
         }
 
-        const errMsg = secondErr instanceof Error ? secondErr.message : String(secondErr)
-        console.error('[Recommendations] FINAL ERROR:', errMsg)
+        console.error('[Recommendations] Both attempts failed:', secondErr)
         return NextResponse.json(
-          { error: `Recommendation engine temporarily unavailable: ${errMsg}` },
+          { error: 'Recommendation engine temporarily unavailable' },
           { status: 503 }
         )
       }

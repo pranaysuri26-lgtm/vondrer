@@ -4,34 +4,29 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase'
+import { detectCurrency, buildBudgetOptions, type CurrencyInfo } from '@/lib/currency'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Step = 'account' | 'budget' | 'duration' | 'group' | 'interests' | 'offbeat' | 'past_trips'
+type Step = 'account' | 'location' | 'budget' | 'duration' | 'group' | 'interests' | 'offbeat' | 'past_trips'
 
 interface FormData {
-  email:         string
-  password:      string
-  budget:        string
-  duration:      string
-  group_type:    string
-  interests:     string[]
-  offbeat_score: number
-  past_trips:    string[]
+  email:           string
+  password:        string
+  home_country:    string
+  budget:          string
+  duration:        string
+  group_type:      string
+  interests:       string[]
+  offbeat_score:   number
+  past_trips:      string[]
   past_trip_input: string
 }
 
 // ─── Step config ──────────────────────────────────────────────────────────────
 
-const ONBOARDING_STEPS: Step[] = ['budget', 'duration', 'group', 'interests', 'offbeat', 'past_trips']
+const ONBOARDING_STEPS: Step[] = ['location', 'budget', 'duration', 'group', 'interests', 'offbeat', 'past_trips']
 
-const BUDGET_OPTIONS = [
-  { value: 'under-20',  label: 'Shoestring',  sub: 'Under $20/day',    flag: '🎒' },
-  { value: '20-50',     label: 'Budget',       sub: '$20–50/day',       flag: '💰' },
-  { value: '50-150',    label: 'Mid-range',    sub: '$50–150/day',      flag: '✈️' },
-  { value: '150-300',   label: 'Comfortable',  sub: '$150–300/day',     flag: '🏨' },
-  { value: '300+',      label: 'Luxury',       sub: '$300+/day',        flag: '💎' },
-]
 
 const DURATION_OPTIONS = [
   { value: 'weekend',  label: 'Weekend',    sub: '2–3 days'  },
@@ -123,6 +118,7 @@ export default function SignupPage() {
   const [form, setForm] = useState<FormData>({
     email:           '',
     password:        '',
+    home_country:    '',
     budget:          '',
     duration:        '',
     group_type:      '',
@@ -131,6 +127,10 @@ export default function SignupPage() {
     past_trips:      [],
     past_trip_input: '',
   })
+
+  // Derived — updates live as user types/selects their country
+  const currency = detectCurrency(form.home_country)
+  const BUDGET_OPTIONS = buildBudgetOptions(currency)
 
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -163,6 +163,7 @@ export default function SignupPage() {
   function canAdvance(): boolean {
     switch (step) {
       case 'account':    return form.email.includes('@') && form.password.length >= 8
+      case 'location':   return form.home_country.trim().length >= 2
       case 'budget':     return !!form.budget
       case 'duration':   return !!form.duration
       case 'group':      return !!form.group_type
@@ -193,8 +194,16 @@ export default function SignupPage() {
       password: form.password,
     })
 
+    if (signupError) { setError(signupError.message); setLoading(false); return }
+
+    // Immediately sign in to establish a session for the onboarding steps
+    const { error: signinError } = await supabase.auth.signInWithPassword({
+      email:    form.email,
+      password: form.password,
+    })
+
     setLoading(false)
-    if (signupError) { setError(signupError.message); return }
+    if (signinError) { setError('Account created — check your email to confirm before continuing.'); return }
     nextStep()
   }
 
@@ -210,12 +219,13 @@ export default function SignupPage() {
     const { error: onboardingError } = await supabase
       .from('onboarding_responses')
       .upsert({
-        user_id:       user.id,
+        user_id:        user.id,
+        home_country:   form.home_country,
         budget_per_day: form.budget,
-        trip_duration: form.duration,
-        group_type:    form.group_type,
-        interests:     form.interests,
-        offbeat_score: form.offbeat_score,
+        trip_duration:  form.duration,
+        group_type:     form.group_type,
+        interests:      form.interests,
+        offbeat_score:  form.offbeat_score,
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setLoading(false); return }
@@ -226,11 +236,10 @@ export default function SignupPage() {
       await supabase.from('past_trips').insert(rows)
     }
 
-    // Mark onboarding complete
+    // Mark onboarding complete — upsert so it works even if profile row doesn't exist yet
     await supabase
       .from('profiles')
-      .update({ onboarding_done: true })
-      .eq('id', user.id)
+      .upsert({ id: user.id, onboarding_done: true }, { onConflict: 'id' })
 
     router.push('/discover')
   }
@@ -297,12 +306,76 @@ export default function SignupPage() {
           </form>
         )}
 
+        {/* ── LOCATION ────────────────────────────────────────────────────── */}
+        {step === 'location' && (
+          <div className="space-y-4">
+            <div className="mb-8">
+              <h1 className="text-2xl font-light text-white mb-2">Where are you based?</h1>
+              <p className="text-white/45 text-sm">
+                We use this to recommend places that make sense from where you're starting.
+                Nearby hidden gems, realistic flight times, no obvious mismatches.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs text-white/45 uppercase tracking-widest mb-2">
+                Country or city
+              </label>
+              <input
+                type="text"
+                value={form.home_country}
+                onChange={e => set('home_country', e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && canAdvance()) nextStep() }}
+                placeholder="e.g. United States, India, Germany, London…"
+                autoComplete="country-name"
+                className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#C97552]/60 transition-colors"
+              />
+              <p className="text-white/25 text-xs mt-2">
+                Be as specific or general as you like — country is enough.
+              </p>
+            </div>
+
+            {/* Popular shortcuts */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {['United States', 'United Kingdom', 'India', 'Australia', 'Canada', 'Germany', 'France', 'Brazil'].map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => set('home_country', c)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all
+                    ${form.home_country === c
+                      ? 'border-[#C97552] bg-[#C97552]/15 text-white'
+                      : 'border-white/12 bg-white/5 text-white/50 hover:border-white/25 hover:text-white/80'
+                    }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={nextStep}
+              disabled={!canAdvance()}
+              className="w-full bg-white text-[#0d1f35] font-semibold py-3.5 rounded-full mt-4 disabled:opacity-40 hover:bg-white/90 transition-all"
+            >
+              Continue →
+            </button>
+          </div>
+        )}
+
         {/* ── BUDGET ──────────────────────────────────────────────────────── */}
         {step === 'budget' && (
           <div className="space-y-4">
             <div className="mb-8">
               <h1 className="text-2xl font-light text-white mb-2">What's your daily travel budget?</h1>
-              <p className="text-white/45 text-sm">This shapes every recommendation we make.</p>
+              <p className="text-white/45 text-sm">
+                This shapes every recommendation we make.
+                {currency.code !== 'USD' && (
+                  <span className="ml-1 text-[#C97552]/70">
+                    Showing in {currency.code} ({currency.symbol}).
+                  </span>
+                )}
+              </p>
             </div>
 
             <div className="space-y-3">

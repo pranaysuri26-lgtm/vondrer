@@ -1,17 +1,17 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-// ─── Browser client (singleton — safe to call in any client component) ────────
-let _client: ReturnType<typeof createBrowserClient> | null = null
-
+// createBrowserClient from @supabase/ssr manages its own internal state —
+// calling it multiple times is safe. No singleton needed.
 export function getSupabaseClient() {
-  if (!_client) {
-    _client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!url || !key) {
+    console.error('[Supabase] Missing env vars. URL:', !!url, 'KEY:', !!key)
+    throw new Error('Supabase env vars not set. Check .env.local')
   }
-  return _client
+
+  return createBrowserClient(url, key)
 }
 
-// Convenience alias
 export const supabase = getSupabaseClient

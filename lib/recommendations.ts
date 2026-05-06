@@ -1,8 +1,10 @@
 import crypto from 'crypto'
+import { BUDGET_LABELS } from '@/lib/currency'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface OnboardingData {
+  home_country:   string   // e.g. 'United States', 'India', 'Germany'
   budget_per_day: string   // 'under-20' | '20-50' | '50-150' | '150-300' | '300+'
   trip_duration:  string   // 'weekend' | '1-week' | '2-weeks' | 'month+'
   group_type:     string   // 'solo' | 'couple' | 'small-group'
@@ -38,6 +40,7 @@ export function buildProfileHash(
   pastTrips: PastTrip[]
 ): string {
   const payload = {
+    home_country:   onboarding.home_country?.toLowerCase().trim() ?? '',
     budget_per_day: onboarding.budget_per_day,
     trip_duration:  onboarding.trip_duration,
     group_type:     onboarding.group_type,
@@ -86,7 +89,8 @@ Rules:
 - Vary regions — do not cluster all suggestions in one continent.`
 
   const user = `Traveller profile:
-- Daily budget: ${onboarding.budget_per_day} USD/day
+- Based in: ${onboarding.home_country}
+- Daily budget: ${BUDGET_LABELS[onboarding.budget_per_day] ?? onboarding.budget_per_day}
 - Trip duration: ${onboarding.trip_duration}
 - Travelling with: ${onboarding.group_type}
 - What matters most: ${onboarding.interests.join(', ')}
@@ -94,7 +98,9 @@ Rules:
 
 Past trips (do not suggest these): ${pastTripsList}
 
-Recommend destinations this traveller hasn't visited. Prioritise the offbeat_score signal heavily — it is the most important dimension of this recommendation.`
+Recommend destinations this traveller hasn't visited.
+Factor in their home country when assessing destination relevance — consider realistic travel distance, flight accessibility, and regional variety relative to where they live.
+Prioritise the offbeat_score signal heavily — it is the most important dimension of this recommendation.`
 
   return { system, user }
 }

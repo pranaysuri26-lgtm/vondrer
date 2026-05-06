@@ -69,9 +69,11 @@ export async function POST(req: NextRequest) {
       .eq('profile_hash', hash)
       .single()
 
+    const meta = { home_country: onboarding.home_country ?? '' }
+
     // Cache hit — return immediately, no Claude call, generated_at unchanged
     if (cached?.destinations) {
-      return NextResponse.json({ destinations: cached.destinations, cached: true })
+      return NextResponse.json({ destinations: cached.destinations, cached: true, ...meta })
     }
 
     // ── Call Claude ──────────────────────────────────────────────────────────
@@ -115,7 +117,7 @@ export async function POST(req: NextRequest) {
           .single()
 
         if (stale?.destinations) {
-          return NextResponse.json({ destinations: stale.destinations, fallback: true })
+          return NextResponse.json({ destinations: stale.destinations, fallback: true, ...meta })
         }
 
         return NextResponse.json(
@@ -133,7 +135,7 @@ export async function POST(req: NextRequest) {
         { onConflict: 'user_id' }
       )
 
-    return NextResponse.json({ destinations, cached: false })
+    return NextResponse.json({ destinations, cached: false, ...meta })
   } catch (err) {
     console.error('[Recommendations] Unhandled error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -316,10 +316,10 @@ export default function DiscoverPage() {
       <nav className="sticky top-0 z-20 bg-[#0d1f35]/90 backdrop-blur-md border-b border-white/8 px-6 py-4 flex items-center justify-between">
         <span className="font-serif italic text-xl text-white/90">Voya</span>
         <button
-          onClick={handleLogout}
+          onClick={() => router.push('/profile')}
           className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase"
         >
-          Sign out
+          Profile
         </button>
       </nav>
 

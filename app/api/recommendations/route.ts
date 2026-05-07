@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     try {
       const response = await anthropic.messages.create({
         model:      'claude-haiku-4-5',
-        max_tokens: 1500,
+        max_tokens: 3500,
         system,
         messages:   [{ role: 'user', content: userPrompt }],
       })
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
       try {
         const retry = await anthropic.messages.create({
           model:      'claude-haiku-4-5',
-          max_tokens: 1500,
+          max_tokens: 3500,
           system,
           messages:   [{ role: 'user', content: userPrompt }],
         })

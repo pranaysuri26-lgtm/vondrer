@@ -25,7 +25,7 @@ interface ApiResponse {
 const LOADING_LINES = [
   'Mapping hidden corners of the world…',
   'Weighing your offbeat instincts…',
-  'Cross-referencing 1,400 destinations…',
+  'Cross-referencing thousands of destinations…',
   'Filtering the ones everyone already knows…',
   'Curating your shortlist…',
 ]
@@ -34,9 +34,7 @@ function LoadingScreen({ slow }: { slow: boolean }) {
   const [lineIdx, setLineIdx] = useState(0)
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setLineIdx(i => (i + 1) % LOADING_LINES.length)
-    }, 1800)
+    const id = setInterval(() => setLineIdx(i => (i + 1) % LOADING_LINES.length), 1800)
     return () => clearInterval(id)
   }, [])
 
@@ -50,20 +48,16 @@ function LoadingScreen({ slow }: { slow: boolean }) {
           <span className="text-2xl" style={{ animation: 'spin 3s linear infinite reverse' }}>🧭</span>
         </div>
       </div>
-
       <span className="font-serif italic text-3xl text-white/90 tracking-wide mb-8">Voya</span>
-
       <p key={lineIdx} className="text-white/50 text-sm tracking-wide"
         style={{ animation: 'fadeIn 0.4s ease' }}>
         {LOADING_LINES[lineIdx]}
       </p>
-
       {slow && (
         <p className="text-white/25 text-xs mt-4 max-w-xs text-center">
-          This is taking a little longer than usual — Claude is working hard on your profile.
+          Claude is working hard on your profile — first-time results take a little longer.
         </p>
       )}
-
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -87,7 +81,7 @@ function GemDots({ score }: { score?: number }) {
   )
 }
 
-// ─── Destination card ─────────────────────────────────────────────────────────
+// ─── Destination card (expandable) ───────────────────────────────────────────
 
 function DestinationCard({
   dest, rank, locked, currency,
@@ -97,71 +91,128 @@ function DestinationCard({
   locked:   boolean
   currency: CurrencyInfo
 }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const imgQuery = encodeURIComponent(`${dest.name} ${dest.country} travel landscape`)
+  const imgUrl   = `https://source.unsplash.com/featured/800x450/?${imgQuery}`
+
+  const skyscannerUrl = dest.name
+    ? `https://www.skyscanner.com/transport/flights/to/${encodeURIComponent(dest.name.toLowerCase().replace(/\s+/g, '-'))}/`
+    : 'https://www.skyscanner.com'
+
   return (
-    <div className={`relative rounded-2xl border transition-all duration-200 overflow-hidden
-      ${locked
-        ? 'border-white/8 bg-white/3'
-        : 'border-white/12 bg-white/5 hover:border-[#C97552]/40 hover:bg-white/7'
-      }`}>
-
-      {/* Rank */}
-      <div className="absolute top-4 left-4 z-10">
-        <span className="text-xs text-white/30 font-label tracking-widest uppercase">#{rank}</span>
-      </div>
-
-      {/* Match / Lock pill */}
-      <div className="absolute top-4 right-4 z-10">
-        {locked ? (
-          <div className="flex items-center gap-1.5 bg-white/8 border border-white/10 rounded-full px-3 py-1">
-            <svg className="w-3 h-3 text-white/30" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-            </svg>
-            <span className="text-xs text-white/30 font-label tracking-wider">Locked</span>
+    <div
+      onClick={() => setExpanded(e => !e)}
+      className={`relative rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer
+        ${locked
+          ? 'border-white/8 bg-white/3'
+          : expanded
+            ? 'border-[#C97552]/50 bg-white/7'
+            : 'border-white/12 bg-white/5 hover:border-[#C97552]/40 hover:bg-white/7'
+        }`}
+    >
+      {/* ── Collapsed view ── */}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          {/* Left: rank + name */}
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="text-xs text-white/25 font-label tracking-widest uppercase pt-0.5 flex-shrink-0">
+              #{rank}
+            </span>
+            <div className="min-w-0">
+              <h2 className={`font-serif italic text-xl leading-tight mb-0.5 truncate
+                ${locked ? 'blur-[6px] text-white/40 select-none' : 'text-white'}`}>
+                {locked ? '██████████' : dest.name}
+              </h2>
+              <p className={`text-sm ${locked ? 'blur-[4px] text-white/20 select-none' : 'text-white/50'}`}>
+                {locked ? '████████' : dest.country}
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="flex items-center gap-1 bg-[#C97552]/15 border border-[#C97552]/30 rounded-full px-3 py-1">
-            <span className="text-xs text-[#C97552] font-semibold">{dest.match_score}%</span>
-            <span className="text-xs text-[#C97552]/70">match</span>
+
+          {/* Right: match pill + gem dots */}
+          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+            {locked ? (
+              <div className="flex items-center gap-1.5 bg-white/8 border border-white/10 rounded-full px-3 py-1">
+                <svg className="w-3 h-3 text-white/30" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                <span className="text-xs text-white/30 font-label tracking-wider">Locked</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 bg-[#C97552]/15 border border-[#C97552]/30 rounded-full px-3 py-1">
+                <span className="text-xs text-[#C97552] font-semibold">{dest.match_score}%</span>
+                <span className="text-xs text-[#C97552]/70">match</span>
+              </div>
+            )}
+            {!locked && <GemDots score={dest.hidden_gem_score} />}
+          </div>
+        </div>
+
+        {/* First reason tag (collapsed preview) */}
+        {!locked && dest.reasons?.[0] && !expanded && (
+          <div className="mt-3">
+            <span className="text-xs text-white/55 bg-white/6 border border-white/10 px-2.5 py-1 rounded-full">
+              {dest.reasons[0]}
+            </span>
+          </div>
+        )}
+
+        {/* Expand hint */}
+        {!locked && (
+          <div className="mt-3 flex justify-end">
+            <span className="text-xs text-white/20">{expanded ? '▲ collapse' : '▼ details'}</span>
           </div>
         )}
       </div>
 
-      <div className={`p-6 pt-12 ${locked ? 'select-none' : ''}`}>
-        {/* Name + country */}
-        <div className="mb-4">
-          <h2 className={`font-serif italic text-2xl leading-tight mb-0.5
-            ${locked ? 'blur-[6px] text-white/40' : 'text-white'}`}>
-            {locked ? '██████████' : dest.name}
-          </h2>
-          <p className={`text-sm ${locked ? 'blur-[4px] text-white/20' : 'text-white/50'}`}>
-            {locked ? '████████' : dest.country}
-          </p>
-        </div>
+      {/* ── Expanded view ── */}
+      {expanded && (
+        <div onClick={e => e.stopPropagation()}
+          className={locked ? 'relative overflow-hidden' : ''}>
+          {/* Hero image */}
+          {!locked && (
+            <div className="relative h-44 bg-white/5 overflow-hidden">
+              <img
+                src={imgUrl}
+                alt={dest.name}
+                className="w-full h-full object-cover opacity-80"
+                loading="lazy"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            </div>
+          )}
 
-        {locked ? (
-          <div className="space-y-3">
-            <div className="h-3 bg-white/5 rounded-full w-4/5" />
-            <div className="h-3 bg-white/5 rounded-full w-3/5" />
-            <div className="h-3 bg-white/5 rounded-full w-2/3" />
-          </div>
-        ) : (
-          <>
-            {/* Reasons */}
-            <div className="flex flex-wrap gap-2 mb-5">
+          <div className={`px-5 pb-5 pt-4 ${locked ? 'blur-sm select-none pointer-events-none' : ''}`}>
+            {/* All 3 reason tags */}
+            <div className="flex flex-wrap gap-2 mb-4">
               {dest.reasons.map((r, i) => (
-                <span key={i} className="text-xs text-white/60 bg-white/6 border border-white/10 px-2.5 py-1 rounded-full leading-relaxed">
+                <span key={i} className="text-xs text-white/60 bg-white/6 border border-white/10 px-2.5 py-1 rounded-full">
                   {r}
                 </span>
               ))}
             </div>
 
-            {/* Meta */}
-            <div className="flex items-center justify-between pt-4 border-t border-white/8">
-              <div className="flex items-center gap-4">
+            {/* Meta row */}
+            <div className="flex items-end justify-between border-t border-white/8 pt-4">
+              <div className="space-y-3">
                 {dest.budget_per_day_usd && (
                   <div>
                     <p className="text-xs text-white/30 uppercase tracking-widest mb-0.5">Budget</p>
-                    <p className="text-sm text-white/70">{displayBudget(dest.budget_per_day_usd, currency)}</p>
+                    <p className="text-sm text-white/80 font-medium">
+                      {displayBudget(dest.budget_per_day_usd, currency)}
+                    </p>
+                    <p className="text-xs text-white/30 mt-0.5">on the ground · excl. flights</p>
+                    <a
+                      href={skyscannerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-xs text-[#C97552]/70 hover:text-[#C97552] transition-colors mt-1 inline-block"
+                    >
+                      Search flights →
+                    </a>
                   </div>
                 )}
                 {dest.best_time_to_visit && (
@@ -171,16 +222,37 @@ function DestinationCard({
                   </div>
                 )}
               </div>
-              {dest.hidden_gem_score && (
-                <div className="text-right">
-                  <p className="text-xs text-white/30 uppercase tracking-widest mb-1.5">Gem score</p>
-                  <GemDots score={dest.hidden_gem_score} />
-                </div>
-              )}
+
+              <div className="flex flex-col gap-2 items-end">
+                <button
+                  onClick={e => e.stopPropagation()}
+                  className="text-xs text-white/50 border border-white/15 rounded-full px-4 py-2 hover:border-white/35 hover:text-white/70 transition-all"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={e => e.stopPropagation()}
+                  className="text-xs text-white bg-[#C97552] rounded-full px-4 py-2 hover:bg-[#b86644] transition-colors font-medium"
+                >
+                  Plan this trip →
+                </button>
+              </div>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+
+          {/* Frosted overlay for locked expanded */}
+          {locked && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+              <div className="text-center px-6">
+                <svg className="w-5 h-5 text-white/40 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                <p className="text-white/50 text-xs">Unlock to see full details</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -194,21 +266,25 @@ function UnlockBanner({ count }: { count: number }) {
       <h3 className="font-serif italic text-xl text-white mb-1.5">
         {count} more destination{count !== 1 ? 's' : ''} matched your profile
       </h3>
-      <p className="text-white/45 text-sm mb-5 max-w-xs mx-auto">
-        Upgrade to Voya Pro to unlock all destinations, full itineraries, and booking links.
+      <p className="text-white/45 text-sm mb-2 max-w-xs mx-auto">
+        Unlock all destinations, full details, and flight search for this trip.
       </p>
+      <p className="text-white/25 text-xs mb-5">One-time · no subscription</p>
       <button className="bg-[#C97552] text-white font-semibold text-sm px-8 py-3 rounded-full hover:bg-[#b86644] transition-colors">
-        Unlock all — coming soon
+        Unlock all destinations — $4.99
       </button>
+      <p className="text-white/20 text-xs mt-4">
+        Or get unlimited trips + Voya Pro for $29.99/year
+      </p>
     </div>
   )
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-const FREE_TIER_LIMIT    = 3
-const SLOW_THRESHOLD_MS  = 10000   // show "taking longer" message after 10s
-const TIMEOUT_MS         = 58000   // give up after 58s (server has 60s)
+const FREE_TIER_LIMIT   = 3
+const SLOW_THRESHOLD_MS = 10000
+const TIMEOUT_MS        = 58000
 
 export default function DiscoverPage() {
   const router = useRouter()
@@ -216,7 +292,7 @@ export default function DiscoverPage() {
   const [destinations, setDestinations] = useState<RecommendedDestination[]>([])
   const [currency, setCurrency]         = useState<CurrencyInfo>({ symbol: '$', code: 'USD', rate: 1 })
   const [isCached, setIsCached]         = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)  // silent background refresh
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [errorMsg, setErrorMsg]         = useState('')
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
@@ -236,22 +312,13 @@ export default function DiscoverPage() {
   useEffect(() => {
     let cancelled = false
 
-    // Show "taking longer" hint after 10s
-    const slowTimer = setTimeout(() => {
-      if (!cancelled) setSlow(true)
-    }, SLOW_THRESHOLD_MS)
-
-    // Hard timeout after 58s — only relevant for first-ever visit (no stale cache)
+    const slowTimer = setTimeout(() => { if (!cancelled) setSlow(true) }, SLOW_THRESHOLD_MS)
     const hardTimer = setTimeout(() => {
-      if (!cancelled) {
-        setErrorMsg('This is taking too long. Please try again.')
-        setState('error')
-      }
+      if (!cancelled) { setErrorMsg('This is taking too long. Please try again.'); setState('error') }
     }, TIMEOUT_MS)
 
     async function fetchRecommendations() {
       try {
-        // ── First call: returns instantly if stale cache exists ────────────────
         const res = await fetch('/api/recommendations', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -273,7 +340,7 @@ export default function DiscoverPage() {
           clearTimeout(slowTimer)
           clearTimeout(hardTimer)
 
-          // ── Background refresh if we got stale results ─────────────────────
+          // Background refresh if stale
           if (data.needs_refresh) {
             setIsRefreshing(true)
             try {
@@ -290,11 +357,8 @@ export default function DiscoverPage() {
                   if (refreshData.home_country) setCurrency(detectCurrency(refreshData.home_country))
                 }
               }
-            } catch {
-              // Silently ignore background refresh failures — user has stale results
-            } finally {
-              if (!cancelled) setIsRefreshing(false)
-            }
+            } catch { /* silently ignore */ }
+            finally { if (!cancelled) setIsRefreshing(false) }
           }
         } else {
           setErrorMsg('No destinations returned. Please try again.')
@@ -309,13 +373,8 @@ export default function DiscoverPage() {
     }
 
     fetchRecommendations()
-
-    return () => {
-      cancelled = true
-      clearTimeout(slowTimer)
-      clearTimeout(hardTimer)
-    }
-  }, [router, retryCount])  // retryCount in deps = retry triggers a fresh fetch
+    return () => { cancelled = true; clearTimeout(slowTimer); clearTimeout(hardTimer) }
+  }, [router, retryCount])
 
   if (state === 'loading') return <LoadingScreen slow={slow} />
 
@@ -325,16 +384,11 @@ export default function DiscoverPage() {
         <span className="text-3xl mb-4">🌐</span>
         <h1 className="text-xl font-light text-white mb-2">Couldn't load your destinations</h1>
         <p className="text-white/45 text-sm mb-6 max-w-xs">{errorMsg}</p>
-        <button
-          onClick={retry}
-          className="bg-white text-[#0d1f35] font-semibold text-sm px-8 py-3 rounded-full hover:bg-white/90 transition-colors mb-3"
-        >
+        <button onClick={retry}
+          className="bg-white text-[#0d1f35] font-semibold text-sm px-8 py-3 rounded-full hover:bg-white/90 transition-colors mb-3">
           Try again
         </button>
-        <button
-          onClick={handleLogout}
-          className="text-white/30 text-xs hover:text-white/50 transition-colors"
-        >
+        <button onClick={handleLogout} className="text-white/30 text-xs hover:text-white/50 transition-colors">
           Sign out
         </button>
       </div>
@@ -346,26 +400,22 @@ export default function DiscoverPage() {
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
-      {/* ── Nav ─────────────────────────────────────────────────────────────── */}
+      {/* Nav */}
       <nav className="sticky top-0 z-20 bg-[#0d1f35]/90 backdrop-blur-md border-b border-white/8 px-6 py-4 flex items-center justify-between">
         <span className="font-serif italic text-xl text-white/90">Voya</span>
-        <button
-          onClick={() => router.push('/profile')}
-          className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase"
-        >
+        <button onClick={() => router.push('/profile')}
+          className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase">
           Profile
         </button>
       </nav>
 
       <main className="max-w-2xl mx-auto px-4 py-10">
-        {/* ── Header ──────────────────────────────────────────────────────── */}
+        {/* Header */}
         <div className="mb-8">
           <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">
             Your results
             {isCached && <span className="ml-2 text-[#C97552]/60">· cached</span>}
-            {isRefreshing && (
-              <span className="ml-2 text-white/25 animate-pulse">· updating…</span>
-            )}
+            {isRefreshing && <span className="ml-2 text-white/25 animate-pulse">· updating…</span>}
           </p>
           <h1 className="font-serif italic text-4xl text-white leading-tight">
             {destinations.length} destinations
@@ -374,12 +424,12 @@ export default function DiscoverPage() {
           </h1>
           <p className="text-white/40 text-sm mt-3">
             Ranked by how well they fit your travel style.
-            {unlocked.length > 0 && ` Top ${unlocked.length} are yours free.`}
+            {' '}Your top {FREE_TIER_LIMIT} are free forever.
           </p>
         </div>
 
-        {/* ── Cards ───────────────────────────────────────────────────────── */}
-        <div className="space-y-4">
+        {/* Cards */}
+        <div className="space-y-3">
           {unlocked.map((dest, i) => (
             <DestinationCard key={dest.name} dest={dest} rank={i + 1} locked={false} currency={currency} />
           ))}
@@ -394,13 +444,11 @@ export default function DiscoverPage() {
           )}
         </div>
 
-        {/* ── Footer ──────────────────────────────────────────────────────── */}
+        {/* Footer */}
         <div className="mt-12 pt-8 border-t border-white/8 text-center space-y-2">
           <p className="text-white/20 text-xs">Results refresh when your profile changes.</p>
-          <button
-            onClick={handleLogout}
-            className="text-white/20 text-xs hover:text-white/40 transition-colors"
-          >
+          <button onClick={handleLogout}
+            className="text-white/20 text-xs hover:text-white/40 transition-colors">
             Sign out
           </button>
         </div>

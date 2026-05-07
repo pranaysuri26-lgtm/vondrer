@@ -8,13 +8,15 @@ import { detectCurrency, buildBudgetOptions } from '@/lib/currency'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Profile {
-  home_country:   string
-  budget_per_day: string
-  trip_duration:  string
-  group_type:     string
-  interests:      string[]
-  offbeat_score:  number
-  past_trips:     string[]
+  home_city:       string
+  home_country:    string
+  travel_scope:    string
+  budget_per_day:  string
+  trip_duration:   string
+  group_type:      string
+  interests:       string[]
+  offbeat_score:   number
+  past_trips:      string[]
   past_trip_input: string
 }
 
@@ -91,7 +93,9 @@ export default function ProfilePage() {
   const [error, setError]       = useState('')
 
   const [profile, setProfile] = useState<Profile>({
+    home_city:       '',
     home_country:    '',
+    travel_scope:    'anywhere',
     budget_per_day:  '',
     trip_duration:   '',
     group_type:      '',
@@ -122,7 +126,9 @@ export default function ProfilePage() {
         const d = onboardingRes.data
         setProfile(prev => ({
           ...prev,
+          home_city:      d.home_city      ?? '',
           home_country:   d.home_country   ?? '',
+          travel_scope:   d.travel_scope   ?? 'anywhere',
           budget_per_day: d.budget_per_day ?? '',
           trip_duration:  d.trip_duration  ?? '',
           group_type:     d.group_type     ?? '',
@@ -179,7 +185,9 @@ export default function ProfilePage() {
       .from('onboarding_responses')
       .upsert({
         user_id:        user.id,
+        home_city:      profile.home_city.trim() || null,
         home_country:   profile.home_country,
+        travel_scope:   profile.travel_scope,
         budget_per_day: profile.budget_per_day,
         trip_duration:  profile.trip_duration,
         group_type:     profile.group_type,
@@ -255,21 +263,33 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        {/* ── Home country ──────────────────────────────────────────────── */}
+        {/* ── Home location ─────────────────────────────────────────────── */}
         <Section title="Where are you based?">
-          <input
-            type="text"
-            value={profile.home_country}
-            onChange={e => set('home_country', e.target.value)}
-            placeholder="e.g. United States, India, Germany…"
-            className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#C97552]/60 transition-colors"
-          />
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-white/35 uppercase tracking-widest mb-1.5">City</label>
+              <input
+                type="text"
+                value={profile.home_city}
+                onChange={e => set('home_city', e.target.value)}
+                placeholder="e.g. Sydney, Delhi, London…"
+                className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-white/35 uppercase tracking-widest mb-1.5">Country</label>
+              <input
+                type="text"
+                value={profile.home_country}
+                onChange={e => set('home_country', e.target.value)}
+                placeholder="e.g. Australia, India, United States…"
+                className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
+              />
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2 mt-3">
-            {['United States', 'United Kingdom', 'India', 'Australia', 'Canada', 'Germany', 'France', 'Brazil'].map(c => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => set('home_country', c)}
+            {['Australia', 'United States', 'United Kingdom', 'India', 'Canada', 'Germany', 'France', 'Brazil', 'New Zealand', 'Singapore'].map(c => (
+              <button key={c} type="button" onClick={() => set('home_country', c)}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-all
                   ${profile.home_country === c
                     ? 'border-[#C97552] bg-[#C97552]/15 text-white'
@@ -277,6 +297,28 @@ export default function ProfilePage() {
                   }`}
               >
                 {c}
+              </button>
+            ))}
+          </div>
+        </Section>
+
+        {/* ── Travel scope ──────────────────────────────────────────────── */}
+        <Section title="How far do you want to go?">
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: 'anywhere', icon: '🌍', label: 'Anywhere', sub: 'Global recommendations' },
+              { value: 'closer',   icon: '🏠', label: 'Closer to home', sub: 'Regional & domestic' },
+            ].map(opt => (
+              <button key={opt.value} type="button" onClick={() => set('travel_scope', opt.value)}
+                className={`text-left px-4 py-4 rounded-xl border transition-all
+                  ${profile.travel_scope === opt.value
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
+                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                  }`}
+              >
+                <div className="text-xl mb-1">{opt.icon}</div>
+                <div className="font-medium text-sm">{opt.label}</div>
+                <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
               </button>
             ))}
           </div>

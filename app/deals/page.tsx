@@ -152,6 +152,9 @@ export default function DealsPage() {
           <p className="text-white/35 text-sm mt-3">
             Flight promotions, hotel offers, card bonuses, and travel news — curated daily for your country. Free for every user.
           </p>
+          <p className="text-white/20 text-xs mt-3">
+            Deals are AI-curated and updated daily. Verify details directly with the provider before booking.
+          </p>
         </div>
 
         {/* Filter tabs */}

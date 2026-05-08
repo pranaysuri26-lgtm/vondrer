@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { detectCurrency, displayBudget, type CurrencyInfo } from '@/lib/currency'
@@ -32,12 +32,10 @@ const LOADING_LINES = [
 
 function LoadingScreen({ slow }: { slow: boolean }) {
   const [lineIdx, setLineIdx] = useState(0)
-
   useEffect(() => {
     const id = setInterval(() => setLineIdx(i => (i + 1) % LOADING_LINES.length), 1800)
     return () => clearInterval(id)
   }, [])
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
       <div className="relative w-16 h-16 mb-10">
@@ -59,14 +57,14 @@ function LoadingScreen({ slow }: { slow: boolean }) {
         </p>
       )}
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin    { to { transform: rotate(360deg); } }
+        @keyframes fadeIn  { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
     </div>
   )
 }
 
-// ─── Gem score legend (one-line with tap-to-expand) ──────────────────────────
+// ─── Gem score legend ─────────────────────────────────────────────────────────
 
 const GEM_LEVELS = [
   { dots: 1, label: 'Known to some travellers' },
@@ -78,19 +76,13 @@ const GEM_LEVELS = [
 
 function GemLegend() {
   const [open, setOpen] = useState(false)
-
   return (
     <div className="relative inline-block">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors"
-      >
+      <button onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors">
         <span>💎 Gem score — how undiscovered a place truly is</span>
-        <span className={`w-4 h-4 rounded-full border border-white/20 flex items-center justify-center text-[10px] transition-colors flex-shrink-0 ${open ? 'bg-white/10 border-white/35 text-white/60' : ''}`}>
-          ?
-        </span>
+        <span className={`w-4 h-4 rounded-full border border-white/20 flex items-center justify-center text-[10px] flex-shrink-0 ${open ? 'bg-white/10 border-white/35 text-white/60' : ''}`}>?</span>
       </button>
-
       {open && (
         <div className="absolute left-0 top-full mt-2 z-10 bg-[#0d1f35] border border-white/12 rounded-xl p-4 shadow-xl min-w-[220px]">
           <div className="space-y-2.5">
@@ -105,9 +97,8 @@ function GemLegend() {
               </div>
             ))}
           </div>
-          <button onClick={() => setOpen(false)} className="mt-3 text-[10px] text-white/20 hover:text-white/40 transition-colors w-full text-right">
-            close
-          </button>
+          <button onClick={() => setOpen(false)}
+            className="mt-3 text-[10px] text-white/20 hover:text-white/40 transition-colors w-full text-right">close</button>
         </div>
       )}
     </div>
@@ -121,27 +112,148 @@ function GemDots({ score }: { score?: number }) {
   return (
     <div className="flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className={`w-1.5 h-1.5 rounded-full ${
-          i < Math.round(score / 2) ? 'bg-[#C97552]' : 'bg-white/15'
-        }`} />
+        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < Math.round(score / 2) ? 'bg-[#C97552]' : 'bg-white/15'}`} />
       ))}
     </div>
   )
 }
 
-// ─── Destination card (expandable) ───────────────────────────────────────────
+// ─── Fallback gradient per destination type ───────────────────────────────────
 
-// Gradient palettes — one per card index, cycles if > 8 destinations
-const GRAD_PALETTES = [
-  'from-[#1a3a5c] to-[#0d1f35]',
-  'from-[#2d1f3d] to-[#0d1f35]',
-  'from-[#1a3828] to-[#0d1f35]',
-  'from-[#3a2010] to-[#0d1f35]',
-  'from-[#1a2840] to-[#0d1f35]',
-  'from-[#2a1a30] to-[#0d1f35]',
-  'from-[#1e3530] to-[#0d1f35]',
-  'from-[#302010] to-[#0d1f35]',
-]
+function getFallbackGradient(dest: RecommendedDestination): string {
+  const t = `${dest.name} ${dest.country}`.toLowerCase()
+  if (/desert|outback|sahara|gobi|arid|dune|wadi/.test(t))   return 'linear-gradient(135deg,#c4622d,#8B4513)'
+  if (/island|ocean|sea|beach|coast|bay|maldive|caribbean|pacific|atoll/.test(t)) return 'linear-gradient(135deg,#1a4a5c,#0d7377)'
+  if (/mountain|himalaya|alpine|andes|alps|peak|summit|tibet|highland/.test(t))   return 'linear-gradient(135deg,#2c3e50,#4a6741)'
+  if (/forest|jungle|rainforest|amazon|borneo|congo/.test(t)) return 'linear-gradient(135deg,#2d5a27,#1a3a1a)'
+  if (/city|urban|tokyo|london|paris|new york|chicago|dubai|seoul|bangkok/.test(t)) return 'linear-gradient(135deg,#1a1a2e,#16213e)'
+  return 'linear-gradient(135deg,#1a2a3a,#2d4a5a)'
+}
+
+// ─── Image carousel ───────────────────────────────────────────────────────────
+
+// Session-level URL cache — persists across card expand/collapse within the session
+const imgSessionCache = new Map<string, string[]>()
+
+function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
+  const [images,    setImages]    = useState<string[]>([])
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [loaded,    setLoaded]    = useState<boolean[]>([])
+  const [paused,    setPaused]    = useState(false)
+  const abortRef       = useRef<AbortController | null>(null)
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const touchStartX    = useRef(0)
+
+  // Fetch 4 images on mount, cancel if unmounted
+  useEffect(() => {
+    const cacheKey = `${dest.name}::${dest.country}`
+
+    if (imgSessionCache.has(cacheKey)) {
+      const cached = imgSessionCache.get(cacheKey)!
+      setImages(cached)
+      setLoaded(cached.map(() => false))
+      return
+    }
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    const q = `${dest.name} ${dest.country} travel`
+    fetch(`/api/destination-image?q=${encodeURIComponent(q)}&count=4`, { signal: controller.signal })
+      .then(r => r.json())
+      .then(d => {
+        const urls: string[] = (d.urls ?? (d.url ? [d.url] : [])).filter(Boolean)
+        imgSessionCache.set(cacheKey, urls)
+        setImages(urls)
+        setLoaded(urls.map(() => false))
+      })
+      .catch(() => { /* aborted or failed — gradient fallback shows */ })
+
+    return () => {
+      controller.abort()
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current)
+    }
+  }, [dest.name, dest.country])
+
+  // Auto-cycle every 3 s, paused on hover / touch
+  useEffect(() => {
+    if (images.length <= 1 || paused) return
+    const id = setInterval(() => setActiveIdx(i => (i + 1) % images.length), 3000)
+    return () => clearInterval(id)
+  }, [images.length, paused])
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    setPaused(true)
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current)
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 50) {
+      setActiveIdx(i => diff > 0 ? (i + 1) % images.length : (i - 1 + images.length) % images.length)
+    }
+    resumeTimerRef.current = setTimeout(() => setPaused(false), 5000)
+  }
+
+  const fallback = getFallbackGradient(dest)
+
+  return (
+    <div
+      className="relative h-44 overflow-hidden"
+      style={images.length === 0 ? { background: fallback } : undefined}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Shimmer while fetching */}
+      {images.length === 0 && (
+        <>
+          <div className="absolute inset-0 bg-white/5 animate-pulse" />
+          <div className="absolute inset-0 flex items-end p-4">
+            <span className="font-serif italic text-white/20 text-2xl">{dest.name}</span>
+          </div>
+        </>
+      )}
+
+      {/* Images — crossfade via opacity */}
+      {images.map((url, i) => (
+        <img
+          key={url}
+          src={url}
+          alt={`${dest.name} ${i + 1}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[800ms] ${
+            i === activeIdx && loaded[i] ? 'opacity-80' : 'opacity-0'
+          }`}
+          loading="lazy"
+          onLoad={() => setLoaded(prev => { const next = [...prev]; next[i] = true; return next })}
+          onError={() => setImages(prev => prev.filter((_, j) => j !== i))}
+        />
+      ))}
+
+      {/* Gradient scrim */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+
+      {/* Dot indicators */}
+      {images.length > 1 && (
+        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={e => { e.stopPropagation(); setActiveIdx(i) }}
+              className={`rounded-full transition-all duration-300 ${
+                i === activeIdx ? 'w-3 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/35 hover:bg-white/60'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Destination card (expandable) ───────────────────────────────────────────
 
 function DestinationCard({
   dest, rank, locked, currency,
@@ -151,21 +263,7 @@ function DestinationCard({
   locked:   boolean
   currency: CurrencyInfo
 }) {
-  const [expanded,  setExpanded]  = useState(false)
-  const [imgUrl,    setImgUrl]    = useState<string | null>(null)
-  const [imgLoaded, setImgLoaded] = useState(false)
-
-  // Lazy-fetch the image only when the card is first expanded
-  useEffect(() => {
-    if (!expanded || locked || imgUrl !== null) return
-    const q = `${dest.name} ${dest.country} travel landscape`
-    fetch(`/api/destination-image?q=${encodeURIComponent(q)}`)
-      .then(r => r.json())
-      .then(d => setImgUrl(d.url ?? ''))   // empty string = confirmed no image
-      .catch(() => setImgUrl(''))
-  }, [expanded, locked, dest.name, dest.country, imgUrl])
-
-  const gradClass = GRAD_PALETTES[(rank - 1) % GRAD_PALETTES.length]
+  const [expanded, setExpanded] = useState(false)
 
   const skyscannerUrl = dest.name
     ? `https://www.skyscanner.com/transport/flights/to/${encodeURIComponent(dest.name.toLowerCase().replace(/\s+/g, '-'))}/`
@@ -201,26 +299,23 @@ function DestinationCard({
             </div>
           </div>
 
-          {/* Right: match pill + gem dots */}
+          {/* Right: match pill + gem dots — always visible, even locked */}
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            {locked ? (
-              <div className="flex items-center gap-1.5 bg-white/8 border border-white/10 rounded-full px-3 py-1">
-                <svg className="w-3 h-3 text-white/30" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-                <span className="text-xs text-white/30 font-label tracking-wider">Locked</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 bg-[#C97552]/15 border border-[#C97552]/30 rounded-full px-3 py-1">
-                <span className="text-xs text-[#C97552] font-semibold">{dest.match_score}%</span>
-                <span className="text-xs text-[#C97552]/70">match</span>
-              </div>
-            )}
-            {!locked && <GemDots score={dest.hidden_gem_score} />}
+            <div className={`flex items-center gap-1 rounded-full px-3 py-1 border ${
+              locked
+                ? 'bg-white/8 border-white/15'
+                : 'bg-[#C97552]/15 border-[#C97552]/30'
+            }`}>
+              <span className={`text-xs font-semibold ${locked ? 'text-white/50' : 'text-[#C97552]'}`}>
+                {dest.match_score}%
+              </span>
+              <span className={`text-xs ${locked ? 'text-white/30' : 'text-[#C97552]/70'}`}>match</span>
+            </div>
+            <GemDots score={dest.hidden_gem_score} />
           </div>
         </div>
 
-        {/* First reason tag (collapsed preview) */}
+        {/* First reason tag (unlocked collapsed preview only) */}
         {!locked && dest.reasons?.[0] && !expanded && (
           <div className="mt-3">
             <span className="text-xs text-white/55 bg-white/6 border border-white/10 px-2.5 py-1 rounded-full">
@@ -239,38 +334,13 @@ function DestinationCard({
 
       {/* ── Expanded view ── */}
       {expanded && (
-        <div onClick={e => e.stopPropagation()}
-          className={locked ? 'relative overflow-hidden' : ''}>
-          {/* Hero image */}
-          {!locked && (
-            <div className={`relative h-44 overflow-hidden bg-gradient-to-br ${gradClass}`}>
-              {/* Shimmer while waiting for URL */}
-              {imgUrl === null && (
-                <div className="absolute inset-0 bg-white/5 animate-pulse" />
-              )}
-              {/* Actual photo once URL resolves */}
-              {imgUrl && (
-                <img
-                  src={imgUrl}
-                  alt={dest.name}
-                  className={`w-full h-full object-cover transition-opacity duration-500 ${imgLoaded ? 'opacity-80' : 'opacity-0'}`}
-                  loading="lazy"
-                  onLoad={() => setImgLoaded(true)}
-                  onError={() => setImgUrl('')}
-                />
-              )}
-              {/* Destination name watermark over gradient (shows when no photo) */}
-              {(!imgUrl || !imgLoaded) && (
-                <div className="absolute inset-0 flex items-end p-4">
-                  <span className="font-serif italic text-white/20 text-2xl">{dest.name}</span>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-            </div>
-          )}
+        <div onClick={e => e.stopPropagation()} className={locked ? 'relative overflow-hidden' : ''}>
+
+          {/* Carousel (unlocked only) */}
+          {!locked && <ImageCarousel dest={dest} />}
 
           <div className={`px-5 pb-5 pt-4 ${locked ? 'blur-sm select-none pointer-events-none' : ''}`}>
-            {/* All 3 reason tags */}
+            {/* All reason tags */}
             <div className="flex flex-wrap gap-2 mb-4">
               {dest.reasons.map((r, i) => (
                 <span key={i} className="text-xs text-white/60 bg-white/6 border border-white/10 px-2.5 py-1 rounded-full">
@@ -285,17 +355,11 @@ function DestinationCard({
                 {dest.budget_per_day_usd && (
                   <div>
                     <p className="text-xs text-white/30 uppercase tracking-widest mb-0.5">Budget</p>
-                    <p className="text-sm text-white/80 font-medium">
-                      {displayBudget(dest.budget_per_day_usd, currency)}
-                    </p>
+                    <p className="text-sm text-white/80 font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
                     <p className="text-xs text-white/30 mt-0.5">on the ground · excl. flights</p>
-                    <a
-                      href={skyscannerUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <a href={skyscannerUrl} target="_blank" rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
-                      className="text-xs text-[#C97552]/70 hover:text-[#C97552] transition-colors mt-1 inline-block"
-                    >
+                      className="text-xs text-[#C97552]/70 hover:text-[#C97552] transition-colors mt-1 inline-block">
                       Search flights →
                     </a>
                   </div>
@@ -307,18 +371,13 @@ function DestinationCard({
                   </div>
                 )}
               </div>
-
               <div className="flex flex-col gap-2 items-end">
-                <button
-                  onClick={e => e.stopPropagation()}
-                  className="text-xs text-white/50 border border-white/15 rounded-full px-4 py-2 hover:border-white/35 hover:text-white/70 transition-all"
-                >
+                <button onClick={e => e.stopPropagation()}
+                  className="text-xs text-white/50 border border-white/15 rounded-full px-4 py-2 hover:border-white/35 hover:text-white/70 transition-all">
                   Save
                 </button>
-                <button
-                  onClick={e => e.stopPropagation()}
-                  className="text-xs text-white bg-[#C97552] rounded-full px-4 py-2 hover:bg-[#b86644] transition-colors font-medium"
-                >
+                <button onClick={e => e.stopPropagation()}
+                  className="text-xs text-white bg-[#C97552] rounded-full px-4 py-2 hover:bg-[#b86644] transition-colors font-medium">
                   Plan this trip →
                 </button>
               </div>
@@ -342,25 +401,21 @@ function DestinationCard({
   )
 }
 
-// ─── Unlock CTA ───────────────────────────────────────────────────────────────
+// ─── Conversion hook between free and locked sections ─────────────────────────
 
-function UnlockBanner({ count }: { count: number }) {
+function ConversionHook({ lockedCount, topScore }: { lockedCount: number; topScore: number }) {
   return (
-    <div className="rounded-2xl border border-[#C97552]/25 bg-[#C97552]/5 p-6 text-center">
-      <div className="text-2xl mb-3">🔮</div>
-      <h3 className="font-serif italic text-xl text-white mb-1.5">
-        {count} more destination{count !== 1 ? 's' : ''} matched your profile
-      </h3>
-      <p className="text-white/45 text-sm mb-2 max-w-xs mx-auto">
-        Unlock all destinations, full details, and flight search for this trip.
+    <div className="rounded-2xl border border-[#C97552]/25 bg-[#C97552]/5 px-6 py-5">
+      <p className="text-white/80 text-sm font-medium mb-1">
+        Your {lockedCount} best match{lockedCount !== 1 ? 'es' : ''} are locked
+        {' '}— including destinations up to{' '}
+        <span className="text-[#C97552] font-semibold">{topScore}% match</span> for your profile.
       </p>
-      <p className="text-white/25 text-xs mb-5">One-time · no subscription</p>
-      <button className="bg-[#C97552] text-white font-semibold text-sm px-8 py-3 rounded-full hover:bg-[#b86644] transition-colors">
-        Unlock all destinations — $4.99
+      <p className="text-white/35 text-xs mb-4">One-time unlock · no subscription · 30 days access</p>
+      <button className="bg-[#C97552] text-white font-semibold text-sm px-6 py-2.5 rounded-full hover:bg-[#b86644] transition-colors">
+        Unlock all {lockedCount} destinations — $4.99
       </button>
-      <p className="text-white/20 text-xs mt-4">
-        Or get unlimited trips + Voya Pro for $29.99/year
-      </p>
+      <p className="text-white/20 text-xs mt-3">Or get unlimited trips + Voya Pro for $29.99/year</p>
     </div>
   )
 }
@@ -376,19 +431,12 @@ export default function DiscoverPage() {
   const [state, setState]               = useState<LoadState>('loading')
   const [destinations, setDestinations] = useState<RecommendedDestination[]>([])
   const [currency, setCurrency]         = useState<CurrencyInfo>({ symbol: '$', code: 'USD', rate: 1 })
-  const [isCached, setIsCached]         = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [errorMsg, setErrorMsg]         = useState('')
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
   const [previewAll, setPreviewAll]     = useState(false)
 
-  const retry = useCallback(() => {
-    setState('loading')
-    setSlow(false)
-    setRetryCount(n => n + 1)
-  }, [])
-
+  const retry       = useCallback(() => { setState('loading'); setSlow(false); setRetryCount(n => n + 1) }, [])
   const handleLogout = useCallback(async () => {
     const supabase = getSupabaseClient()
     await supabase.auth.signOut()
@@ -397,7 +445,6 @@ export default function DiscoverPage() {
 
   useEffect(() => {
     let cancelled = false
-
     const slowTimer = setTimeout(() => { if (!cancelled) setSlow(true) }, SLOW_THRESHOLD_MS)
     const hardTimer = setTimeout(() => {
       if (!cancelled) { setErrorMsg('This is taking too long. Please try again.'); setState('error') }
@@ -406,21 +453,17 @@ export default function DiscoverPage() {
     async function fetchRecommendations() {
       try {
         const res = await fetch('/api/recommendations', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ force_refresh: false }),
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force_refresh: false }),
         })
-
         if (res.status === 401) { router.push('/login'); return }
 
         const data: ApiResponse = await res.json()
         if (cancelled) return
-
         if (data.error) { setErrorMsg(data.error); setState('error'); return }
 
         if (data.destinations && data.destinations.length > 0) {
           setDestinations(data.destinations)
-          setIsCached(!!data.cached)
           if (data.home_country) setCurrency(detectCurrency(data.home_country))
           setState('ready')
           clearTimeout(slowTimer)
@@ -428,33 +471,26 @@ export default function DiscoverPage() {
 
           // Background refresh if stale
           if (data.needs_refresh) {
-            setIsRefreshing(true)
             try {
               const refreshRes = await fetch('/api/recommendations', {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ force_refresh: true }),
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ force_refresh: true }),
               })
               if (!cancelled && refreshRes.ok) {
-                const refreshData: ApiResponse = await refreshRes.json()
-                if (!cancelled && refreshData.destinations && refreshData.destinations.length > 0) {
-                  setDestinations(refreshData.destinations)
-                  setIsCached(false)
-                  if (refreshData.home_country) setCurrency(detectCurrency(refreshData.home_country))
+                const rd: ApiResponse = await refreshRes.json()
+                if (!cancelled && rd.destinations && rd.destinations.length > 0) {
+                  setDestinations(rd.destinations)
+                  if (rd.home_country) setCurrency(detectCurrency(rd.home_country))
                 }
               }
             } catch { /* silently ignore */ }
-            finally { if (!cancelled) setIsRefreshing(false) }
           }
         } else {
           setErrorMsg('No destinations returned. Please try again.')
           setState('error')
         }
       } catch {
-        if (!cancelled) {
-          setErrorMsg('Connection error — check your internet and try again.')
-          setState('error')
-        }
+        if (!cancelled) { setErrorMsg('Connection error — check your internet and try again.'); setState('error') }
       }
     }
 
@@ -474,15 +510,19 @@ export default function DiscoverPage() {
           className="bg-white text-[#0d1f35] font-semibold text-sm px-8 py-3 rounded-full hover:bg-white/90 transition-colors mb-3">
           Try again
         </button>
-        <button onClick={handleLogout} className="text-white/30 text-xs hover:text-white/50 transition-colors">
-          Sign out
-        </button>
+        <button onClick={handleLogout} className="text-white/30 text-xs hover:text-white/50 transition-colors">Sign out</button>
       </div>
     )
   }
 
-  const unlocked = destinations.slice(0, previewAll ? destinations.length : FREE_TIER_LIMIT)
-  const locked   = previewAll ? [] : destinations.slice(FREE_TIER_LIMIT)
+  // Sort descending by match_score
+  const sorted = [...destinations].sort((a, b) => b.match_score - a.match_score)
+
+  // previewAll: show everything sorted best-first, no paywall
+  // normal:     free = bottom FREE_TIER_LIMIT (lowest scores), locked = top N (highest scores)
+  const freeCards   = previewAll ? sorted : sorted.slice(-FREE_TIER_LIMIT)
+  const lockedCards = previewAll ? []     : sorted.slice(0, sorted.length - FREE_TIER_LIMIT)
+  const topLockedScore = lockedCards.length > 0 ? lockedCards[0].match_score : 0
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
@@ -514,11 +554,7 @@ export default function DiscoverPage() {
       <main className="max-w-2xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="mb-8">
-          <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">
-            Your results
-            {isCached && <span className="ml-2 text-[#C97552]/60">· cached</span>}
-            {isRefreshing && <span className="ml-2 text-white/25 animate-pulse">· updating…</span>}
-          </p>
+          <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">Your results</p>
           <h1 className="font-serif italic text-4xl text-white leading-tight">
             {destinations.length} destinations
             <br />
@@ -528,23 +564,35 @@ export default function DiscoverPage() {
             Ranked by how well they fit your travel style.
             {' '}Your top {FREE_TIER_LIMIT} are free forever.
           </p>
-          <div className="mt-4">
-            <GemLegend />
-          </div>
+          <div className="mt-4"><GemLegend /></div>
         </div>
 
         {/* Cards */}
         <div className="space-y-3">
-          {unlocked.map((dest, i) => (
-            <DestinationCard key={dest.name} dest={dest} rank={i + 1} locked={false} currency={currency} />
+          {/* Free cards (lowest scores shown first) */}
+          {freeCards.map((dest, i) => (
+            <DestinationCard
+              key={dest.name}
+              dest={dest}
+              rank={i + 1}
+              locked={false}
+              currency={currency}
+            />
           ))}
 
-          {locked.length > 0 && (
+          {/* Conversion hook + locked cards */}
+          {lockedCards.length > 0 && (
             <>
-              {locked.map((dest, i) => (
-                <DestinationCard key={dest.name + i} dest={dest} rank={FREE_TIER_LIMIT + i + 1} locked currency={currency} />
+              <ConversionHook lockedCount={lockedCards.length} topScore={topLockedScore} />
+              {lockedCards.map((dest, i) => (
+                <DestinationCard
+                  key={dest.name + i}
+                  dest={dest}
+                  rank={FREE_TIER_LIMIT + i + 1}
+                  locked
+                  currency={currency}
+                />
               ))}
-              <UnlockBanner count={locked.length} />
             </>
           )}
         </div>
@@ -553,9 +601,7 @@ export default function DiscoverPage() {
         <div className="mt-12 pt-8 border-t border-white/8 text-center space-y-2">
           <p className="text-white/20 text-xs">Results refresh when your profile changes.</p>
           <button onClick={handleLogout}
-            className="text-white/20 text-xs hover:text-white/40 transition-colors">
-            Sign out
-          </button>
+            className="text-white/20 text-xs hover:text-white/40 transition-colors">Sign out</button>
         </div>
       </main>
     </div>

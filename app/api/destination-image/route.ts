@@ -1,44 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Simple in-process cache so re-expanding the same card doesn't re-hit Unsplash
-const cache = new Map<string, string | null>()
+// Session-level cache: key = "query::count"
+const cache = new Map<string, string[]>()
 
 export async function GET(req: NextRequest) {
-  const q   = req.nextUrl.searchParams.get('q') ?? 'travel landscape'
-  const key = process.env.UNSPLASH_ACCESS_KEY
+  const q     = req.nextUrl.searchParams.get('q') ?? 'travel landscape'
+  const count = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get('count') ?? '1', 10), 1), 4)
+  const key   = process.env.UNSPLASH_ACCESS_KEY
 
-  // No key configured — tell the client to show the gradient fallback
-  if (!key) {
-    return NextResponse.json({ url: null, reason: 'no_key' })
-  }
+  if (!key) return NextResponse.json({ urls: [], url: null, reason: 'no_key' })
 
-  // Return cached result if we already fetched this query this process lifetime
-  if (cache.has(q)) {
-    return NextResponse.json({ url: cache.get(q) })
+  const cacheKey = `${q}::${count}`
+  if (cache.has(cacheKey)) {
+    const urls = cache.get(cacheKey)!
+    return NextResponse.json({ urls, url: urls[0] ?? null })
   }
 
   try {
-    const res = await fetch(
-      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(q)}&orientation=landscape&content_filter=high`,
-      {
-        headers: { Authorization: `Client-ID ${key}` },
-        // Next.js cache: revalidate once a day — same destination gets same photo
-        next: { revalidate: 86400 },
-      }
-    )
+    // count > 1: Unsplash returns an array; count = 1: returns a single object
+    const endpoint =
+      `https://api.unsplash.com/photos/random` +
+      `?query=${encodeURIComponent(q)}` +
+      `&orientation=landscape` +
+      `&content_filter=high` +
+      (count > 1 ? `&count=${count}` : '')
+
+    const res = await fetch(endpoint, {
+      headers: { Authorization: `Client-ID ${key}` },
+      next: { revalidate: 86400 },
+    })
 
     if (!res.ok) {
-      cache.set(q, null)
-      return NextResponse.json({ url: null, reason: `unsplash_${res.status}` })
+      cache.set(cacheKey, [])
+      return NextResponse.json({ urls: [], url: null, reason: `unsplash_${res.status}` })
     }
 
     const data = await res.json()
-    const url: string | null = data?.urls?.regular ?? null
-    cache.set(q, url)
-    return NextResponse.json({ url })
+    const urls: string[] = count > 1 && Array.isArray(data)
+      ? data.map((p: { urls?: { regular?: string } }) => p?.urls?.regular).filter(Boolean)
+      : data?.urls?.regular ? [data.urls.regular] : []
+
+    cache.set(cacheKey, urls)
+    return NextResponse.json({ urls, url: urls[0] ?? null })
   } catch (err) {
     console.warn('[destination-image] fetch error:', err)
-    cache.set(q, null)
-    return NextResponse.json({ url: null, reason: 'fetch_error' })
+    cache.set(cacheKey, [])
+    return NextResponse.json({ urls: [], url: null, reason: 'fetch_error' })
   }
 }

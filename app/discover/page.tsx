@@ -333,6 +333,7 @@ export default function DiscoverPage() {
   const [errorMsg, setErrorMsg]         = useState('')
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
+  const [previewAll, setPreviewAll]     = useState(false)
 
   const retry = useCallback(() => {
     setState('loading')
@@ -432,18 +433,30 @@ export default function DiscoverPage() {
     )
   }
 
-  const unlocked = destinations.slice(0, FREE_TIER_LIMIT)
-  const locked   = destinations.slice(FREE_TIER_LIMIT)
+  const unlocked = destinations.slice(0, previewAll ? destinations.length : FREE_TIER_LIMIT)
+  const locked   = previewAll ? [] : destinations.slice(FREE_TIER_LIMIT)
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
       {/* Nav */}
       <nav className="sticky top-0 z-20 bg-[#0d1f35]/90 backdrop-blur-md border-b border-white/8 px-6 py-4 flex items-center justify-between">
         <span className="font-serif italic text-xl text-white/90">Voya</span>
-        <button onClick={() => router.push('/profile')}
-          className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase">
-          Profile
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setPreviewAll(p => !p)}
+            className={`text-xs font-label tracking-widest uppercase transition-colors px-3 py-1 rounded-full border ${
+              previewAll
+                ? 'border-[#C97552]/60 text-[#C97552] bg-[#C97552]/10'
+                : 'border-white/15 text-white/35 hover:text-white/60 hover:border-white/30'
+            }`}
+          >
+            {previewAll ? '🔓 All unlocked' : '👁 Preview all'}
+          </button>
+          <button onClick={() => router.push('/profile')}
+            className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase">
+            Profile
+          </button>
+        </div>
       </nav>
 
       <main className="max-w-2xl mx-auto px-4 py-10">

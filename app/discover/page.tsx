@@ -318,6 +318,14 @@ function TransportBlock({
   )
 }
 
+// ─── Timing helpers ──────────────────────────────────────────────────────────
+
+function crowdLabel(level: string): string {
+  if (level === 'local')  return 'Mostly locals'
+  if (level === 'mixed')  return 'Mixed crowd'
+  return 'Peak tourist season'
+}
+
 // ─── Fallback gradient per destination type ───────────────────────────────────
 
 function getFallbackGradient(dest: RecommendedDestination): string {
@@ -522,12 +530,19 @@ function DestinationCard({
           </div>
         </div>
 
-        {/* Timing warning — shown even when collapsed, always visible */}
-        {dest.timing_warning && (
-          <div className="mt-2.5">
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-400/80 bg-amber-400/8 border border-amber-400/20 rounded-full px-2.5 py-1">
-              {dest.timing_warning}
-            </span>
+        {/* Timing + event badges — visible without expanding */}
+        {(dest.timing_warning || dest.upcoming_event) && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {dest.timing_warning && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-400/80 bg-amber-400/8 border border-amber-400/20 rounded-full px-2.5 py-1">
+                {dest.timing_warning}
+              </span>
+            )}
+            {dest.upcoming_event && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-[#C97552]/80 bg-[#C97552]/8 border border-[#C97552]/20 rounded-full px-2.5 py-1">
+                🎪 {dest.upcoming_event.name} — {dest.upcoming_event.when}
+              </span>
+            )}
           </div>
         )}
 
@@ -567,6 +582,28 @@ function DestinationCard({
 
             {/* Dietary badges — only unlocked, only if destination genuinely supports the preference */}
             {!locked && <DietaryBadges dest={dest} userPrefs={dietaryPrefs} />}
+
+            {/* Timing context — expanded detail */}
+            {!locked && dest.timing_note && (
+              <div className="flex items-start gap-2 mt-3 text-xs text-white/40 leading-relaxed">
+                <span className="flex-shrink-0">📅</span>
+                <span>{dest.timing_note}</span>
+              </div>
+            )}
+
+            {/* Upcoming event box */}
+            {!locked && dest.upcoming_event && (
+              <div className="mt-3 rounded-xl border border-[#C97552]/20 bg-[#C97552]/5 px-4 py-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-base leading-none">🎪</span>
+                  <span className="text-sm text-white/85 font-medium">{dest.upcoming_event.name}</span>
+                </div>
+                <p className="text-[11px] text-white/40 mb-1">
+                  {dest.upcoming_event.when} · {crowdLabel(dest.upcoming_event.crowd_level)}
+                </p>
+                <p className="text-xs text-white/55 leading-snug">{dest.upcoming_event.what}</p>
+              </div>
+            )}
 
             {/* Transport block — HOW TO GET THERE */}
             {!locked && <TransportBlock dest={dest} homeCity={homeCity} />}

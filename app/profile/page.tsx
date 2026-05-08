@@ -17,6 +17,7 @@ interface Profile {
   interests:            string[]
   dietary_preferences:  string[]
   offbeat_score:        number
+  trip_timing:          string   // 'next_month' | '2_3_months' | 'exploring' | ''
   past_trips:           string[]
   past_trip_input:      string
 }
@@ -115,6 +116,7 @@ export default function ProfilePage() {
     interests:            [],
     dietary_preferences:  [],
     offbeat_score:        3,
+    trip_timing:          '',
     past_trips:           [],
     past_trip_input:      '',
   })
@@ -149,6 +151,7 @@ export default function ProfilePage() {
           interests:            d.interests            ?? [],
           dietary_preferences:  d.dietary_preferences  ?? [],
           offbeat_score:        d.offbeat_score        ?? 3,
+          trip_timing:          d.trip_timing          ?? '',
           past_trips:           (tripsRes.data ?? []).map((t: { destination_name: string }) => t.destination_name),
         }))
       }
@@ -226,6 +229,7 @@ export default function ProfilePage() {
         interests:            profile.interests,
         dietary_preferences:  profile.dietary_preferences,
         offbeat_score:        profile.offbeat_score,
+        trip_timing:          profile.trip_timing || null,
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setSaving(false); return }
@@ -355,6 +359,39 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+        </Section>
+
+        {/* ── Trip timing ───────────────────────────────────────────────── */}
+        <Section title="When are you thinking of going?">
+          <div className="space-y-2">
+            {[
+              { value: 'next_month',  icon: '📅', label: 'Next month',    sub: 'Planning very soon'   },
+              { value: '2_3_months',  icon: '🗓️', label: 'In 2–3 months', sub: 'Got time to plan'     },
+              { value: 'exploring',   icon: '🌍', label: 'Just exploring', sub: 'No fixed date yet'   },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => set('trip_timing', profile.trip_timing === opt.value ? '' : opt.value)}
+                className={`w-full text-left px-5 py-4 rounded-xl border transition-all
+                  ${profile.trip_timing === opt.value
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
+                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                  }`}
+              >
+                <div className="flex items-center gap-4">
+                  <span className="text-xl">{opt.icon}</span>
+                  <div>
+                    <div className="font-medium text-sm">{opt.label}</div>
+                    <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+          {!profile.trip_timing && (
+            <p className="text-xs text-white/25 mt-3">Not set — timing won&apos;t affect your recommendations.</p>
+          )}
         </Section>
 
         {/* ── Budget ────────────────────────────────────────────────────── */}

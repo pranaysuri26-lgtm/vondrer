@@ -56,6 +56,15 @@ interface FlightDetails {
   flight_number?:   string
 }
 
+interface BookedActivityReq {
+  name:           string
+  date:           string
+  start_time:     string
+  duration_hours: number
+  ticket_count:   number
+  notes:          string
+}
+
 interface ItineraryRequest {
   destination:     string
   country:         string
@@ -69,10 +78,23 @@ interface ItineraryRequest {
     home_city?:           string
     home_country?:        string
   }
-  group?:          GroupComposition
-  flights?:        FlightDetails
-  user_plans?:     string
-  transport_mode?: 'fly' | 'drive' | 'bus' | 'train' | 'ferry'
+  group?:              GroupComposition
+  flights?:            FlightDetails
+  user_plans?:         string
+  must_do?:            string
+  nice_to_do?:         string
+  things_to_avoid?:    string[]
+  avoid_notes?:        string
+  local_transport?:    string
+  booked_activities?:  BookedActivityReq[]
+  transport_mode?:     'fly' | 'drive' | 'bus' | 'train' | 'ferry'
+  trip_interests?:     string[]
+  trip_pace?:          'packed' | 'balanced' | 'relaxed'
+  special_occasion?:   string
+  occasion_person?:    string
+  accessibility_needs?: string[]
+  max_walking_minutes?: number
+  trip_context?:       string
   hotel?: {
     neighbourhood:  string
     checkin_date?:  string
@@ -112,7 +134,14 @@ function getAirportTransit(dest: string): string {
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
 function buildPrompt(body: ItineraryRequest): { system: string; user: string } {
-  const { destination, country, days, start_date, user_profile, group, flights, user_plans } = body
+  const {
+    destination, country, days, start_date,
+    user_profile, group, flights, user_plans,
+    must_do, nice_to_do, things_to_avoid, avoid_notes,
+    local_transport, booked_activities,
+    trip_interests, trip_pace, special_occasion, occasion_person,
+    accessibility_needs, max_walking_minutes, trip_context,
+  } = body
 
   // ── Transport mode context ───────────────────────────────────────────────────
   const transportSection = (() => {
@@ -474,7 +503,8 @@ Never skip beach in a beach city.` : ''
   const destLower = destination.toLowerCase()
 
   if (destLower.includes('san francisco') || destLower === 'sf') {
-    const hasCarInPlans = user_plans?.toLowerCase().includes('rental car') ||
+    const hasCarInPlans = local_transport === 'rental_car' ||
+                          user_plans?.toLowerCase().includes('rental car') ||
                           user_plans?.toLowerCase().includes('car') ||
                           user_plans?.toLowerCase().includes('drive')
     cityIntelSection = `
@@ -503,6 +533,176 @@ Wynwood Walls: flat, walkable, excellent for all groups. Free street art viewing
 Good mixed-dietary restaurants: Mandolin Aegean Bistro (Mediterranean, excellent veg + meat), Lung Yai Thai Tapas, KYU.
 For large groups: make reservations — Miami restaurants fill up quickly especially weekends.`
   }
+
+  // ── Activity preferences ──────────────────────────────────────────────────────
+  const interestsSection = trip_interests && trip_interests.length > 0 ? `
+TRIP INTERESTS — prioritise these activity types throughout:
+${trip_interests.join(', ')}
+Skew all recommendations toward these themes. When two options are equal quality, choose the one matching these interests.` : ''
+
+  const paceSection = (() => {
+    const forcedRelaxed = hasElderly || accessibility_needs?.includes('wheelchair') || accessibility_needs?.includes('limited_walking')
+    const effectivePace = forcedRelaxed ? 'relaxed' : (trip_pace ?? 'balanced')
+    switch (effectivePace) {
+      case 'packed':
+        return `PACE: PACKED — Start days at 8am. Up to 3 activities per time block. Minimize downtime. Maximum coverage.`
+      case 'relaxed':
+        return `PACE: RELAXED — Start days 9–10am. 1 main activity per block. Include café stops and rest points. End days by 9pm. Use language like "take your time here", "no need to rush". ${forcedRelaxed && trip_pace !== 'relaxed' ? `\nPace adjusted for accessibility needs in this group.` : ''}`
+      default:
+        return `PACE: BALANCED — 2 activities per time block. One rest period per day. Realistic transit between spots.`
+    }
+  })()
+
+  // ── Special occasion ──────────────────────────────────────────────────────────
+  const occasionSection = special_occasion && special_occasion !== 'none' ? (() => {
+    const name = occasion_person ? `${occasion_person}'s` : 'the'
+    switch (special_occasion) {
+      case 'anniversary':
+      case 'honeymoon':
+        return `
+SPECIAL OCCASION: ${special_occasion.charAt(0).toUpperCase() + special_occasion.slice(1)}.
+Include one genuinely romantic experience per trip (not generic).
+Include one splurge dinner — "the meal of this trip". Pre-ordering flowers or a message at the restaurant: note this is possible and include the instruction.
+Use couple-focused language throughout: "you and your partner", "the two of you", etc.`
+      case 'birthday':
+        return `
+SPECIAL OCCASION: ${name} birthday.
+Include one special experience on or near the birthday date.
+Recommend one restaurant where a birthday surprise can be arranged — note: "[Restaurant] can arrange a birthday surprise/dessert if you call ahead."
+Birthday person's name: ${occasion_person || '(not specified)'}`
+      case 'bachelor':
+        return `
+SPECIAL OCCASION: Bachelor/Bachelorette trip.
+Include nightlife options where appropriate.
+One group activity designed for shared memory (boat trip, cooking class, etc.).
+Livelier venue recommendations. Note: "Inform venues in advance for group bookings."`
+      case 'family_reunion':
+        return `
+SPECIAL OCCASION: Family reunion.
+Activities must work for all ages present.
+Large-table-bookable restaurants only — note reservation lead time.
+Include one group photo location.
+Mix generations in all recommendations.`
+      case 'concert':
+        return `
+SPECIAL OCCASION: Concert or event.
+Schedule EVERYTHING around the event. Event date takes priority over all other planning.
+Pre-event dinner: near the venue, booked in advance, ends 60 min before doors open.
+Post-event: note late-night options. Warn about surge pricing for rideshare post-event. Parking/transport warnings.`
+      default:
+        return `SPECIAL OCCASION: ${special_occasion}. Reflect this theme throughout the itinerary where appropriate.`
+    }
+  })() : ''
+
+  // ── Enhanced accessibility ────────────────────────────────────────────────────
+  const accessibilitySection = accessibility_needs && accessibility_needs.length > 0 ? `
+ACCESSIBILITY REQUIREMENTS:
+Needs: ${accessibility_needs.join(', ')}
+${max_walking_minutes ? `Max comfortable walking: ${max_walking_minutes} minutes continuous` : ''}
+
+${accessibility_needs.includes('wheelchair') ? `WHEELCHAIR — MANDATORY:
+Every single activity must be confirmed wheelchair accessible. Flag it explicitly for each activity.
+Never recommend a venue without confirmed accessibility.
+If a normally-recommended activity is not accessible, provide the best accessible alternative instead.` : ''}
+
+${accessibility_needs.includes('limited_walking') ? `LIMITED WALKING (max ${max_walking_minutes || 15} min):
+No continuous walking exceeding ${max_walking_minutes || 15} minutes. ALWAYS include seating options.
+Group activities by proximity. Use rideshare/taxi between zones when walking would exceed limit.
+Never chain two activities requiring sustained walking.` : ''}
+
+${accessibility_needs.includes('no_stairs') ? `NO STAIRS / STEEP INCLINES:
+Flag every venue with stairs — always provide lift/elevator alternative.
+San Francisco: never recommend walking between steep neighbourhoods — always car/rideshare between areas.
+Never suggest uneven terrain without a flat alternative.` : ''}
+
+${accessibility_needs.includes('stroller') ? `STROLLER:
+Flag cobblestone streets. Note narrow café entrances. Stroller-friendly routes only.
+Note lift availability at transit stations and major attractions.` : ''}` : ''
+
+  // ── Must do / Nice to do ──────────────────────────────────────────────────────
+  const mustDoSection = must_do ? `
+MUST DO — always include, build the trip around these. Non-negotiable:
+${must_do}` : ''
+
+  const niceToDoSection = nice_to_do ? `
+NICE TO DO — include if schedule allows:
+${nice_to_do}
+If it doesn't fit naturally, add at the end of the most relevant day: "If you have extra time: [activity] — [duration] from [nearest location]."` : ''
+
+  // ── Things to avoid ───────────────────────────────────────────────────────────
+  const avoidLabels: Record<string, string> = {
+    tourist_crowds: 'tourist crowds',
+    long_queues: 'long queues (30+ min)',
+    expensive: 'expensive activities ($50+/person)',
+    physically_demanding: 'physically demanding activities',
+    loud_venues: 'loud or busy venues',
+    shopping: 'shopping areas',
+    nightlife: 'party and nightlife',
+    museums: 'museums and galleries',
+    guided_tours: 'guided tours',
+    early_starts: 'early morning starts before 9am',
+    late_nights: 'late nights after 10pm',
+  }
+  const avoidSection2 = (things_to_avoid && things_to_avoid.length > 0) || avoid_notes ? `
+THINGS TO AVOID — never recommend:
+${things_to_avoid?.map(k => avoidLabels[k] ?? k).join(', ') || ''}
+${avoid_notes ? `Additional: ${avoid_notes}` : ''}
+
+If an avoided thing is genuinely unavoidable for a key activity, flag it with a workaround:
+"We know you prefer to avoid [thing] — [specific workaround] will minimise this."` : ''
+
+  // ── Local transport ───────────────────────────────────────────────────────────
+  const localTransportSection = local_transport ? (() => {
+    switch (local_transport) {
+      case 'rental_car':
+        return `LOCAL TRANSPORT: Rental car.
+User has a car in ${destination}. Never suggest public transit for car-friendly activities.
+Include parking notes and estimated parking costs for major attractions.
+Drive-friendly activities (scenic routes, out-of-city day trips) are accessible.`
+      case 'transit':
+        return `LOCAL TRANSPORT: Public transit.
+Include specific transit lines/routes for each activity.
+Show transit cost per person AND group total.
+Flag areas where transit is limited.`
+      case 'rideshare':
+        return `LOCAL TRANSPORT: Rideshare only (Uber/Lyft).
+Estimate rideshare cost between activities. Group of 7+ = 2 vehicles (double the cost).
+Surge warnings: post-dinner 9–11pm, post-event departures, airport runs.
+Never suggest walking over 10 minutes.`
+      case 'walking':
+        return `LOCAL TRANSPORT: Walking + rideshare for longer distances.
+Group activities into walkable zones. Note walking time between each.
+Max walking 20 min between activities. Rideshare when zones change.`
+      default:
+        return `LOCAL TRANSPORT: Mix of options. Note the best transport mode for each activity.`
+    }
+  })() : ''
+
+  // ── Fixed bookings ────────────────────────────────────────────────────────────
+  const bookedSection = booked_activities && booked_activities.length > 0 ? `
+FIXED BOOKINGS — NON-NEGOTIABLE. Build the entire itinerary around these:
+${booked_activities.map(a => {
+    const [startH, startM] = (a.start_time || '10:00').split(':').map(Number)
+    const endMins   = startH * 60 + startM + Math.round((a.duration_hours || 2) * 60)
+    const endH      = Math.floor(endMins / 60) % 24
+    const endM      = endMins % 60
+    const bufferEnd = endMins + 30
+    const bufH      = Math.floor(bufferEnd / 60) % 24
+    const bufM      = bufferEnd % 60
+    const bufStart  = startH * 60 + startM - 45
+    const bsH       = Math.max(0, Math.floor(bufStart / 60))
+    const bsM       = bufStart % 60
+    return `• ${a.name} | ${a.date} | starts ${a.start_time} | ${a.duration_hours}h | ${a.ticket_count ?? '?'} tickets
+  Previous activity MUST end by ${String(bsH).padStart(2,'0')}:${String(Math.abs(bsM)).padStart(2,'0')} (45 min buffer before).
+  Next activity starts no earlier than ${String(bufH).padStart(2,'0')}:${String(bufM).padStart(2,'0')} (30 min buffer after).
+  ${a.notes ? `Note: ${a.notes}` : ''}`
+  }).join('\n')}
+Never schedule ANYTHING during these time slots. Zero exceptions.` : ''
+
+  // ── Trip context ──────────────────────────────────────────────────────────────
+  const tripContextSection = trip_context ? `
+ADDITIONAL CONTEXT — read carefully, apply throughout entire itinerary:
+${trip_context}` : ''
 
   // ── System prompt ─────────────────────────────────────────────────────────────
   const system = `You are a travel itinerary expert for Voya. Generate a day-by-day plan.
@@ -539,6 +739,16 @@ ${costSection}
 ${largeGroupSection}
 ${halalSection}
 ${gfSection}
+${paceSection}
+${interestsSection}
+${occasionSection}
+${accessibilitySection}
+${bookedSection}
+${mustDoSection}
+${niceToDoSection}
+${avoidSection2}
+${localTransportSection}
+${tripContextSection}
 ${transportSection}
 ${flightSection}
 ${userPlansSection}

@@ -8,15 +8,17 @@ import type { ItineraryBlock, ItineraryResult } from '@/app/api/itinerary/route'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface FlightInfo {
-  status:           'none' | 'booked'
-  arrival_date:     string
-  arrival_time:     string
-  departure_date:   string
-  departure_time:   string
-  flight_number:    string
-  pdf_parsing:      boolean
-  pdf_extracted:    PdfFlight[] | null
-  pdf_confirmed:    boolean
+  status:               'none' | 'booked'
+  arrival_date:         string
+  arrival_time:         string
+  departure_date:       string
+  departure_time:       string
+  flight_number:        string
+  pdf_parsing:          boolean
+  pdf_extracted:        PdfFlight[] | null
+  pdf_confirmed:        boolean
+  flight_accessibility: string[]
+  min_connection_hours: number
 }
 
 interface PdfFlight {
@@ -44,16 +46,36 @@ interface LegTransport {
   transit_stop:   string   // 0-day via city label
 }
 
+interface BookedActivity {
+  id:             string
+  name:           string
+  date:           string
+  start_time:     string
+  duration_hours: number
+  ticket_count:   number
+  notes:          string
+}
+
+interface AccessibilityInfo {
+  needs:               string[]
+  max_walking_minutes: number | null
+}
+
 interface TripDestination {
-  id:           string
-  name:         string
-  country:      string
-  days:         number
-  start_date:   string
-  end_date:     string
-  flights:      FlightInfo
-  hotel:        HotelInfo
-  user_plans:   string
+  id:                string
+  name:              string
+  country:           string
+  days:              number
+  start_date:        string
+  end_date:          string
+  flights:           FlightInfo
+  hotel:             HotelInfo
+  must_do:           string
+  nice_to_do:        string
+  things_to_avoid:   string[]
+  avoid_notes:       string
+  local_transport:   string | null
+  booked_activities: BookedActivity[]
 }
 
 interface GroupComposition {
@@ -218,6 +240,17 @@ function emptyFlight(): FlightInfo {
     status: 'none', arrival_date: '', arrival_time: '',
     departure_date: '', departure_time: '', flight_number: '',
     pdf_parsing: false, pdf_extracted: null, pdf_confirmed: false,
+    flight_accessibility: [], min_connection_hours: 0,
+  }
+}
+
+function emptyDest(id: string, name: string, country: string, days: number, start: string, end: string): TripDestination {
+  return {
+    id, name, country, days, start_date: start, end_date: end,
+    flights: emptyFlight(), hotel: emptyHotel(),
+    must_do: '', nice_to_do: '',
+    things_to_avoid: [], avoid_notes: '',
+    local_transport: null, booked_activities: [],
   }
 }
 
@@ -273,9 +306,24 @@ function CheckRow({
 
 // ─── Group composition section ────────────────────────────────────────────────
 
+const ACCESSIBILITY_OPTIONS = [
+  { key: 'wheelchair',      label: 'Wheelchair user' },
+  { key: 'limited_walking', label: 'Limited walking' },
+  { key: 'no_stairs',       label: 'No stairs or steep inclines' },
+  { key: 'visual',          label: 'Visual impairment' },
+  { key: 'hearing',         label: 'Hearing impairment' },
+  { key: 'stroller',        label: 'Travelling with stroller' },
+]
+const WALK_DIST = [5, 10, 15, 30] as const
+
 function GroupCompositionSection({
-  group, onChange,
-}: { group: GroupComposition; onChange: (g: GroupComposition) => void }) {
+  group, onChange, accessibility, onAccessibilityChange,
+}: {
+  group:                   GroupComposition
+  onChange:                (g: GroupComposition) => void
+  accessibility:           AccessibilityInfo
+  onAccessibilityChange:   (a: AccessibilityInfo) => void
+}) {
 
   const typeOptions = [
     { key: 'includes_adults',     label: 'Adults'            },
@@ -315,6 +363,54 @@ function GroupCompositionSection({
             onToggle={() => onChange({ ...group, [opt.key]: !group[opt.key] })}
           />
         ))}
+      </div>
+
+      {/* Accessibility section — below traveler types */}
+      <div className="space-y-2.5 border-t border-white/8 pt-4">
+        <div>
+          <p className="text-xs text-white/35">Any mobility or accessibility needs?</p>
+          <p className="text-xs text-white/20 mt-0.5">We adjust every activity recommendation</p>
+        </div>
+        {ACCESSIBILITY_OPTIONS.map(opt => (
+          <div key={opt.key}>
+            <CheckRow
+              checked={accessibility.needs.includes(opt.key)}
+              label={opt.label}
+              onToggle={() => {
+                const has = accessibility.needs.includes(opt.key)
+                onAccessibilityChange({
+                  ...accessibility,
+                  needs: has
+                    ? accessibility.needs.filter(k => k !== opt.key)
+                    : [...accessibility.needs, opt.key],
+                  max_walking_minutes: (opt.key === 'limited_walking' && has) ? null : accessibility.max_walking_minutes,
+                })
+              }}
+            />
+            {opt.key === 'limited_walking' && accessibility.needs.includes('limited_walking') && (
+              <div className="ml-7 mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="text-xs text-white/35">Max comfortable distance:</span>
+                {WALK_DIST.map(mins => (
+                  <label key={mins} className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="max-walk"
+                      checked={accessibility.max_walking_minutes === mins}
+                      onChange={() => onAccessibilityChange({ ...accessibility, max_walking_minutes: mins })}
+                      className="accent-[#C97552]"
+                    />
+                    <span className="text-xs text-white/55">{mins} min</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        <CheckRow
+          checked={accessibility.needs.length === 0}
+          label="None — fully mobile"
+          onToggle={() => onAccessibilityChange({ needs: [], max_walking_minutes: null })}
+        />
       </div>
 
       <div className="space-y-2.5 border-t border-white/8 pt-4">
@@ -398,13 +494,22 @@ function GroupCompositionSection({
 
 // ─── Flights section ──────────────────────────────────────────────────────────
 
+const FLIGHT_ACCESS_OPTIONS = [
+  { key: 'wheelchair_airport',   label: 'Wheelchair assistance needed' },
+  { key: 'aisle_seat',           label: 'Aisle seat required' },
+  { key: 'extra_connection',     label: 'Extra connection time needed' },
+  { key: 'mobility_assistance',  label: 'Airport mobility assistance' },
+]
+const CONNECTION_HOURS = [1.5, 2, 2.5, 3] as const
+
 function FlightsSection({
-  dest, homeCity, flights, onChange,
+  dest, homeCity, flights, onChange, accessibility,
 }: {
-  dest:     TripDestination
-  homeCity: string
-  flights:  FlightInfo
-  onChange: (f: FlightInfo) => void
+  dest:          TripDestination
+  homeCity:      string
+  flights:       FlightInfo
+  onChange:      (f: FlightInfo) => void
+  accessibility: AccessibilityInfo
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -614,6 +719,49 @@ function FlightsSection({
               )}
             </div>
           )}
+
+          {/* Airport accessibility — shown when any accessibility needs exist */}
+          {accessibility.needs.length > 0 && (
+            <div className="border-t border-white/8 pt-3 space-y-2.5">
+              <p className="text-xs text-white/35 uppercase tracking-widest font-label">Airport accessibility</p>
+              {FLIGHT_ACCESS_OPTIONS.map(opt => (
+                <div key={opt.key}>
+                  <CheckRow
+                    checked={flights.flight_accessibility.includes(opt.key)}
+                    label={opt.label}
+                    onToggle={() => {
+                      const has = flights.flight_accessibility.includes(opt.key)
+                      onChange({
+                        ...flights,
+                        flight_accessibility: has
+                          ? flights.flight_accessibility.filter(k => k !== opt.key)
+                          : [...flights.flight_accessibility, opt.key],
+                        min_connection_hours: (opt.key === 'extra_connection' && has) ? 0 : flights.min_connection_hours,
+                      })
+                    }}
+                  />
+                  {opt.key === 'extra_connection' && flights.flight_accessibility.includes('extra_connection') && (
+                    <div className="ml-7 mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span className="text-xs text-white/35">Minimum connection time:</span>
+                      {CONNECTION_HOURS.map(h => (
+                        <label key={h} className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`conn-${dest.id}`}
+                            checked={flights.min_connection_hours === h}
+                            onChange={() => onChange({ ...flights, min_connection_hours: h })}
+                            className="accent-[#C97552]"
+                          />
+                          <span className="text-xs text-white/55">{h}h</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              <p className="text-xs text-white/25 mt-1">Contact your airline 48 hours before travel to arrange assistance.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -739,24 +887,390 @@ function HotelSection({ dest, hotel, onChange }: {
   )
 }
 
-// ─── User plans section ───────────────────────────────────────────────────────
+// ─── Activity preferences section ────────────────────────────────────────────
 
-function UserPlansSection({
-  destName, value, onChange,
-}: { destName: string; value: string; onChange: (v: string) => void }) {
+const TRIP_INTEREST_OPTIONS = [
+  { key: 'beaches',     icon: '🏖️', label: 'Beaches and outdoor time'  },
+  { key: 'food',        icon: '🍜', label: 'Food and restaurants'       },
+  { key: 'art',         icon: '🎨', label: 'Art and culture'            },
+  { key: 'nightlife',   icon: '🌙', label: 'Nightlife'                  },
+  { key: 'photography', icon: '📸', label: 'Photography spots'          },
+  { key: 'adventure',   icon: '🏃', label: 'Adventure and activities'   },
+  { key: 'shopping',    icon: '🛍️', label: 'Shopping'                   },
+  { key: 'relaxation',  icon: '😴', label: 'Relaxation — slow pace'     },
+  { key: 'history',     icon: '🏛️', label: 'History and architecture'   },
+  { key: 'local',       icon: '🏘️', label: 'Local neighbourhood life'   },
+] as const
+
+const PACE_OPTIONS = [
+  { key: 'packed',   icon: '⚡', label: 'Packed',   desc: 'Full days, see as much as possible' },
+  { key: 'balanced', icon: '⚖️', label: 'Balanced', desc: 'Mix of activities and downtime'     },
+  { key: 'relaxed',  icon: '🌿', label: 'Relaxed',  desc: 'Slow pace, quality over quantity'   },
+] as const
+
+function ActivityPreferencesSection({
+  interests, pace, onInterestsChange, onPaceChange,
+}: {
+  interests:         string[]
+  pace:              'packed' | 'balanced' | 'relaxed'
+  onInterestsChange: (v: string[]) => void
+  onPaceChange:      (v: 'packed' | 'balanced' | 'relaxed') => void
+}) {
+  const MAX = 4
+  function toggle(key: string) {
+    if (interests.includes(key)) onInterestsChange(interests.filter(k => k !== key))
+    else if (interests.length < MAX) onInterestsChange([...interests, key])
+  }
+  return (
+    <div className="bg-white/4 border border-white/8 rounded-2xl p-5 space-y-5">
+      <div>
+        <p className="text-xs text-white/35 uppercase tracking-widest font-label">What matters most on this trip?</p>
+        <p className="text-xs text-white/25 mt-1">Can differ from your usual travel style · Pick up to 4</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {TRIP_INTEREST_OPTIONS.map(opt => {
+          const sel   = interests.includes(opt.key)
+          const maxed = interests.length >= MAX && !sel
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              disabled={maxed}
+              onClick={() => toggle(opt.key)}
+              className={[
+                'flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all',
+                sel
+                  ? 'bg-[#C97552]/15 border-[#C97552]/40 text-white/85'
+                  : maxed
+                    ? 'border-white/8 text-white/20 cursor-not-allowed'
+                    : 'border-white/12 text-white/50 hover:border-white/25 hover:text-white/70',
+              ].join(' ')}
+            >
+              <span className="text-base">{opt.icon}</span>
+              <span className="text-xs">{opt.label}</span>
+            </button>
+          )
+        })}
+      </div>
+      {interests.length === MAX && <p className="text-xs text-white/30 text-center">Maximum 4 selected</p>}
+
+      <div className="border-t border-white/8 pt-4 space-y-3">
+        <p className="text-xs text-white/35">How packed do you want each day?</p>
+        <div className="space-y-2">
+          {PACE_OPTIONS.map(opt => (
+            <label key={opt.key} className="flex items-start gap-3 cursor-pointer py-0.5">
+              <input type="radio" name="trip-pace" checked={pace === opt.key}
+                onChange={() => onPaceChange(opt.key)} className="accent-[#C97552] mt-0.5" />
+              <div>
+                <span className="text-sm text-white/70">{opt.icon} {opt.label}</span>
+                <p className="text-xs text-white/35 mt-0.5">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Special occasion section ─────────────────────────────────────────────────
+
+const OCCASION_OPTIONS = [
+  { key: 'none',           label: 'No — just a great trip'        },
+  { key: 'birthday',       label: '🎂 Birthday'                   },
+  { key: 'anniversary',    label: '💑 Anniversary'                },
+  { key: 'honeymoon',      label: '💍 Honeymoon'                  },
+  { key: 'bachelor',       label: '🥂 Bachelor / Bachelorette'    },
+  { key: 'family_reunion', label: '👨‍👩‍👧‍👦 Family reunion'           },
+  { key: 'work_leisure',   label: '💼 Work trip with leisure time' },
+  { key: 'concert',        label: '🎵 Concert or event'           },
+  { key: 'wedding',        label: '💒 Wedding (attending)'        },
+  { key: 'graduation',     label: '🎓 Graduation trip'            },
+] as const
+
+function SpecialOccasionSection({
+  occasion, person, onOccasionChange, onPersonChange,
+}: {
+  occasion:         string
+  person:           string
+  onOccasionChange: (v: string) => void
+  onPersonChange:   (v: string) => void
+}) {
+  return (
+    <div className="bg-white/4 border border-white/8 rounded-2xl p-5 space-y-4">
+      <p className="text-xs text-white/35 uppercase tracking-widest font-label">Is this trip for a special occasion?</p>
+      <div className="space-y-2">
+        {OCCASION_OPTIONS.map(opt => (
+          <label key={opt.key} className="flex items-center gap-3 cursor-pointer py-0.5">
+            <input type="radio" name="special-occasion" checked={occasion === opt.key}
+              onChange={() => onOccasionChange(opt.key)} className="accent-[#C97552]" />
+            <span className="text-sm text-white/65">{opt.label}</span>
+          </label>
+        ))}
+      </div>
+      {occasion === 'birthday' && (
+        <div className="ml-7 space-y-1">
+          <label className="block text-xs text-white/35">Whose birthday? (optional)</label>
+          <input type="text" value={person} onChange={e => onPersonChange(e.target.value)}
+            placeholder="e.g. Alex"
+            className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Booked activities section ────────────────────────────────────────────────
+
+function BookedActivitiesSection({
+  destName, activities, onChange,
+}: {
+  destName:   string
+  activities: BookedActivity[]
+  onChange:   (a: BookedActivity[]) => void
+}) {
+  function addActivity() {
+    onChange([...activities, { id: localId(), name: '', date: '', start_time: '', duration_hours: 2, ticket_count: 2, notes: '' }])
+  }
+  function upd(id: string, patch: Partial<BookedActivity>) {
+    onChange(activities.map(a => a.id === id ? { ...a, ...patch } : a))
+  }
+
   return (
     <div className="mt-2 bg-white/3 border border-white/8 rounded-xl p-4 space-y-3">
-      <p className="text-xs text-white/35 uppercase tracking-widest font-label">Anything already planned for {destName}? <span className="normal-case text-white/20">(optional)</span></p>
+      <p className="text-xs text-white/35 uppercase tracking-widest font-label">Any tickets already booked for {destName}?</p>
+
+      {activities.map(act => (
+        <div key={act.id} className="bg-white/4 border border-white/8 rounded-xl p-4 space-y-3 relative">
+          <button onClick={() => onChange(activities.filter(a => a.id !== act.id))}
+            className="absolute top-3 right-3 text-white/25 hover:text-white/60 text-xl leading-none transition-colors">×</button>
+
+          <div>
+            <label className="block text-xs text-white/35 mb-1.5">Activity</label>
+            <input type="text" value={act.name} onChange={e => upd(act.id, { name: e.target.value })}
+              placeholder="e.g. Alcatraz Island Tour"
+              className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-white/35 mb-1.5">Date</label>
+              <input type="date" value={act.date} onChange={e => upd(act.id, { date: e.target.value })}
+                className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C97552]/60 [color-scheme:dark]" />
+            </div>
+            <div>
+              <label className="block text-xs text-white/35 mb-1.5">Start time</label>
+              <input type="time" value={act.start_time} onChange={e => upd(act.id, { start_time: e.target.value })}
+                className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C97552]/60 [color-scheme:dark]" />
+            </div>
+            <div>
+              <label className="block text-xs text-white/35 mb-1.5">Duration (hours)</label>
+              <input type="number" min={0.5} max={24} step={0.5} value={act.duration_hours}
+                onChange={e => upd(act.id, { duration_hours: parseFloat(e.target.value) || 1 })}
+                className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C97552]/60" />
+            </div>
+            <div>
+              <label className="block text-xs text-white/35 mb-1.5">Tickets for</label>
+              <input type="number" min={1} value={act.ticket_count} onChange={e => upd(act.id, { ticket_count: parseInt(e.target.value) || 1 })}
+                className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C97552]/60" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-white/35 mb-1.5">Notes (optional)</label>
+            <input type="text" value={act.notes} onChange={e => upd(act.id, { notes: e.target.value })}
+              placeholder="e.g. Meet at Pier 33, 9:45am"
+              className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60" />
+          </div>
+        </div>
+      ))}
+
+      <button onClick={addActivity}
+        className="w-full border border-dashed border-white/15 rounded-xl py-3 text-sm text-white/40 hover:border-white/30 hover:text-white/60 transition-all">
+        + Add booked activity
+      </button>
+    </div>
+  )
+}
+
+// ─── Must do / Nice to do section ────────────────────────────────────────────
+
+function MustDoSection({
+  destName, mustDo, niceToDo, onChange,
+}: {
+  destName:  string
+  mustDo:    string
+  niceToDo:  string
+  onChange:  (must: string, nice: string) => void
+}) {
+  return (
+    <div className="mt-2 bg-white/3 border border-white/8 rounded-xl p-4 space-y-4">
+      <div>
+        <p className="text-xs text-white/35 uppercase tracking-widest font-label">Things you <span className="text-white/60">MUST</span> do</p>
+        <p className="text-xs text-white/25 mt-0.5">Voya includes all of these — non-negotiable</p>
+        <textarea
+          value={mustDo}
+          onChange={e => onChange(e.target.value, niceToDo)}
+          rows={2}
+          placeholder={`e.g. 17 Mile Drive, Pier 39, authentic Cuban food`}
+          className="mt-2 w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white/80 text-sm placeholder-white/20 focus:outline-none focus:border-[#C97552]/40 resize-none leading-relaxed"
+        />
+      </div>
+      <div>
+        <p className="text-xs text-white/35 uppercase tracking-widest font-label">Would love to do if time</p>
+        <p className="text-xs text-white/25 mt-0.5">Included if schedule allows</p>
+        <textarea
+          value={niceToDo}
+          onChange={e => onChange(mustDo, e.target.value)}
+          rows={2}
+          placeholder={`e.g. Alcatraz if tickets available, Muir Woods if not too far`}
+          className="mt-2 w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white/80 text-sm placeholder-white/20 focus:outline-none focus:border-[#C97552]/40 resize-none leading-relaxed"
+        />
+      </div>
+    </div>
+  )
+}
+
+// ─── Things to avoid section ──────────────────────────────────────────────────
+
+const AVOID_OPTIONS = [
+  { key: 'tourist_crowds',       label: 'Tourist crowds'                    },
+  { key: 'long_queues',          label: 'Long queues (30+ min wait)'        },
+  { key: 'expensive',            label: 'Expensive activities ($50+/person)'},
+  { key: 'physically_demanding', label: 'Physically demanding activities'   },
+  { key: 'loud_venues',          label: 'Loud or busy venues'               },
+  { key: 'shopping',             label: 'Shopping areas'                    },
+  { key: 'nightlife',            label: 'Party and nightlife'               },
+  { key: 'museums',              label: 'Museums and galleries'             },
+  { key: 'guided_tours',         label: 'Guided tours'                      },
+  { key: 'early_starts',         label: 'Early morning starts (before 9am)' },
+  { key: 'late_nights',          label: 'Late nights (after 10pm)'          },
+] as const
+
+function AvoidSection({
+  destName, toAvoid, avoidNotes, onAvoidChange, onNotesChange,
+}: {
+  destName:      string
+  toAvoid:       string[]
+  avoidNotes:    string
+  onAvoidChange: (v: string[]) => void
+  onNotesChange: (v: string) => void
+}) {
+  return (
+    <div className="mt-2 bg-white/3 border border-white/8 rounded-xl p-4 space-y-3">
+      <div>
+        <p className="text-xs text-white/35 uppercase tracking-widest font-label">Anything to avoid in {destName}?</p>
+        <p className="text-xs text-white/25 mt-0.5">Optional — helps us skip what's not for you</p>
+      </div>
+      <div className="space-y-2">
+        {AVOID_OPTIONS.map(opt => (
+          <CheckRow
+            key={opt.key}
+            checked={toAvoid.includes(opt.key)}
+            label={opt.label}
+            onToggle={() => onAvoidChange(
+              toAvoid.includes(opt.key)
+                ? toAvoid.filter(k => k !== opt.key)
+                : [...toAvoid, opt.key]
+            )}
+          />
+        ))}
+      </div>
+      <div>
+        <label className="block text-xs text-white/35 mb-1.5">Anything else?</label>
+        <input type="text" value={avoidNotes} onChange={e => onNotesChange(e.target.value)}
+          placeholder="e.g. We prefer boutique experiences over big chains"
+          className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60" />
+      </div>
+    </div>
+  )
+}
+
+// ─── Local transport section ──────────────────────────────────────────────────
+
+const LOCAL_TRANSPORT_OPTIONS = [
+  { key: 'rental_car', label: '🚗 Rental car'                       },
+  { key: 'transit',    label: '🚇 Public transit'                   },
+  { key: 'rideshare',  label: '🚖 Rideshare only (Uber/Lyft)'       },
+  { key: 'walking',    label: '🚶 Walking + rideshare for longer'    },
+  { key: 'mix',        label: '🔀 Mix — whatever makes sense'        },
+] as const
+
+function LocalTransportSection({
+  destName, transport, onChange,
+}: {
+  destName:  string
+  transport: string | null
+  onChange:  (v: string | null) => void
+}) {
+  return (
+    <div className="mt-2 bg-white/3 border border-white/8 rounded-xl p-4 space-y-3">
+      <p className="text-xs text-white/35 uppercase tracking-widest font-label">Getting around {destName}</p>
+      <div className="space-y-2">
+        {LOCAL_TRANSPORT_OPTIONS.map(opt => (
+          <label key={opt.key} className="flex items-center gap-3 cursor-pointer py-0.5">
+            <input type="radio" name={`local-transport-${destName}`}
+              checked={transport === opt.key}
+              onChange={() => onChange(opt.key)}
+              className="accent-[#C97552]" />
+            <span className="text-sm text-white/65">{opt.label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Trip context section ─────────────────────────────────────────────────────
+
+function TripContextSection({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="bg-white/4 border border-white/8 rounded-2xl p-5 space-y-3">
+      <div>
+        <p className="text-xs text-white/35 uppercase tracking-widest font-label">Anything else we should know?</p>
+        <p className="text-xs text-white/25 mt-0.5">Optional — applies across the whole trip</p>
+      </div>
       <textarea
         value={value}
         onChange={e => onChange(e.target.value)}
-        rows={3}
-        placeholder={`e.g. Landing at 1pm, have a rental car, want to do Pier 39 on arrival day, 17 Mile Drive sometime during the trip, staying in Mission District`}
-        className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white/80 text-sm placeholder-white/20 focus:outline-none focus:border-[#C97552]/40 transition-colors resize-none leading-relaxed"
+        rows={4}
+        placeholder={`e.g. One person has never traveled internationally before.\nWe want a mix of iconic and local.\nWe're celebrating a promotion.\nOur Airbnb is in the Mission District.`}
+        className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white/80 text-sm placeholder-white/20 focus:outline-none focus:border-[#C97552]/40 resize-none leading-relaxed"
       />
-      {value && (
-        <button onClick={() => onChange('')} className="text-xs text-white/25 hover:text-white/45 transition-colors">Clear</button>
-      )}
+    </div>
+  )
+}
+
+// ─── Group coordination section ───────────────────────────────────────────────
+
+function GroupCoordinationSection({ shareToken }: { shareToken: string }) {
+  const [copied, setCopied] = useState(false)
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const collabLink = `${origin}/trip/${shareToken}/collaborate`
+
+  return (
+    <div className="bg-white/4 border border-white/8 rounded-2xl p-5 space-y-4">
+      <div>
+        <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-1">Planning with others?</p>
+        <p className="text-white/50 text-sm">Invite your group to view, comment and vote on activities.</p>
+      </div>
+      <div className="space-y-2">
+        <p className="text-xs text-white/30">Collaboration link</p>
+        <div className="flex items-center gap-2">
+          <input readOnly value={collabLink}
+            className="flex-1 bg-white/5 border border-white/12 rounded-lg px-3 py-2 text-white/55 text-xs focus:outline-none" />
+          <button
+            onClick={() => { navigator.clipboard?.writeText(collabLink); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+            className="text-xs text-white/40 border border-white/12 rounded-lg px-3 py-2 hover:border-white/25 hover:text-white/60 transition-all flex-shrink-0"
+          >
+            {copied ? '✓ Copied' : 'Copy'}
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-white/35 bg-white/3 border border-white/6 rounded-xl px-4 py-3 leading-relaxed">
+        Anyone with this link can view the full itinerary, add comments on any activity, suggest changes, and vote 👍 👎. Only you can accept or apply changes.
+      </p>
     </div>
   )
 }
@@ -793,11 +1307,7 @@ function AddStopOverlay({
       onAddTransit(city.trim())
     } else {
       if (!country.trim()) return
-      onAddDest({
-        id: localId(), name: city.trim(), country: country.trim(),
-        days, start_date: start, end_date: endDate,
-        flights: emptyFlight(), hotel: emptyHotel(), user_plans: '',
-      })
+      onAddDest(emptyDest(localId(), city.trim(), country.trim(), days, start, endDate))
     }
   }
 
@@ -1063,11 +1573,7 @@ function AddDestForm({ nextStart, onAdd, onCancel, prefillName = '', prefillCoun
 
   function submit() {
     if (!name.trim() || !country.trim() || days < 1 || !start) return
-    onAdd({
-      id: localId(), name: name.trim(), country: country.trim(),
-      days, start_date: start, end_date: endDate,
-      flights: emptyFlight(), hotel: emptyHotel(), user_plans: '',
-    })
+    onAdd(emptyDest(localId(), name.trim(), country.trim(), days, start, endDate))
   }
 
   return (
@@ -1535,6 +2041,14 @@ function PlanNewInner() {
     dietary_none:        true,
   })
 
+  // ── Trip-level new state ───────────────────────────────────────────────────
+  const [accessibility,   setAccessibility]   = useState<AccessibilityInfo>({ needs: [], max_walking_minutes: null })
+  const [tripInterests,   setTripInterests]   = useState<string[]>([])
+  const [tripPace,        setTripPace]        = useState<'packed'|'balanced'|'relaxed'>('balanced')
+  const [specialOccasion, setSpecialOccasion] = useState<string>('none')
+  const [occasionPerson,  setOccasionPerson]  = useState<string>('')
+  const [tripContext,     setTripContext]      = useState<string>('')
+
   // Pre-open add form if dest pre-filled from discover
   useEffect(() => {
     if ((prefillDest || prefillCountry) && !formPrefillUsed) {
@@ -1805,8 +2319,24 @@ function PlanNewInner() {
             hotel: dest.hotel.status === 'booked' && dest.hotel.neighbourhood
               ? { neighbourhood: dest.hotel.neighbourhood, checkin_date: dest.hotel.checkin_date, checkout_date: dest.hotel.checkout_date }
               : undefined,
-            user_plans:      dest.user_plans     || undefined,
-            transport_mode:  transport_mode      || undefined,
+            // Legacy user_plans synthesised from new split fields
+            user_plans:      [dest.must_do, dest.nice_to_do].filter(Boolean).join('\n') || undefined,
+            must_do:         dest.must_do      || undefined,
+            nice_to_do:      dest.nice_to_do   || undefined,
+            things_to_avoid: dest.things_to_avoid.length > 0 ? dest.things_to_avoid : undefined,
+            avoid_notes:     dest.avoid_notes  || undefined,
+            local_transport: dest.local_transport || undefined,
+            booked_activities: dest.booked_activities.filter(a => a.name && a.date).length > 0
+              ? dest.booked_activities.filter(a => a.name && a.date)
+              : undefined,
+            transport_mode:      transport_mode      || undefined,
+            trip_interests:      tripInterests.length > 0 ? tripInterests : undefined,
+            trip_pace:           tripPace,
+            special_occasion:    specialOccasion !== 'none' ? specialOccasion : undefined,
+            occasion_person:     occasionPerson || undefined,
+            accessibility_needs: accessibility.needs.length > 0 ? accessibility.needs : undefined,
+            max_walking_minutes: accessibility.max_walking_minutes || undefined,
+            trip_context:        tripContext || undefined,
           }),
         })
         // Read as text first — non-JSON responses (timeout, Vercel error) won't crash
@@ -1836,7 +2366,7 @@ function PlanNewInner() {
       return { ...item, loading: false, days: mutableDays, error: '' }
     }))
     setGenerating(false)
-  }, [destinations, profile, group])
+  }, [destinations, profile, group, tripInterests, tripPace, specialOccasion, occasionPerson, accessibility, tripContext])
 
   // ── Save ──────────────────────────────────────────────────────────────────────
   const saveTrip = useCallback(async () => {
@@ -1849,9 +2379,20 @@ function PlanNewInner() {
     const { data: trip, error: tripErr } = await supabase
       .from('trips')
       .insert({
-        user_id: user.id,
-        trip_name: tripName.trim() || `${destinations.map(d => d.name).join(' + ')} — ${tripStart}`,
-        status: 'planning', total_days: totalDays, start_date: tripStart, end_date: tripEnd,
+        user_id:             user.id,
+        trip_name:           tripName.trim() || `${destinations.map(d => d.name).join(' + ')} — ${tripStart}`,
+        status:              'planning',
+        total_days:          totalDays,
+        start_date:          tripStart,
+        end_date:            tripEnd,
+        // New trip-level fields (requires DB migration — fails silently if columns don't exist)
+        trip_interests:      tripInterests.length > 0 ? tripInterests : null,
+        trip_pace:           tripPace,
+        special_occasion:    specialOccasion !== 'none' ? specialOccasion : null,
+        occasion_person:     occasionPerson || null,
+        accessibility_needs: accessibility.needs.length > 0 ? accessibility.needs : null,
+        max_walking_minutes: accessibility.max_walking_minutes || null,
+        trip_context:        tripContext || null,
       })
       .select().single()
 
@@ -1873,7 +2414,14 @@ function PlanNewInner() {
           start_date:       dest.start_date,
           end_date:         dest.end_date,
           itinerary_json,
-          notes:            dest.user_plans || null,
+          // Serialize per-dest fields into notes as JSON (no separate migration needed)
+          notes: JSON.stringify({
+            must_do:         dest.must_do        || null,
+            nice_to_do:      dest.nice_to_do     || null,
+            things_to_avoid: dest.things_to_avoid.length > 0 ? dest.things_to_avoid : null,
+            avoid_notes:     dest.avoid_notes    || null,
+            local_transport: dest.local_transport|| null,
+          }) || null,
         }
       })
     ).select('id, destination_name')
@@ -1892,7 +2440,7 @@ function PlanNewInner() {
     setSavedTripId(trip.id)
     setShareToken(trip.share_token ?? null)
     setSaving(false)
-  }, [destinations, itineraries, tripName, totalDays, tripStart, tripEnd, router])
+  }, [destinations, itineraries, tripName, totalDays, tripStart, tripEnd, router, tripInterests, tripPace, specialOccasion, occasionPerson, accessibility, tripContext])
 
   const hasItineraries = itineraries.some(i => !i.loading && !i.error && i.days.length > 0)
   const hasAnyDays     = itineraries.some(i => i.days.length > 0)
@@ -1914,8 +2462,23 @@ function PlanNewInner() {
           className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#C97552]/40 text-sm"
         />
 
-        {/* Group composition */}
-        <GroupCompositionSection group={group} onChange={setGroup} />
+        {/* Group composition + accessibility */}
+        <GroupCompositionSection
+          group={group} onChange={setGroup}
+          accessibility={accessibility} onAccessibilityChange={setAccessibility}
+        />
+
+        {/* Activity preferences */}
+        <ActivityPreferencesSection
+          interests={tripInterests} pace={tripPace}
+          onInterestsChange={setTripInterests} onPaceChange={setTripPace}
+        />
+
+        {/* Special occasion */}
+        <SpecialOccasionSection
+          occasion={specialOccasion} person={occasionPerson}
+          onOccasionChange={setSpecialOccasion} onPersonChange={setOccasionPerson}
+        />
 
         {/* Destinations */}
         <div className="space-y-3">
@@ -1971,17 +2534,18 @@ function PlanNewInner() {
                     aria-label="Remove">×</button>
                 </div>
 
-                {/* Flights section */}
+                {/* Flights + accessibility */}
                 <div className="px-4 pb-3">
                   <FlightsSection
                     dest={dest}
                     homeCity={profile?.home_city ?? ''}
                     flights={dest.flights}
                     onChange={f => updateDestination(dest.id, { flights: f })}
+                    accessibility={accessibility}
                   />
                 </div>
 
-                {/* Hotel section */}
+                {/* Hotel */}
                 <div className="px-4 pb-3">
                   <HotelSection
                     dest={dest}
@@ -1990,12 +2554,42 @@ function PlanNewInner() {
                   />
                 </div>
 
-                {/* User plans section */}
-                <div className="px-4 pb-4">
-                  <UserPlansSection
+                {/* Local transport */}
+                <div className="px-4 pb-3">
+                  <LocalTransportSection
                     destName={dest.name}
-                    value={dest.user_plans}
-                    onChange={v => updateDestination(dest.id, { user_plans: v })}
+                    transport={dest.local_transport}
+                    onChange={v => updateDestination(dest.id, { local_transport: v })}
+                  />
+                </div>
+
+                {/* Already booked activities */}
+                <div className="px-4 pb-3">
+                  <BookedActivitiesSection
+                    destName={dest.name}
+                    activities={dest.booked_activities}
+                    onChange={a => updateDestination(dest.id, { booked_activities: a })}
+                  />
+                </div>
+
+                {/* Must do / Nice to do */}
+                <div className="px-4 pb-3">
+                  <MustDoSection
+                    destName={dest.name}
+                    mustDo={dest.must_do}
+                    niceToDo={dest.nice_to_do}
+                    onChange={(must, nice) => updateDestination(dest.id, { must_do: must, nice_to_do: nice })}
+                  />
+                </div>
+
+                {/* Things to avoid */}
+                <div className="px-4 pb-4">
+                  <AvoidSection
+                    destName={dest.name}
+                    toAvoid={dest.things_to_avoid}
+                    avoidNotes={dest.avoid_notes}
+                    onAvoidChange={v => updateDestination(dest.id, { things_to_avoid: v })}
+                    onNotesChange={v => updateDestination(dest.id, { avoid_notes: v })}
                   />
                 </div>
               </div>
@@ -2020,6 +2614,9 @@ function PlanNewInner() {
             </button>
           )}
         </div>
+
+        {/* Trip context */}
+        <TripContextSection value={tripContext} onChange={setTripContext} />
 
         {/* Summary + CTA */}
         {destinations.length > 0 && (
@@ -2153,19 +2750,22 @@ function PlanNewInner() {
                       <p className="text-green-400 text-sm font-medium">✓ Trip saved</p>
                     </div>
                     {shareToken && (
-                      <div className="bg-white/4 border border-white/10 rounded-xl p-4 space-y-2">
-                        <p className="text-white/50 text-xs">Share this trip</p>
-                        <div className="flex items-center gap-2">
-                          <input readOnly
-                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/trip/${shareToken}`}
-                            className="flex-1 bg-white/5 border border-white/12 rounded-lg px-3 py-2 text-white/60 text-xs focus:outline-none"
-                          />
-                          <button onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/trip/${shareToken}`)}
-                            className="text-xs text-white/40 border border-white/12 rounded-lg px-3 py-2 hover:border-white/25 hover:text-white/60 transition-all">
-                            Copy
-                          </button>
+                      <>
+                        <div className="bg-white/4 border border-white/10 rounded-xl p-4 space-y-2">
+                          <p className="text-white/50 text-xs">Share this trip</p>
+                          <div className="flex items-center gap-2">
+                            <input readOnly
+                              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/trip/${shareToken}`}
+                              className="flex-1 bg-white/5 border border-white/12 rounded-lg px-3 py-2 text-white/60 text-xs focus:outline-none"
+                            />
+                            <button onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/trip/${shareToken}`)}
+                              className="text-xs text-white/40 border border-white/12 rounded-lg px-3 py-2 hover:border-white/25 hover:text-white/60 transition-all">
+                              Copy
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                        <GroupCoordinationSection shareToken={shareToken} />
+                      </>
                     )}
                   </div>
                 ) : (

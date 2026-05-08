@@ -218,8 +218,16 @@ export function buildRecommendationPrompt(
 - Flight radius guide: under $50-150/day budget → prefer destinations under 6 hours flight time. Higher budgets → longer flights acceptable.`
 
   const system = `You are a travel recommendation engine for Voya.
-Return ONLY valid JSON. No explanation. No prose. No markdown.
-Response schema: { "destinations": [{ "name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[] }] }
+
+OUTPUT FORMAT — CRITICAL:
+Output each destination as a separate, complete JSON object on its own line.
+One destination per line. No outer array. No "destinations" wrapper key. No markdown. No explanation.
+Every line must be a complete, valid, parseable JSON object.
+Example of correct output:
+{"name":"Hampi","country":"India","match_score":91,"reasons":["...","..."],"budget_per_day_usd":25,"best_time_to_visit":"Oct–Feb","hidden_gem_score":7,"dietary_tags":[]}
+{"name":"Spiti Valley","country":"India","match_score":88,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[]}
+
+Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[]}
 
 RULES:
 - match_score: 0–100, ranked descending
@@ -272,18 +280,33 @@ Return 8–12 destinations.`
 }
 
 // ─── Response validator ───────────────────────────────────────────────────────
+// Handles both NDJSON (one destination per line) and legacy JSON array formats.
 
 export function validateResponse(raw: string): RecommendedDestination[] {
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
-  const parsed: RecommendationResponse = JSON.parse(cleaned)
 
+  // ── Try NDJSON first (one destination per line) ───────────────────────────
+  const lines = cleaned.split('\n').map(l => l.trim()).filter(Boolean)
+  if (lines.length >= 2) {
+    const ndjson: RecommendedDestination[] = []
+    for (const line of lines) {
+      try {
+        const d = JSON.parse(line)
+        if (d.name && d.country && typeof d.match_score === 'number') {
+          ndjson.push(d)
+        }
+      } catch { /* not valid JSON on this line */ }
+    }
+    if (ndjson.length >= 8) return ndjson.slice(0, 12)
+  }
+
+  // ── Fallback: JSON array format ───────────────────────────────────────────
+  const parsed: RecommendationResponse = JSON.parse(cleaned)
   if (!parsed.destinations || !Array.isArray(parsed.destinations)) {
     throw new Error('Response missing destinations array')
   }
-
   if (parsed.destinations.length < 8) {
     throw new Error(`Insufficient destinations: got ${parsed.destinations.length}, need at least 8`)
   }
-
   return parsed.destinations.slice(0, 12)
 }

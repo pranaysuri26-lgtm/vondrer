@@ -10,15 +10,49 @@ import type { RecommendedDestination } from '@/lib/recommendations'
 
 type LoadState = 'loading' | 'ready' | 'error'
 
-interface ApiResponse {
-  destinations?:        RecommendedDestination[]
-  home_country?:        string
-  dietary_preferences?: string[]
-  cached?:              boolean
-  stale?:               boolean
-  needs_refresh?:       boolean
-  fallback?:            boolean
-  error?:               string
+// ─── SSE stream reader ────────────────────────────────────────────────────────
+// Reads the text/event-stream from /api/recommendations and calls handlers
+// as each event arrives. Works for both initial load and background refresh.
+
+interface SSEHandlers {
+  onMeta:        (event: Record<string, unknown>) => void
+  onDestination: (dest: RecommendedDestination)   => void
+  onRetry:       ()                               => void
+  onError:       (msg: string)                    => void
+  onDone:        ()                               => void
+}
+
+async function readSSE(res: Response, handlers: SSEHandlers): Promise<void> {
+  if (!res.body) { handlers.onError('No response body'); return }
+  const reader  = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer    = ''
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      // SSE events are separated by \n\n
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() ?? ''
+      for (const part of parts) {
+        const dataLine = part.split('\n').find(l => l.startsWith('data: '))
+        if (!dataLine) continue
+        try {
+          const event = JSON.parse(dataLine.slice(6))
+          switch (event.type) {
+            case 'meta':        handlers.onMeta(event); break
+            case 'destination': handlers.onDestination(event as RecommendedDestination); break
+            case 'retry':       handlers.onRetry(); break
+            case 'error':       handlers.onError(event.message ?? 'Unknown error'); break
+            case 'done':        handlers.onDone(); break
+          }
+        } catch { /* malformed event — ignore */ }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
 }
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -533,40 +567,81 @@ export default function DiscoverPage() {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ force_refresh: false }),
         })
+
         if (res.status === 401) { router.push('/login'); return }
+        if (!res.ok) {
+          if (!cancelled) { setErrorMsg('Connection error — check your internet and try again.'); setState('error') }
+          return
+        }
 
-        const data: ApiResponse = await res.json()
+        let needsRefresh  = false
+        let gotAny        = false
+
+        await readSSE(res, {
+          onMeta: (event) => {
+            if (cancelled) return
+            if (event.home_country)        setCurrency(detectCurrency(event.home_country as string))
+            if (event.dietary_preferences) setDietaryPrefs((event.dietary_preferences as string[]).filter(p => p !== 'none'))
+            if (event.needs_refresh)       needsRefresh = true
+          },
+          onDestination: (dest) => {
+            if (cancelled) return
+            gotAny = true
+            setDestinations(prev => [...prev, dest])
+            // Show UI as soon as the first destination arrives
+            setState('ready')
+            clearTimeout(slowTimer)
+            clearTimeout(hardTimer)
+          },
+          onRetry: () => {
+            // Server is retrying — clear partial results so user doesn't see a flash
+            if (!cancelled) setDestinations([])
+            gotAny = false
+          },
+          onError: (msg) => {
+            if (!cancelled) { setErrorMsg(msg); setState('error') }
+          },
+          onDone: () => {
+            if (cancelled) return
+            clearTimeout(slowTimer)
+            clearTimeout(hardTimer)
+            if (!gotAny) { setErrorMsg('No destinations returned. Please try again.'); setState('error') }
+            else setState('ready')
+          },
+        })
+
         if (cancelled) return
-        if (data.error) { setErrorMsg(data.error); setState('error'); return }
 
-        if (data.destinations && data.destinations.length > 0) {
-          setDestinations(data.destinations)
-          if (data.home_country) setCurrency(detectCurrency(data.home_country))
-          if (data.dietary_preferences) setDietaryPrefs(data.dietary_preferences.filter((p: string) => p !== 'none'))
-          setState('ready')
-          clearTimeout(slowTimer)
-          clearTimeout(hardTimer)
+        // Background refresh: collect full fresh set, then swap in one shot
+        if (needsRefresh) {
+          try {
+            const refreshRes = await fetch('/api/recommendations', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ force_refresh: true }),
+            })
+            if (!refreshRes.ok || cancelled) return
 
-          // Background refresh if stale
-          if (data.needs_refresh) {
-            try {
-              const refreshRes = await fetch('/api/recommendations', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ force_refresh: true }),
-              })
-              if (!cancelled && refreshRes.ok) {
-                const rd: ApiResponse = await refreshRes.json()
-                if (!cancelled && rd.destinations && rd.destinations.length > 0) {
-                  setDestinations(rd.destinations)
-                  if (rd.home_country) setCurrency(detectCurrency(rd.home_country))
-                  if (rd.dietary_preferences) setDietaryPrefs(rd.dietary_preferences.filter((p: string) => p !== 'none'))
-                }
-              }
-            } catch { /* silently ignore */ }
-          }
-        } else {
-          setErrorMsg('No destinations returned. Please try again.')
-          setState('error')
+            const refreshed: RecommendedDestination[] = []
+            let refreshCountry = ''
+            let refreshDietary: string[] = []
+
+            await readSSE(refreshRes, {
+              onMeta:        (e) => {
+                if (e.home_country)        refreshCountry = e.home_country as string
+                if (e.dietary_preferences) refreshDietary = (e.dietary_preferences as string[]).filter(p => p !== 'none')
+              },
+              onDestination: (d) => refreshed.push(d),
+              onRetry:       ()  => { refreshed.length = 0 },
+              onError:       ()  => { /* silently ignore background refresh errors */ },
+              onDone:        ()  => { /* handled below */ },
+            })
+
+            if (!cancelled && refreshed.length > 0) {
+              setDestinations(refreshed)
+              if (refreshCountry) setCurrency(detectCurrency(refreshCountry))
+              if (refreshDietary.length > 0) setDietaryPrefs(refreshDietary)
+            }
+          } catch { /* silently ignore */ }
         }
       } catch {
         if (!cancelled) { setErrorMsg('Connection error — check your internet and try again.'); setState('error') }

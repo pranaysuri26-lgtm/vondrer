@@ -500,6 +500,10 @@ export default function DiscoverPage() {
           >
             {previewAll ? '🔓 All unlocked' : '👁 Preview all'}
           </button>
+          <button onClick={() => router.push('/deals')}
+            className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase">
+            Deals
+          </button>
           <button onClick={() => router.push('/profile')}
             className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase">
             Profile

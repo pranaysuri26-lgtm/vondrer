@@ -66,6 +66,54 @@ function LoadingScreen({ slow }: { slow: boolean }) {
   )
 }
 
+// ─── Gem score legend (one-line with tap-to-expand) ──────────────────────────
+
+const GEM_LEVELS = [
+  { dots: 1, label: 'Known to some travellers' },
+  { dots: 2, label: 'Off the beaten path' },
+  { dots: 3, label: 'Genuinely local' },
+  { dots: 4, label: 'Rarely visited' },
+  { dots: 5, label: 'Truly undiscovered' },
+]
+
+function GemLegend() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors"
+      >
+        <span>💎 Gem score — how undiscovered a place truly is</span>
+        <span className={`w-4 h-4 rounded-full border border-white/20 flex items-center justify-center text-[10px] transition-colors flex-shrink-0 ${open ? 'bg-white/10 border-white/35 text-white/60' : ''}`}>
+          ?
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-2 z-10 bg-[#0d1f35] border border-white/12 rounded-xl p-4 shadow-xl min-w-[220px]">
+          <div className="space-y-2.5">
+            {GEM_LEVELS.map(({ dots, label }) => (
+              <div key={dots} className="flex items-center gap-3">
+                <div className="flex gap-1 flex-shrink-0">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < dots ? 'bg-[#C97552]' : 'bg-white/15'}`} />
+                  ))}
+                </div>
+                <span className="text-xs text-white/45">{label}</span>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setOpen(false)} className="mt-3 text-[10px] text-white/20 hover:text-white/40 transition-colors w-full text-right">
+            close
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Gem score dots ───────────────────────────────────────────────────────────
 
 function GemDots({ score }: { score?: number }) {
@@ -476,6 +524,9 @@ export default function DiscoverPage() {
             Ranked by how well they fit your travel style.
             {' '}Your top {FREE_TIER_LIMIT} are free forever.
           </p>
+          <div className="mt-4">
+            <GemLegend />
+          </div>
         </div>
 
         {/* Cards */}

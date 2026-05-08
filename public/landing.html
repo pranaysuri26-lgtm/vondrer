@@ -689,6 +689,41 @@ footer{
   color:var(--ink);
 }
 
+/* ─── Gem score strip ────────────────────────────────────────────────────── */
+.gem-strip{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:40px;flex-wrap:wrap;
+  padding:52px;max-width:1400px;margin:0 auto;
+}
+@media(max-width:720px){.gem-strip{padding:40px 24px;gap:28px}}
+.gem-strip-headline{
+  font-family:'Cormorant Garamond',serif;font-weight:400;
+  font-size:clamp(24px,3vw,34px);line-height:1.15;letter-spacing:-.01em;
+  color:var(--white);flex:1;min-width:200px;
+}
+.gem-strip-headline em{font-style:italic;color:var(--sand)}
+.gem-scale{
+  display:flex;flex-direction:column;gap:10px;
+  flex-shrink:0;
+}
+.gem-row{
+  display:flex;align-items:center;gap:12px;
+}
+.gem-dots{
+  display:flex;gap:4px;width:80px;flex-shrink:0;
+}
+.gem-dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+}
+.gem-dot.on{background:#C97552}
+.gem-dot.off{background:rgba(248,245,240,.12)}
+.gem-row-label{
+  font-family:'Josefin Sans',sans-serif;font-weight:300;
+  font-size:12px;letter-spacing:.06em;
+  color:rgba(248,245,240,.45);
+  white-space:nowrap;
+}
+
 /* ─── How it works ───────────────────────────────────────────────────────── */
 .steps-grid{
   display:grid;
@@ -1051,6 +1086,52 @@ footer{
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     GEM SCORE STRIP
+═══════════════════════════════════════════════════════════════ -->
+<div style="border-top:1px solid rgba(248,245,240,.06);border-bottom:1px solid rgba(248,245,240,.06)">
+  <div class="gem-strip reveal">
+    <div class="gem-strip-headline">
+      Every destination gets<br>
+      a <em>gem score</em> — so you always<br>
+      know how far off the map<br>
+      you're going.
+    </div>
+    <div class="gem-scale">
+      <div class="gem-row">
+        <div class="gem-dots">
+          <div class="gem-dot on"></div><div class="gem-dot off"></div><div class="gem-dot off"></div><div class="gem-dot off"></div><div class="gem-dot off"></div>
+        </div>
+        <span class="gem-row-label">Known to some travellers</span>
+      </div>
+      <div class="gem-row">
+        <div class="gem-dots">
+          <div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot off"></div><div class="gem-dot off"></div><div class="gem-dot off"></div>
+        </div>
+        <span class="gem-row-label">Off the beaten path</span>
+      </div>
+      <div class="gem-row">
+        <div class="gem-dots">
+          <div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot off"></div><div class="gem-dot off"></div>
+        </div>
+        <span class="gem-row-label">Genuinely local</span>
+      </div>
+      <div class="gem-row">
+        <div class="gem-dots">
+          <div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot off"></div>
+        </div>
+        <span class="gem-row-label">Rarely visited</span>
+      </div>
+      <div class="gem-row">
+        <div class="gem-dots">
+          <div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div>
+        </div>
+        <span class="gem-row-label">Truly undiscovered</span>
+      </div>
+    </div>
   </div>
 </div>
 

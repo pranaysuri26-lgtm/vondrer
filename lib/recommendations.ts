@@ -34,7 +34,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 3
+const PROMPT_VERSION = 4
 
 export function buildProfileHash(
   onboarding: OnboardingData,
@@ -128,7 +128,7 @@ RULES:
   Never assign hidden_gem_score above 4 to any destination featured in mainstream travel listicles.
 - ${budgetConstraint}
 - best_time_to_visit: concise string e.g. "October–March" or "Year-round"
-- Return MINIMUM 15, MAXIMUM 20 destinations. Never fewer than 15.
+- Return MINIMUM 8, MAXIMUM 12 destinations. Never fewer than 8.
 - Never suggest a destination the traveller has already visited.
 
 GEOGRAPHIC RULES:
@@ -158,7 +158,7 @@ Past trips (do not suggest these): ${pastTripsList}
 Prioritise the offbeat_score heavily — it is the most important dimension.
 For offbeat_score 4–5: only suggest destinations with hidden_gem_score 7–10.
 Budget is a hard constraint on ground costs. Flight costs are separate and must be realistic for their tier.
-Return 15–20 destinations.`
+Return 8–12 destinations.`
 
   return { system, user }
 }
@@ -173,9 +173,9 @@ export function validateResponse(raw: string): RecommendedDestination[] {
     throw new Error('Response missing destinations array')
   }
 
-  if (parsed.destinations.length < 15) {
-    throw new Error(`Insufficient destinations: got ${parsed.destinations.length}, need at least 15`)
+  if (parsed.destinations.length < 8) {
+    throw new Error(`Insufficient destinations: got ${parsed.destinations.length}, need at least 8`)
   }
 
-  return parsed.destinations.slice(0, 20)
+  return parsed.destinations.slice(0, 12)
 }

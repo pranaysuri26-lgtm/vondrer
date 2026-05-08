@@ -780,12 +780,12 @@ footer{
 
 /* ─── Pricing ────────────────────────────────────────────────────────────── */
 .pricing-grid{
-  display:grid;grid-template-columns:1fr 1fr;gap:1px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
   background:rgba(248,245,240,.07);
   border:1px solid rgba(248,245,240,.07);border-radius:14px;overflow:hidden;
-  max-width:760px;margin:0 auto;
+  max-width:1060px;margin:0 auto;
 }
-@media(max-width:640px){.pricing-grid{grid-template-columns:1fr}}
+@media(max-width:860px){.pricing-grid{grid-template-columns:1fr}}
 .pricing-card{padding:44px 38px;background:rgba(13,31,53,.55)}
 .pricing-card.pro{background:rgba(58,123,213,.09)}
 .pricing-tier{
@@ -888,7 +888,7 @@ footer{
       </div>
 
       <div class="hero-footnote fade d5">
-        Free · iOS &amp; Android · getvoya.net
+        Free · No app needed · getvoya.net
       </div>
     </div>
 
@@ -1022,14 +1022,14 @@ footer{
 <!-- Marquee -->
 <div class="strip" aria-hidden="true">
   <div class="strip-track" id="strip">
-    <span>The valley behind the postcard</span>
-    <span>A bakery older than the country</span>
-    <span>Golden hour at 6:42 PM</span>
-    <span>Chase Sapphire · 3.2× points</span>
-    <span>Skyscanner open jaw</span>
-    <span>Hidden gem · Verified by Voya</span>
-    <span>Five questions · A whole atlas</span>
-    <span>Now boarding</span>
+    <span>DISCOVER HIDDEN GEMS</span>
+    <span>PLAN YOUR ITINERARY</span>
+    <span>FIND THE BEST DEALS</span>
+    <span>EARN YOUR PASSPORT STAMPS</span>
+    <span>15-20 PERSONALIZED MATCHES</span>
+    <span>NO ALGORITHMS · NO ADS</span>
+    <span>TRANSPORT OPTIONS INCLUDED</span>
+    <span>WORKS ANYWHERE IN THE WORLD</span>
   </div>
 </div>
 
@@ -1038,8 +1038,8 @@ footer{
 ═══════════════════════════════════════════════════════════════ -->
 <div class="stat-bar">
   <div class="stat-bar-item reveal">
-    <span class="stat-bar-num">12,400</span>
-    <span class="stat-bar-label">Hidden gems</span>
+    <span class="stat-bar-num">15–20</span>
+    <span class="stat-bar-label">Matches per search</span>
   </div>
   <div class="stat-bar-item reveal">
     <span class="stat-bar-num">190+</span>
@@ -1081,8 +1081,8 @@ footer{
       </div>
       <div class="feat-card reveal">
         <span class="feat-num">iii.</span>
-        <h3 class="feat-title">Pay smarter, <em>earn farther.</em></h3>
-        <p class="feat-body">Voya checks your wallet against every booking and surfaces the card earning the most points per dollar — for this airline, this hotel, this date.</p>
+        <h3 class="feat-title">Travel deals, <em>updated daily.</em></h3>
+        <p class="feat-body">Voya shows you travel deals happening right now — flight promotions, hotel offers, credit card bonuses — specific to your country. Updated daily. Free for every user.</p>
       </div>
     </div>
 
@@ -1157,13 +1157,13 @@ footer{
       <div class="reveal">
         <span class="step-num">02</span>
         <h3 class="step-title">We find what <em>fits you.</em></h3>
-        <p class="step-body">Not the top 10. Not paid placements. Three places — matched to you, priced for your wallet, timed for now. Bus to New Orleans or a flight to Ladakh. Both welcome.</p>
+        <p class="step-body">Not the top 10. Not paid placements. 15–20 destinations matched to you — ranked by how well they fit your exact travel style, budget, and how far off the map you want to go.</p>
       </div>
       <div class="step-arrow reveal">→</div>
       <div class="reveal">
         <span class="step-num">03</span>
-        <h3 class="step-title">Book, or just <em>dream.</em></h3>
-        <p class="step-body">Voya links the right flights, the best hotels, the card earning the most points. No pressure. Save for later or go tomorrow — your pace.</p>
+        <h3 class="step-title">Plan it. Book it. <em>Go.</em></h3>
+        <p class="step-body">Pick your destination, build your itinerary day by day, find hotels and flights, see which credit card deals are running right now. Everything in one place.</p>
       </div>
     </div>
 
@@ -1187,30 +1187,42 @@ footer{
       <div class="pricing-card">
         <span class="pricing-tier">Free forever</span>
         <div class="pricing-plan">Explorer</div>
-        <span class="pricing-price">$0 <small>/ month</small></span>
+        <span class="pricing-price">$0</span>
         <ul class="pricing-features">
-          <li>3 destination recommendations per month</li>
-          <li>Photo spots with timing & directions</li>
-          <li>Card rewards analysis</li>
-          <li>Save up to 10 destinations</li>
-          <li>iOS &amp; Android</li>
+          <li>3 destination matches</li>
+          <li>Gem score for every destination</li>
+          <li>Transport options</li>
+          <li>Travel deals board</li>
         </ul>
         <a href="/signup" class="pricing-cta-btn">Get started →</a>
       </div>
 
-      <div class="pricing-card pro">
-        <span class="pricing-tier">Unlimited access</span>
-        <div class="pricing-plan">Pro</div>
-        <span class="pricing-price">$9 <small>/ month</small></span>
+      <div class="pricing-card">
+        <span class="pricing-tier">Unlock your trip</span>
+        <div class="pricing-plan">Traveller</div>
+        <span class="pricing-price">$4.99 <small>one time</small></span>
         <ul class="pricing-features">
-          <li>Unlimited recommendations</li>
-          <li>Hidden gem early access</li>
-          <li>Real-time flight &amp; hotel search</li>
-          <li>Multi-city trip planning</li>
-          <li>Offline access — board without wifi</li>
-          <li>Priority support</li>
+          <li>All 15–20 destination matches</li>
+          <li>Full filters</li>
+          <li>30 days access</li>
+          <li>No subscription</li>
         </ul>
-        <a href="/signup" class="pricing-cta-btn">Start Pro free →</a>
+        <a href="/signup" class="pricing-cta-btn">Unlock a trip →</a>
+      </div>
+
+      <div class="pricing-card pro">
+        <span class="pricing-tier">Plan everything</span>
+        <div class="pricing-plan">Pro</div>
+        <span class="pricing-price">$29 <small>/ year</small></span>
+        <ul class="pricing-features">
+          <li>Everything in Traveller</li>
+          <li>Day-by-day itinerary</li>
+          <li>Hotel recommendations</li>
+          <li>Smart booking advice</li>
+          <li>Voya Passport stamps</li>
+          <li>Less than $2.50 / month</li>
+        </ul>
+        <a href="/signup" class="pricing-cta-btn">Start Pro →</a>
       </div>
 
     </div>
@@ -1228,12 +1240,11 @@ footer{
       Pack <em>light.</em><br>
       Wander <em>far.</em>
     </h2>
-    <p class="cta-sub reveal">Three destinations every month, free, forever. No algorithm. No ads. No twelve cities you've already seen.</p>
+    <p class="cta-sub reveal">Your first 3 matches are free forever. No app needed — works in any browser.</p>
     <div class="cta-row reveal">
-      <a href="#" class="btn">Download for iPhone <span class="arr">→</span></a>
-      <a href="#" class="btn ghost">Get the Android beta</a>
+      <a href="/signup" class="btn">Start exploring <span class="arr">→</span></a>
     </div>
-    <div class="cta-fine reveal">getvoya.net · iOS &amp; Android</div>
+    <div class="cta-fine reveal">getvoya.net</div>
   </div>
 
   <footer>

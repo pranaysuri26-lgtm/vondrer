@@ -726,13 +726,15 @@ export default function DiscoverPage() {
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
   const [previewAll, setPreviewAll]     = useState(false)
-  // Initialise from URL so AppNav Search tab activates correctly
-  const [mode, setMode]                 = useState<Mode>(() =>
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('search') === '1'
-      ? 'search' : 'discover'
-  )
+  const [mode, setMode]                 = useState<Mode>('discover')
   const [searchQuery, setSearchQuery]   = useState('')
+
+  // Read ?search=1 from URL after hydration (useState lazy init runs on server without window)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('search') === '1') {
+      setMode('search')
+    }
+  }, [])
 
   // Keep URL in sync so AppNav can read ?search=1 for active-tab highlight
   useEffect(() => {

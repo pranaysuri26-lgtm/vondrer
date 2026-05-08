@@ -83,10 +83,11 @@ export default async function SharedTripPage({
 }) {
   const { token } = await params
 
-  // Use service-role or anon key — this is a public read page
+  // Server component — use service role key to bypass RLS for public share links.
+  // Falls back to anon key if service role key not set (requires a public read policy then).
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
   // Fetch trip by share_token
@@ -225,7 +226,7 @@ export async function generateMetadata({
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
   const { data: trip } = await supabase

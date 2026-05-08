@@ -644,6 +644,8 @@ const FREE_TIER_LIMIT   = 3
 const SLOW_THRESHOLD_MS = 10000
 const TIMEOUT_MS        = 58000
 
+type Mode = 'discover' | 'search'
+
 export default function DiscoverPage() {
   const router = useRouter()
   const [state, setState]               = useState<LoadState>('loading')
@@ -655,6 +657,14 @@ export default function DiscoverPage() {
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
   const [previewAll, setPreviewAll]     = useState(false)
+  const [mode, setMode]                 = useState<Mode>('discover')
+  const [searchQuery, setSearchQuery]   = useState('')
+
+  const handleSearch = useCallback(() => {
+    const q = searchQuery.trim()
+    if (!q) return
+    router.push(`/guide?q=${encodeURIComponent(q)}`)
+  }, [searchQuery, router])
 
   const retry       = useCallback(() => { setState('loading'); setSlow(false); setRetryCount(n => n + 1) }, [])
   const handleLogout = useCallback(async () => {
@@ -842,7 +852,76 @@ export default function DiscoverPage() {
           <div className="mt-4"><GemLegend /></div>
         </div>
 
-        {/* Cards */}
+        {/* ── Mode selector ─────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          {/* Discover */}
+          <button
+            onClick={() => setMode('discover')}
+            className={`flex flex-col items-start gap-1 rounded-2xl border px-4 py-4 text-left transition-all duration-200 ${
+              mode === 'discover'
+                ? 'border-[#C97552]/45 bg-[#C97552]/6'
+                : 'border-white/10 bg-white/3 hover:border-white/18 hover:bg-white/5'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base leading-none">🧭</span>
+              <span className={`text-sm font-medium ${mode === 'discover' ? 'text-white/90' : 'text-white/55'}`}>
+                Discover
+              </span>
+            </div>
+            <p className={`text-[11px] leading-snug ${mode === 'discover' ? 'text-white/45' : 'text-white/28'}`}>
+              Find hidden gems matched to you
+            </p>
+          </button>
+
+          {/* Search */}
+          <button
+            onClick={() => setMode('search')}
+            className={`flex flex-col items-start gap-1 rounded-2xl border px-4 py-4 text-left transition-all duration-200 ${
+              mode === 'search'
+                ? 'border-[#C97552]/45 bg-[#C97552]/6'
+                : 'border-white/10 bg-white/3 hover:border-white/18 hover:bg-white/5'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base leading-none">🔍</span>
+              <span className={`text-sm font-medium ${mode === 'search' ? 'text-white/90' : 'text-white/55'}`}>
+                I know where I&apos;m going
+              </span>
+            </div>
+            <p className={`text-[11px] leading-snug ${mode === 'search' ? 'text-white/45' : 'text-white/28'}`}>
+              Get local intel for any destination
+            </p>
+          </button>
+        </div>
+
+        {/* ── Search panel ──────────────────────────────────────────────────── */}
+        {mode === 'search' && (
+          <div className="mb-8">
+            <p className="text-white/60 text-sm font-medium mb-4">Where are you going?</p>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                placeholder="City, country, or region..."
+                autoFocus
+                className="flex-1 bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:border-[#C97552]/40 focus:bg-white/7 transition-all"
+              />
+              <button
+                onClick={handleSearch}
+                disabled={!searchQuery.trim()}
+                className="flex-shrink-0 bg-[#C97552] text-white text-sm font-medium px-5 py-3 rounded-xl hover:bg-[#b86644] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Get local guide →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Destination cards (discover mode only) ────────────────────────── */}
+        {mode === 'discover' && (
         <div className="space-y-3">
           {/* Free cards (lowest scores shown first) */}
           {freeCards.map((dest, i) => (
@@ -876,6 +955,7 @@ export default function DiscoverPage() {
             </>
           )}
         </div>
+        )}
 
         {/* Footer */}
         <div className="mt-12 pt-8 border-t border-white/8 text-center space-y-2">

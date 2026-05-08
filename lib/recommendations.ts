@@ -59,7 +59,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 10
+const PROMPT_VERSION = 11
 
 export function buildProfileHash(
   onboarding: OnboardingData,
@@ -331,6 +331,130 @@ ${homeCity.toLowerCase().includes('atlanta') ? 'Marfa TX, Natchez MS, Muscle Sho
 Rule: "Is this an obvious 6-hour-or-less weekend escape that every ${homeCity} local already knows?" → if yes, block it. If no, it is fine.`
 }
 
+// ─── Hard geographic enforcement ─────────────────────────────────────────────
+// Returns an explicit forbidden-country block for 'closer' scope.
+// Prevents the model from including transcontinental destinations regardless of
+// how the soft scopeRules section is interpreted.
+
+function buildGeographicEnforcement(homeCountry: string, travelScope: string): string {
+  if (travelScope !== 'closer') return ''
+
+  const c = homeCountry.toLowerCase().trim()
+
+  const isUSA      = /united states|usa|\bus\b/.test(c)
+  const isCanada   = c.includes('canada')
+  const isUK       = /united kingdom|uk\b|england|britain|scotland|wales/.test(c)
+  const isEurope   = /france|germany|spain|italy|netherlands|belgium|sweden|norway|denmark|finland|austria|switzerland|portugal|poland|czech|romania|hungary|greece/.test(c)
+  const isAustralia = c.includes('australia')
+  const isNZ       = /new zealand|nz\b/.test(c)
+  const isIndia    = c.includes('india')
+  const isSingapore = c.includes('singapore')
+  const isJapan    = c.includes('japan')
+
+  if (isUSA || isCanada) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD GEOGRAPHIC CONSTRAINT — USA/CANADA + CLOSER SCOPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERMITTED destinations ONLY:
+  • United States (all states including Hawaii and Alaska)
+  • Canada
+  • Mexico
+  • Caribbean islands (Cuba, Jamaica, Dominican Republic, Puerto Rico, Bahamas,
+    Barbados, Trinidad, St Lucia, Turks & Caicos, Cayman Islands, etc.)
+  • Central America (Costa Rica, Guatemala, Belize, Panama, Honduras, Nicaragua,
+    El Salvador)
+  • Bermuda
+  • Colombia (as the closest South American country, 5h flight)
+
+COMPLETELY FORBIDDEN — DO NOT OUTPUT ANY OF THESE:
+  ✗ India — ANY Indian city or state (Mumbai, Delhi, Goa, Kerala, Rajasthan, etc.)
+  ✗ ALL of Asia — Thailand, Japan, Vietnam, Indonesia, Bali, Philippines, China,
+    South Korea, Nepal, Sri Lanka, Bangladesh, Pakistan, Cambodia, Laos, Myanmar,
+    Singapore, Malaysia, Hong Kong, Taiwan, etc.
+  ✗ ALL of Europe — Italy, France, Spain, UK, Portugal, Greece, Germany,
+    Netherlands, Switzerland, Austria, Croatia, Czechia, Iceland, Scandinavia, etc.
+  ✗ ALL of Africa — Morocco, South Africa, Egypt, Kenya, Tanzania, Ethiopia, etc.
+  ✗ ALL of the Middle East — UAE/Dubai, Jordan, Turkey, Israel, Oman, Qatar, etc.
+  ✗ South America (except Colombia) — Brazil, Argentina, Peru, Chile, Bolivia, etc.
+  ✗ Australia, New Zealand, Pacific Islands
+
+Before you write each destination line: ask "Is this in the USA, Canada, Mexico,
+Caribbean, Central America, or Colombia?" If NO → do not include it.
+ZERO EXCEPTIONS. Replace any forbidden destination with a valid US/Mexico/Caribbean
+destination instead.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+  }
+
+  if (isAustralia || isNZ) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD GEOGRAPHIC CONSTRAINT — AUSTRALIA/NZ + CLOSER SCOPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERMITTED: Australia, New Zealand, SE Asia (Thailand, Indonesia/Bali, Vietnam,
+  Malaysia, Singapore, Philippines, Cambodia, Laos), Pacific Islands (Fiji,
+  Vanuatu, Samoa, Tonga, Cook Islands, New Caledonia), Japan (within 10h).
+FORBIDDEN: Europe, Americas, Middle East, India, Africa.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+  }
+
+  if (isUK || isEurope) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD GEOGRAPHIC CONSTRAINT — UK/EUROPE + CLOSER SCOPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERMITTED: All of Europe, UK, Ireland, Iceland, Morocco, Tunisia, Egypt, Turkey,
+  Canary Islands, Azores, Cape Verde, Israel, Jordan, Lebanon.
+FORBIDDEN: Americas (USA, Canada, Mexico, South America, Central America, Caribbean),
+  India, South/SE/East Asia, Sub-Saharan Africa, Australia, New Zealand.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+  }
+
+  if (isIndia) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD GEOGRAPHIC CONSTRAINT — INDIA + CLOSER SCOPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERMITTED: India (all states), Sri Lanka, Nepal, Bhutan, Maldives, Thailand,
+  Malaysia, Singapore, Indonesia/Bali, Vietnam, Cambodia, Myanmar.
+FORBIDDEN: Europe, Americas, East Asia beyond SE Asia (Japan, China, South Korea),
+  Africa, Australia, New Zealand.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+  }
+
+  if (isSingapore) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD GEOGRAPHIC CONSTRAINT — SINGAPORE + CLOSER SCOPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERMITTED: SE Asia (Malaysia, Indonesia/Bali, Thailand, Vietnam, Philippines,
+  Cambodia, Laos, Myanmar), Japan, South Korea, China, Taiwan, Hong Kong,
+  India, Sri Lanka, Australia.
+FORBIDDEN: Europe, Americas, Middle East, Africa.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+  }
+
+  if (isJapan) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD GEOGRAPHIC CONSTRAINT — JAPAN + CLOSER SCOPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PERMITTED: Japan (domestic), South Korea, China, Taiwan, Hong Kong, SE Asia,
+  Australia (as a southern regional anchor).
+FORBIDDEN: Europe, Americas, Middle East, Africa, India.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+  }
+
+  // Generic fallback for any unlisted home country
+  return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD GEOGRAPHIC CONSTRAINT — CLOSER SCOPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Strictly regional recommendations only. Maximum 6-hour flight from home city.
+No transcontinental flights permitted under any circumstances.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+}
+
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
 export function buildRecommendationPrompt(
@@ -376,15 +500,18 @@ export function buildRecommendationPrompt(
     ? `budget_per_day_usd MUST be between $${cap.min} and $${cap.max}. Target ~$${cap.target}. This is ON-THE-GROUND cost only (accommodation + food + local transport), EXCLUDING flights. Reject any destination where realistic ground costs exceed $${cap.max}/day.`
     : 'budget_per_day_usd: realistic daily on-the-ground cost in USD (excl. flights).'
 
+  const geoEnforcement = buildGeographicEnforcement(onboarding.home_country, travelScope)
+
   const scopeRules = travelScope === 'closer'
     ? `TRAVEL SCOPE: CLOSER TO HOME
 - ONLY recommend destinations within the traveller's home region or nearby countries.
-- No transcontinental flights.
+- No transcontinental flights. No intercontinental travel.
 - For Australia: domestic destinations + New Zealand, SE Asia, Pacific Islands only.
 - For India: domestic destinations + Sri Lanka, Nepal, Bhutan, Maldives, Thailand only.
 - For UK/Europe: domestic + European destinations only.
 - For USA/Canada: domestic + Mexico, Caribbean, Central America only.
-- Maximum flight time: 6 hours from home city.`
+- Maximum flight time: 6 hours from home city.
+- See HARD GEOGRAPHIC CONSTRAINT block below — those rules override everything.`
     : `TRAVEL SCOPE: GLOBAL
 - Worldwide destinations are fine.
 - Vary regions — do not cluster all suggestions in one continent.
@@ -448,6 +575,7 @@ GEOGRAPHIC RULES:
 - Never recommend a destination where estimated flight cost exceeds 50% of total trip budget.
 
 ${scopeRules}
+${geoEnforcement}
 ${proximitySection}
 ${companionSection}
 ${dnaSection}

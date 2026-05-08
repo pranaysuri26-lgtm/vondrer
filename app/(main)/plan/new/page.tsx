@@ -109,8 +109,9 @@ function addDays(dateStr: string, n: number): string {
 
 function formatDateRange(start: string, end: string): string {
   if (!start) return ''
-  const s = new Date(start)
-  const e = new Date(end)
+  // Use T12:00:00 (noon local) to avoid UTC-midnight → previous-day shift in western timezones
+  const s = new Date(start + 'T12:00:00')
+  const e = new Date(end   + 'T12:00:00')
   const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
   if (start === end) return s.toLocaleDateString('en-US', opts)
   if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
@@ -142,20 +143,51 @@ function emptyFlight(): FlightInfo {
   }
 }
 
+// ─── Reusable custom checkbox row ────────────────────────────────────────────
+
+function CheckRow({
+  checked, onToggle, label, sublabel,
+}: { checked: boolean; onToggle: () => void; label: string; sublabel?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-start gap-3 text-left py-0.5"
+    >
+      {/* Custom checkbox box */}
+      <span
+        className={[
+          'mt-0.5 flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors',
+          checked
+            ? 'bg-[#C97552] border-[#C97552]'
+            : 'border-white/25 bg-white/5',
+        ].join(' ')}
+      >
+        {checked && (
+          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </span>
+      <span>
+        <span className="text-sm text-white/65">{label}</span>
+        {sublabel && <p className="text-xs text-white/30 mt-0.5">{sublabel}</p>}
+      </span>
+    </button>
+  )
+}
+
 // ─── Group composition section ────────────────────────────────────────────────
 
 function GroupCompositionSection({
   group, onChange,
 }: { group: GroupComposition; onChange: (g: GroupComposition) => void }) {
-  function set<K extends keyof GroupComposition>(k: K, v: GroupComposition[K]) {
-    onChange({ ...group, [k]: v })
-  }
 
   const typeOptions = [
-    { key: 'includes_adults',     label: 'Adults'           },
-    { key: 'includes_children',   label: 'Children under 12'},
-    { key: 'includes_teenagers',  label: 'Teenagers 12–17'  },
-    { key: 'includes_elderly',    label: 'Elderly 65+'      },
+    { key: 'includes_adults',     label: 'Adults'            },
+    { key: 'includes_children',   label: 'Children under 12' },
+    { key: 'includes_teenagers',  label: 'Teenagers 12–17'   },
+    { key: 'includes_elderly',    label: 'Elderly 65+'       },
   ] as const
 
   return (
@@ -167,12 +199,14 @@ function GroupCompositionSection({
         <span className="text-sm text-white/70 flex-1">Number of travelers</span>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => set('traveler_count', Math.max(1, group.traveler_count - 1))}
+            type="button"
+            onClick={() => onChange({ ...group, traveler_count: Math.max(1, group.traveler_count - 1) })}
             className="w-8 h-8 rounded-full border border-white/15 text-white/60 hover:border-white/35 hover:text-white transition-all flex items-center justify-center text-lg leading-none"
           >−</button>
           <span className="text-white font-medium w-6 text-center">{group.traveler_count}</span>
           <button
-            onClick={() => set('traveler_count', group.traveler_count + 1)}
+            type="button"
+            onClick={() => onChange({ ...group, traveler_count: group.traveler_count + 1 })}
             className="w-8 h-8 rounded-full border border-white/15 text-white/60 hover:border-white/35 hover:text-white transition-all flex items-center justify-center text-lg leading-none"
           >+</button>
         </div>
@@ -182,34 +216,29 @@ function GroupCompositionSection({
       <div className="space-y-2">
         <p className="text-xs text-white/35">Traveler types</p>
         {typeOptions.map(opt => (
-          <label key={opt.key} className="flex items-center gap-3 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={group[opt.key]}
-              onChange={e => set(opt.key, e.target.checked)}
-              className="w-4 h-4 accent-[#C97552] rounded"
-            />
-            <span className="text-sm text-white/65 group-hover:text-white/85 transition-colors">{opt.label}</span>
-          </label>
+          <CheckRow
+            key={opt.key}
+            checked={group[opt.key]}
+            label={opt.label}
+            onToggle={() => onChange({ ...group, [opt.key]: !group[opt.key] })}
+          />
         ))}
       </div>
 
       {/* Dietary mix */}
-      <div className="space-y-2 border-t border-white/8 pt-4">
-        <p className="text-xs text-white/35">Any dietary requirements in the group?</p>
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <input
-            type="checkbox"
-            checked={group.dietary_some_veg}
-            onChange={e => {
-              set('dietary_some_veg', e.target.checked)
-              if (!e.target.checked) set('vegetarian_count', 0)
-              if (e.target.checked) set('dietary_none', false)
-            }}
-            className="w-4 h-4 accent-[#C97552]"
-          />
-          <span className="text-sm text-white/65 group-hover:text-white/85 transition-colors">Some are vegetarian / vegan</span>
-        </label>
+      <div className="space-y-2.5 border-t border-white/8 pt-4">
+        <p className="text-xs text-white/35">Any dietary needs to accommodate?</p>
+
+        <CheckRow
+          checked={group.dietary_some_veg}
+          label="Some are vegetarian or vegan"
+          onToggle={() => onChange({
+            ...group,
+            dietary_some_veg: !group.dietary_some_veg,
+            vegetarian_count: group.dietary_some_veg ? 0 : group.vegetarian_count,
+            dietary_none:     !group.dietary_some_veg ? false : group.dietary_none,
+          })}
+        />
         {group.dietary_some_veg && (
           <div className="ml-7 flex items-center gap-3">
             <span className="text-xs text-white/40">How many?</span>
@@ -218,48 +247,53 @@ function GroupCompositionSection({
               min={1}
               max={group.traveler_count}
               value={group.vegetarian_count || ''}
-              onChange={e => set('vegetarian_count', Math.min(group.traveler_count, parseInt(e.target.value) || 0))}
+              onChange={e => onChange({ ...group, vegetarian_count: Math.min(group.traveler_count, parseInt(e.target.value) || 0) })}
               placeholder="0"
               className="w-16 bg-white/5 border border-white/15 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-[#C97552]/60 transition-colors"
             />
             <span className="text-xs text-white/30">of {group.traveler_count}</span>
           </div>
         )}
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <input
-            type="checkbox"
-            checked={group.dietary_halal}
-            onChange={e => { set('dietary_halal', e.target.checked); if (e.target.checked) set('dietary_none', false) }}
-            className="w-4 h-4 accent-[#C97552]"
-          />
-          <span className="text-sm text-white/65 group-hover:text-white/85 transition-colors">Some are halal</span>
-        </label>
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <input
-            type="checkbox"
-            checked={group.dietary_gluten_free}
-            onChange={e => { set('dietary_gluten_free', e.target.checked); if (e.target.checked) set('dietary_none', false) }}
-            className="w-4 h-4 accent-[#C97552]"
-          />
-          <span className="text-sm text-white/65 group-hover:text-white/85 transition-colors">Some are gluten free</span>
-        </label>
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <input
-            type="checkbox"
-            checked={group.dietary_none}
-            onChange={e => {
-              set('dietary_none', e.target.checked)
-              if (e.target.checked) {
-                set('dietary_some_veg', false)
-                set('dietary_halal', false)
-                set('dietary_gluten_free', false)
-                set('vegetarian_count', 0)
-              }
-            }}
-            className="w-4 h-4 accent-[#C97552]"
-          />
-          <span className="text-sm text-white/65 group-hover:text-white/85 transition-colors">No restrictions — everyone eats everything</span>
-        </label>
+
+        <CheckRow
+          checked={group.dietary_halal}
+          label="Some need halal food"
+          sublabel="Others in the group can eat anywhere"
+          onToggle={() => onChange({
+            ...group,
+            dietary_halal: !group.dietary_halal,
+            dietary_none:  !group.dietary_halal ? false : group.dietary_none,
+          })}
+        />
+
+        <CheckRow
+          checked={group.dietary_gluten_free}
+          label="Some are gluten free"
+          onToggle={() => onChange({
+            ...group,
+            dietary_gluten_free: !group.dietary_gluten_free,
+            dietary_none:        !group.dietary_gluten_free ? false : group.dietary_none,
+          })}
+        />
+
+        <CheckRow
+          checked={group.dietary_none}
+          label="No restrictions — everyone eats everything"
+          onToggle={() => {
+            if (!group.dietary_none) {
+              onChange({
+                ...group,
+                dietary_none:        true,
+                dietary_some_veg:    false,
+                dietary_halal:       false,
+                dietary_gluten_free: false,
+                vegetarian_count:    0,
+              })
+            } else {
+              onChange({ ...group, dietary_none: false })
+            }
+          }}
+        />
       </div>
 
       {/* Summary */}
@@ -563,7 +597,9 @@ function DayCard({ day }: { day: ItineraryDay }) {
 // ─── Transport connector ──────────────────────────────────────────────────────
 
 function TransportConnector({ from, to }: { from: TripDestination; to: TripDestination }) {
-  const travelDate = addDays(from.end_date, 1)
+  // Travel date = when you fly to the next destination = next destination's start date
+  // (NOT from.end_date + 1 — same-day connections like Miami→SF on May 13 would show May 14 otherwise)
+  const travelDate = to.start_date
   const link = `https://www.skyscanner.com/transport/flights/${getIATA(from.name)}/${getIATA(to.name)}/${travelDate.replace(/-/g, '')}/`
   return (
     <div className="flex items-center gap-3 py-3 px-4 bg-white/3 border border-white/8 rounded-xl my-1">

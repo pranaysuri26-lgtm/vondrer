@@ -144,11 +144,18 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Stale cache — return immediately, signal client to refresh in background
+    // Stale cache — return immediately, signal client to refresh in background.
+    // FIX 2: Also filter by home_country + travel_scope so we never serve
+    // India/Asia data to a US "closer" user whose profile changed.
+    // Requires migration: ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS home_country TEXT;
+    //                     ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS travel_scope TEXT;
+    // If columns don't exist, PostgREST returns an error → data=null → safe fallthrough to Claude.
     const { data: stale } = await supabase
       .from('recommendations')
       .select('destinations')
       .eq('user_id', user.id)
+      .eq('home_country', onboarding.home_country ?? '')
+      .eq('travel_scope', onboarding.travel_scope ?? 'anywhere')
       .single()
 
     if (stale?.destinations) {
@@ -163,6 +170,14 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Live Claude call — streaming ────────────────────────────────────────────
+  // FIX 4 — Debug: log the exact profile values being used before prompt build
+  console.log('[Recommendations] Profile debug:', {
+    home_city:    onboarding.home_city    ?? '(none)',
+    home_country: onboarding.home_country ?? '(none)',
+    travel_scope: onboarding.travel_scope ?? '(null → defaulting to anywhere)',
+    hash_prefix:  hash.slice(0, 12),
+  })
+
   const { system, user: userPrompt } = buildRecommendationPrompt(onboarding, pastTrips)
 
   return makeSSEResponse(async (ctrl) => {
@@ -258,10 +273,13 @@ export async function POST(req: NextRequest) {
 
     // ── Last resort: serve stale cache ────────────────────────────────────────
     if (!streamSucceeded) {
+      // FIX 2: Same home_country + travel_scope guard as the stale path above.
       const { data: stale } = await supabase
         .from('recommendations')
         .select('destinations')
         .eq('user_id', user.id)
+        .eq('home_country', onboarding.home_country ?? '')
+        .eq('travel_scope', onboarding.travel_scope ?? 'anywhere')
         .single()
 
       if (stale?.destinations) {
@@ -281,6 +299,11 @@ export async function POST(req: NextRequest) {
     // ── Cache fresh results ───────────────────────────────────────────────────
     if (collected.length >= 8) {
       try {
+        // FIX 2: Store home_country + travel_scope so stale-cache queries can
+        // filter by them. Requires:
+        //   ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS home_country TEXT;
+        //   ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS travel_scope TEXT;
+        // If the columns don't exist, the upsert will fail silently (caught below).
         await supabase
           .from('recommendations')
           .upsert(
@@ -288,6 +311,8 @@ export async function POST(req: NextRequest) {
               user_id:      user.id,
               destinations: collected,
               profile_hash: hash,
+              home_country: onboarding.home_country ?? '',
+              travel_scope: onboarding.travel_scope ?? 'anywhere',
               generated_at: new Date().toISOString(),
             },
             { onConflict: 'user_id' }

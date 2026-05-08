@@ -150,27 +150,34 @@ ${isGlutenFree ? 'Dietary: gluten free required' : ''}`
   const mixedDietSection = hasMixedDiet ? `
 MIXED DIETARY GROUP — CRITICAL:
 This group has ${vegCount} vegetarian/vegan AND ${nonVegCount} non-vegetarian traveler(s).
+The ${nonVegCount} non-vegetarian traveler(s) eat meat and are NOT necessarily halal — they want genuinely good meat and fish dishes, not just a token protein option.
 
-Every restaurant MUST serve BOTH groups genuinely well from the same menu.
-Never recommend a restaurant that only serves one dietary group.
+MANDATORY RESTAURANT TEST — apply to every single restaurant you recommend:
+✓ Does it have genuinely good vegan/vegetarian mains? (not just a side salad — full, satisfying dishes)
+✓ Does it have genuinely good meat/fish mains? (not just one token option)
+✓ Would the vegetarians AND the meat-eaters BOTH feel the restaurant was chosen for them?
+If ANY answer is NO → do not recommend it. Find a different restaurant.
 
-Test every restaurant recommendation:
-✓ Does it have genuinely good vegan/vegetarian options? (not just a side salad)
-✓ Does it have genuinely good meat/fish options?
-✓ Would BOTH groups feel the restaurant was chosen for them?
-If a restaurant fails this test — do not recommend it.
+NAMED EXAMPLES OF RESTAURANTS THAT FAIL THIS TEST — NEVER recommend for mixed groups:
+- Greens Restaurant (San Francisco) — vegetarian only. The ${nonVegCount} non-veg traveler(s) will leave hungry. BANNED for this group.
+- Gracias Madre (San Francisco/LA) — vegan only. Same problem. BANNED.
+- Any steakhouse with a token veggie pasta — fails the vegetarian side of the test.
+- Any pure vegan or pure vegetarian restaurant — fails the meat-eater side of the test.
 
-Good examples of mixed-dietary restaurants:
-- Mediterranean (falafel + grilled meats on same menu)
-- Indian (huge vegetarian selection + curries for all)
-- Thai/Vietnamese (tofu + meat/seafood options throughout)
-- Modern American with vegetable-forward AND protein mains
-- Tex-Mex (bean options + meat options equally good)
+RECOMMENDED mixed-group restaurant categories:
+✓ Mediterranean (falafel + grilled meats on same menu — both groups leave satisfied)
+✓ Indian (enormous vegetarian selection + meat curries — works perfectly for mixed groups)
+✓ Thai/Vietnamese (tofu options + meat/seafood throughout — both groups have real choices)
+✓ Modern American with vegetable-forward mains AND protein mains (not one or the other)
+✓ Tex-Mex (bean dishes equally good as meat — genuinely mixed)
 
-BAD examples (avoid):
-- Pure steakhouse (vegetarians get one option, an afterthought)
-- Pure vegan restaurant (non-vegetarians feel penalized)
-- Sushi-only (limited for vegans)` : ''
+For San Francisco mixed groups specifically:
+✓ The Assembly (Fort Mason area — excellent for mixed dietary groups)
+✓ Caffe Delucchi (North Beach — Italian, pasta + meat + veg equally good)
+✓ Charter Oak (SoMa — modern American, both groups well served)
+✓ Dametra Cafe, Carmel (if doing 17 Mile Drive — Mediterranean, genuinely ideal for mixed)
+✓ Fog Harbor Fish House (Pier 39 — seafood + vegetarian options, bookable for groups)
+✗ Greens Restaurant — DO NOT RECOMMEND. Vegetarian only.` : ''
 
   // ── Elderly rules ────────────────────────────────────────────────────────────
   const elderlySection = hasElderly ? `
@@ -240,40 +247,133 @@ Never recommend a venue where GF is difficult or unavailable.` : ''
   const arrivalDate     = flights?.arrival_date   ?? null
   const departureDate   = flights?.departure_date ?? null
   const transit         = getAirportTransit(destination)
+  const hasRentalCar    = !!(user_plans?.toLowerCase().includes('rental car') ||
+                              user_plans?.toLowerCase().includes('rental') ||
+                              user_plans?.toLowerCase().includes('driving') ||
+                              user_plans?.toLowerCase().includes('drive'))
+
+  function padTime(h: number, m: number): string {
+    return `${Math.max(0, h).toString().padStart(2, '0')}:${Math.abs(m).toString().padStart(2, '0')}`
+  }
 
   let flightSection = ''
+
+  // ── FIX 1: Arrival rules with late-night handling ─────────────────────────
   if (arrivalTime && arrivalDate) {
     const [hr, min] = arrivalTime.split(':').map(Number)
     const arrivalMins = hr * 60 + min
-    const startMins   = arrivalMins + 90 // 1.5 hr buffer for transit + check-in
-    const startHr     = Math.floor(startMins / 60) % 24
-    const startMin    = startMins % 60
-    const startStr    = `${startHr.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`
-    const isAfternoon = hr >= 12
+    const hotelMins   = arrivalMins + 90   // 1.5 hr: baggage + transit + check-in
+    const hotelHr     = Math.floor(hotelMins / 60) % 24
+    const hotelMin    = hotelMins % 60
+    const hotelStr    = padTime(hotelHr, hotelMin)
 
-    flightSection += `
+    const isLateNight     = hr >= 20              // 8pm–11:59pm
+    const isAfterMidnight = hr >= 0 && hr < 5    // red-eye / arrives after midnight
+
+    if (isLateNight || isAfterMidnight) {
+      // FIX 1 — Late night / after midnight: no Day 1 activities at all
+      flightSection += `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LATE ARRIVAL — SPECIAL DAY 1 FORMAT (flight arrives ${arrivalTime})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Flight lands at ${arrivalTime}. After baggage claim and transit the group reaches the hotel around ${hotelStr}.
+This is TOO LATE for any tourism. Day 1 is an arrival day only.
+
+Day 1 MUST use this exact structure — no sightseeing, no museums, no tours:
+
+morning block:
+  activity: "Travel Day — Flying to ${destination}"
+  description: "En route to ${destination}. Your group is in the air or in transit today."
+  insider_tip: "Pack snacks and a neck pillow. Long travel days are draining — rest on the plane."
+  estimated_cost: "$0"
+
+afternoon block:
+  activity: "Landing & Baggage Claim — ${arrivalTime} Arrival"
+  description: "Flight lands at ${arrivalTime}. ${transit}. You'll reach the hotel around ${hotelStr}."
+  insider_tip: "Have your hotel address saved offline. Ask the front desk about late-night food nearby."
+  estimated_cost: "$0 — transit costs only"
+
+evening block:
+  activity: "Check In, Rest & Late-Night Bite"
+  description: "Check into the hotel. Everyone is tired. One easy late-night option nearby — keep it within a 5-minute walk. Tonight is for recovery. The trip begins tomorrow."
+  insider_tip: "Don't overplan tonight. A 15-minute walk for dinner when exhausted ruins the mood. Find the closest decent option and call it."
+  estimated_cost: "~$15–25 per person"
+
+day_total_estimate: "Arrival day — minimal spend"
+
+FULL ITINERARY BEGINS DAY 2. Day 2 is Day 1 of actual sightseeing.
+Absolutely NO museums, tours, major landmarks, or activities on Day 1. Rest only.`
+
+    } else if (hr >= 17) {
+      // Evening arrival (5pm–7:59pm): afternoon + evening only
+      flightSection += `
 ARRIVAL RULES (Day 1 — ${arrivalDate}):
-Flight arrives at ${arrivalTime}. First activity starts no earlier than ${startStr} (allowing 1.5 hours for transit and check-in).
-Transit note for itinerary: ${transit}
-${isAfternoon ? 'Arrival is in the afternoon — Day 1 should have AFTERNOON and EVENING activities only. Morning block: "Arrival, transit, and check-in." No morning sightseeing.' : ''}
-${hr >= 17 ? 'Late arrival — Day 1 evening only. Morning: arrival context. Afternoon: arrival. Evening: light first-night dinner near hotel.' : ''}`
+Flight arrives at ${arrivalTime}. Hotel by approximately ${hotelStr}.
+Transit: ${transit}
+
+Day 1: EVENING ONLY. No morning sightseeing. No afternoon tourism.
+morning block: "Arrival Day" — flight context, no activities.
+afternoon block: airport transit, check-in, settle in.
+evening block: one light dinner near hotel neighbourhood. Nothing ambitious.
+Full itinerary from Day 2.`
+
+    } else if (hr >= 12) {
+      // Afternoon arrival (noon–4:59pm)
+      flightSection += `
+ARRIVAL RULES (Day 1 — ${arrivalDate}):
+Flight arrives at ${arrivalTime}. First activity no earlier than ${hotelStr}.
+Transit: ${transit}
+
+Day 1: AFTERNOON + EVENING only.
+morning block: "Arrival Day" — travel context, no morning activities.
+Afternoon and evening: real activities from ${hotelStr} onward.`
+
+    } else {
+      // Morning arrival — full day possible
+      flightSection += `
+ARRIVAL RULES (Day 1 — ${arrivalDate}):
+Flight arrives at ${arrivalTime}. First activity from ${hotelStr} onward.
+Transit: ${transit}
+Morning arrival — full Day 1 itinerary possible.`
+    }
   }
 
+  // ── FIX 4: Departure rules with explicit leave-by time ────────────────────
   if (departureTime && departureDate) {
-    const [hr, min] = departureTime.split(':').map(Number)
-    const depMins   = hr * 60 + min
-    const latestMins = depMins - 180 // 3 hr before flight
-    const latestHr   = Math.floor(latestMins / 60)
-    const latestMin  = latestMins % 60
-    const latestStr  = latestHr >= 0
-      ? `${latestHr.toString().padStart(2, '0')}:${latestMin.toString().padStart(2, '0')}`
-      : 'morning'
+    const [hr, min]  = departureTime.split(':').map(Number)
+    const depMins    = hr * 60 + min
+
+    // Buffer: 3h before for normal, +30 min for rental car return
+    const bufferMins     = hasRentalCar ? 210 : 180
+    const leaveByMins    = depMins - bufferMins
+    const leaveByHr      = Math.floor(leaveByMins / 60)
+    const leaveByMin     = leaveByMins % 60
+    const leaveByStr     = leaveByHr >= 0 ? padTime(leaveByHr, leaveByMin) : 'early morning'
+
+    // Last activity must end 30 min before leaving
+    const lastActMins    = leaveByMins - 30
+    const lastActHr      = Math.floor(lastActMins / 60)
+    const lastActMin     = lastActMins % 60
+    const lastActStr     = lastActHr >= 0 ? padTime(lastActHr, lastActMin) : 'morning'
 
     flightSection += `
-DEPARTURE RULES (Last day — ${departureDate}):
-Flight departs at ${departureTime}. Last activity must end by ${latestStr} (3 hours before flight).
-Include airport transit note: ${transit}
-Last day morning: light activity or breakfast near hotel — no full-day itinerary.`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEPARTURE DAY RULES (${departureDate} — flight at ${departureTime})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Last day is a HALF DAY. Morning only — no afternoon activities.
+
+MANDATORY: The evening block of the last day must contain this exact departure reminder:
+"🛫 Your flight departs at ${departureTime}.
+Leave for the airport by ${leaveByStr}${hasRentalCar ? ' — or by ' + padTime(Math.floor((depMins - 210) / 60), (depMins - 210) % 60) + ' if returning rental car (allow 30 extra minutes)' : ''}.
+Last activity must end by ${lastActStr}.
+${transit}"
+
+Last day structure:
+morning block: light activity — hotel breakfast, quick neighbourhood walk, or nearby café. Nothing that requires transport.
+afternoon block: DO NOT schedule afternoon activities. Use this block for the departure reminder above.
+evening block: same departure reminder — this IS the last thing on the itinerary.
+day_total_estimate: "Half day — departure afternoon/evening"`
   }
 
   // ── User's existing plans ─────────────────────────────────────────────────────

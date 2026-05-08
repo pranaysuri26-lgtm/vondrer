@@ -57,10 +57,10 @@ interface FlightDetails {
 }
 
 interface ItineraryRequest {
-  destination:   string
-  country:       string
-  days:          number
-  start_date:    string
+  destination:     string
+  country:         string
+  days:            number
+  start_date:      string
   user_profile?: {
     budget_per_day?:      string
     group_type?:          string
@@ -69,9 +69,10 @@ interface ItineraryRequest {
     home_city?:           string
     home_country?:        string
   }
-  group?:        GroupComposition
-  flights?:      FlightDetails
-  user_plans?:   string
+  group?:          GroupComposition
+  flights?:        FlightDetails
+  user_plans?:     string
+  transport_mode?: 'fly' | 'drive' | 'bus' | 'train' | 'ferry'
   hotel?: {
     neighbourhood:  string
     checkin_date?:  string
@@ -112,6 +113,49 @@ function getAirportTransit(dest: string): string {
 
 function buildPrompt(body: ItineraryRequest): { system: string; user: string } {
   const { destination, country, days, start_date, user_profile, group, flights, user_plans } = body
+
+  // ── Transport mode context ───────────────────────────────────────────────────
+  const transportSection = (() => {
+    switch (body.transport_mode) {
+      case 'drive':
+        return `
+TRANSPORT CONTEXT — ARRIVING BY CAR:
+The group is driving to ${destination} and will have their own vehicle throughout the stay.
+- They have a car in the city: do NOT suggest rideshare or public transit as the primary option.
+- Day 1 activities can include driving routes, scenic drives, or destinations outside the city centre.
+- Parking costs should be factored into estimated_cost where relevant (garages, meters).
+- Activities outside the city centre (beaches, scenic lookouts, neighbouring towns) are accessible.
+- Mention parking availability/cost for major attractions where it matters.`
+
+      case 'bus':
+        return `
+TRANSPORT CONTEXT — ARRIVING BY BUS:
+The group is travelling by bus to ${destination}.
+- They likely do NOT have a car: prioritise walkable activities, local transit, and bike rentals.
+- Day 1 activities should be near the bus station or easily accessible via public transit.
+- Avoid activities that require a car rental as their only realistic option.`
+
+      case 'train':
+        return `
+TRANSPORT CONTEXT — ARRIVING BY TRAIN:
+The group is travelling by train to ${destination}.
+- They likely do NOT have a car: prioritise walkable areas and good public transit links.
+- Train stations in city centres make Day 1 logistics easy — start near the station area if appropriate.
+- Avoid activities that require a car as the only realistic access.`
+
+      case 'ferry':
+        return `
+TRANSPORT CONTEXT — ARRIVING BY FERRY/CRUISE:
+The group is arriving by ferry or cruise ship.
+- Factor in ferry terminal location — Day 1 should start near the terminal or with easy transit from it.
+- They likely do NOT have a car unless explicitly noted.`
+
+      case 'fly':
+      default:
+        return ''  // flight handling already covered by flightSection
+    }
+  })()
+
   const hotelSection = body.hotel?.neighbourhood ? `
 HOTEL CONTEXT — ${body.hotel.neighbourhood}, ${destination}:
 The group is staying in ${body.hotel.neighbourhood}.
@@ -259,7 +303,8 @@ Never recommend a venue where GF is difficult or unavailable.` : ''
   const arrivalDate     = flights?.arrival_date   ?? null
   const departureDate   = flights?.departure_date ?? null
   const transit         = getAirportTransit(destination)
-  const hasRentalCar    = !!(user_plans?.toLowerCase().includes('rental car') ||
+  const hasRentalCar    = body.transport_mode === 'drive' ||
+                          !!(user_plans?.toLowerCase().includes('rental car') ||
                               user_plans?.toLowerCase().includes('rental') ||
                               user_plans?.toLowerCase().includes('driving') ||
                               user_plans?.toLowerCase().includes('drive'))
@@ -494,6 +539,7 @@ ${costSection}
 ${largeGroupSection}
 ${halalSection}
 ${gfSection}
+${transportSection}
 ${flightSection}
 ${userPlansSection}
 ${companionSection}

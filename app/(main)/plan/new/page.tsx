@@ -37,6 +37,13 @@ interface HotelInfo {
   checkout_date: string
 }
 
+interface LegTransport {
+  mode:           'fly' | 'drive' | 'bus' | 'train' | 'ferry' | null
+  departure_date: string
+  departure_time: string
+  transit_stop:   string   // 0-day via city label
+}
+
 interface TripDestination {
   id:           string
   name:         string
@@ -93,6 +100,53 @@ interface EditableItinerary {
   days:           MutableDay[]
   loading:        boolean
   error:          string
+}
+
+// ─── Pre-calculated drive routes ─────────────────────────────────────────────
+// Keys are sorted city names joined with '|' so lookup works both directions.
+
+const DRIVE_ROUTES: Record<string, { miles: number; hours: number }> = {
+  'atlanta|miami':             { miles: 661,  hours: 9.5  },
+  'atlanta|nashville':         { miles: 249,  hours: 3.75 },
+  'atlanta|charlotte':         { miles: 245,  hours: 3.5  },
+  'austin|dallas':             { miles: 195,  hours: 3.0  },
+  'amsterdam|brussels':        { miles: 120,  hours: 2.5  },
+  'amsterdam|paris':           { miles: 318,  hours: 4.5  },
+  'barcelona|madrid':          { miles: 393,  hours: 5.5  },
+  'barcelona|paris':           { miles: 629,  hours: 8.5  },
+  'boston|new york':           { miles: 215,  hours: 4.25 },
+  'chicago|detroit':           { miles: 280,  hours: 4.5  },
+  'chicago|cleveland':         { miles: 344,  hours: 5.0  },
+  'dallas|houston':            { miles: 239,  hours: 3.75 },
+  'denver|salt lake city':     { miles: 525,  hours: 7.5  },
+  'florence|rome':             { miles: 173,  hours: 3.0  },
+  'florence|venice':           { miles: 163,  hours: 2.5  },
+  'london|edinburgh':          { miles: 404,  hours: 7.5  },
+  'london|paris':              { miles: 289,  hours: 6.5  },
+  'los angeles|las vegas':     { miles: 270,  hours: 4.0  },
+  'los angeles|san francisco': { miles: 381,  hours: 5.75 },
+  'miami|orlando':             { miles: 235,  hours: 3.5  },
+  'miami|san francisco':       { miles: 2757, hours: 39.0 },
+  'miami|tampa':               { miles: 281,  hours: 4.0  },
+  'munich|vienna':             { miles: 295,  hours: 4.5  },
+  'nashville|charlotte':       { miles: 409,  hours: 6.0  },
+  'new york|philadelphia':     { miles: 95,   hours: 2.0  },
+  'new york|washington':       { miles: 225,  hours: 4.25 },
+  'paris|rome':                { miles: 888,  hours: 12.0 },
+  'portland|san francisco':    { miles: 639,  hours: 10.0 },
+  'prague|vienna':             { miles: 190,  hours: 3.5  },
+  'rome|venice':               { miles: 335,  hours: 5.0  },
+  'salt lake city|san francisco': { miles: 754, hours: 11.0 },
+  'san francisco|las vegas':   { miles: 569,  hours: 7.5  },
+  'san francisco|los angeles': { miles: 381,  hours: 5.75 },
+  'seattle|portland':          { miles: 175,  hours: 3.0  },
+  'seattle|san francisco':     { miles: 807,  hours: 13.0 },
+  'washington|philadelphia':   { miles: 140,  hours: 2.75 },
+}
+
+function getDriveInfo(cityA: string, cityB: string): { miles: number; hours: number } | null {
+  const [a, b] = [cityA.toLowerCase().trim(), cityB.toLowerCase().trim()].sort()
+  return DRIVE_ROUTES[`${a}|${b}`] ?? null
 }
 
 // ─── IATA city lookup ─────────────────────────────────────────────────────────
@@ -169,6 +223,19 @@ function emptyFlight(): FlightInfo {
 
 function emptyHotel(): HotelInfo {
   return { status: 'none', neighbourhood: '', checkin_date: '', checkout_date: '' }
+}
+
+function emptyLeg(): LegTransport {
+  return { mode: null, departure_date: '', departure_time: '', transit_stop: '' }
+}
+
+function legModeIcon(mode: LegTransport['mode']): string {
+  if (mode === 'fly')   return '✈️'
+  if (mode === 'drive') return '🚗'
+  if (mode === 'bus')   return '🚌'
+  if (mode === 'train') return '🚂'
+  if (mode === 'ferry') return '🚢'
+  return '✈️'
 }
 
 // ─── Reusable custom checkbox row ─────────────────────────────────────────────
@@ -696,24 +763,285 @@ function UserPlansSection({
 
 // ─── Transport connector ──────────────────────────────────────────────────────
 
-function TransportConnector({ from, to }: { from: TripDestination; to: TripDestination }) {
-  const travelDate = to.start_date
-  const link = `https://www.skyscanner.com/transport/flights/${getIATA(from.name)}/${getIATA(to.name)}/${travelDate.replace(/-/g, '')}/`
+const MODE_OPTIONS = [
+  { mode: 'fly',   icon: '✈️', label: 'Flying'       },
+  { mode: 'drive', icon: '🚗', label: 'Driving'      },
+  { mode: 'bus',   icon: '🚌', label: 'Bus'          },
+  { mode: 'train', icon: '🚂', label: 'Train'        },
+  { mode: 'ferry', icon: '🚢', label: 'Ferry/Cruise' },
+] as const
+
+function AddStopOverlay({
+  fromName, toName, nextDate, onAddTransit, onAddDest, onCancel,
+}: {
+  fromName:     string
+  toName:       string
+  nextDate:     string
+  onAddTransit: (city: string) => void
+  onAddDest:    (dest: TripDestination) => void
+  onCancel:     () => void
+}) {
+  const [city,    setCity]    = useState('')
+  const [country, setCountry] = useState('')
+  const [days,    setDays]    = useState(0)
+  const [start,   setStart]   = useState(nextDate)
+  const endDate = days > 0 ? calcEndDate(start, days) : start
+
+  function submit() {
+    if (!city.trim()) return
+    if (days === 0) {
+      onAddTransit(city.trim())
+    } else {
+      if (!country.trim()) return
+      onAddDest({
+        id: localId(), name: city.trim(), country: country.trim(),
+        days, start_date: start, end_date: endDate,
+        flights: emptyFlight(), hotel: emptyHotel(), user_plans: '',
+      })
+    }
+  }
+
   return (
-    <div className="flex items-center gap-3 py-3 px-4 bg-white/3 border border-white/8 rounded-xl my-1">
-      <span className="text-lg">✈️</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-white/60">
-          <span className="text-white/80">{from.name}</span>
-          {' → '}
-          <span className="text-white/80">{to.name}</span>
-        </p>
-        <p className="text-xs text-white/30 mt-0.5">Travel day · {travelDate}</p>
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-[#0d1f35] border border-white/12 rounded-2xl max-w-sm w-full p-6 space-y-5">
+        <div>
+          <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-1">Add a stop</p>
+          <p className="text-white/55 text-sm">
+            Between <span className="text-white/80">{fromName}</span> and <span className="text-white/80">{toName}</span>
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-white/35 mb-1.5">City / destination</label>
+            <input
+              type="text" value={city} onChange={e => setCity(e.target.value)}
+              placeholder="e.g. Orlando" autoFocus
+              className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-white/35 mb-1.5">
+              Days <span className="text-white/20 normal-case">(0 = transit stop only, no itinerary)</span>
+            </label>
+            <input
+              type="number" value={days} min={0} max={30}
+              onChange={e => setDays(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C97552]/60"
+            />
+          </div>
+
+          {days > 0 && (
+            <>
+              <div>
+                <label className="block text-xs text-white/35 mb-1.5">Country</label>
+                <input
+                  type="text" value={country} onChange={e => setCountry(e.target.value)}
+                  placeholder="e.g. United States"
+                  className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-white/35 mb-1.5">Start date</label>
+                <input
+                  type="date" value={start} onChange={e => setStart(e.target.value)}
+                  className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C97552]/60 [color-scheme:dark]"
+                />
+              </div>
+              <p className="text-xs text-white/35">{formatDateRange(start, endDate)} · {days} {days === 1 ? 'day' : 'days'}</p>
+            </>
+          )}
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={submit}
+            disabled={!city.trim() || (days > 0 && !country.trim())}
+            className="flex-1 bg-[#C97552] text-white text-sm font-medium py-3 rounded-full disabled:opacity-40 hover:bg-[#b86644] transition-colors"
+          >
+            {days === 0 ? 'Add transit stop →' : 'Add to trip →'}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-5 py-3 text-sm text-white/40 border border-white/12 rounded-full hover:border-white/25 hover:text-white/60 transition-all"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
-      <a href={link} target="_blank" rel="noopener noreferrer"
-        className="flex-shrink-0 text-xs text-white/50 border border-white/15 rounded-full px-3 py-1.5 hover:border-white/30 hover:text-white/80 transition-all">
-        Search flights →
-      </a>
+    </div>
+  )
+}
+
+function TransportConnectorSection({
+  from, to, leg, onChange, onAddStop,
+}: {
+  from:      TripDestination
+  to:        TripDestination
+  leg:       LegTransport
+  onChange:  (l: LegTransport) => void
+  onAddStop: () => void
+}) {
+  const travelDate = to.start_date
+  const driveInfo  = getDriveInfo(from.name, to.name)
+  const flightLink = `https://www.skyscanner.com/transport/flights/${getIATA(from.name)}/${getIATA(to.name)}/${travelDate.replace(/-/g, '')}/`
+  const mapsLink   = `https://www.google.com/maps/dir/${encodeURIComponent(from.name + ', ' + from.country)}/${encodeURIComponent(to.name + ', ' + to.country)}`
+
+  return (
+    <div className="bg-white/3 border border-white/8 rounded-xl p-4 space-y-3 my-1">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-white/55">
+          <span className="text-white/75 font-medium">{from.name}</span>
+          <span className="mx-2 text-white/25">→</span>
+          <span className="text-white/75 font-medium">{to.name}</span>
+          {leg.transit_stop && (
+            <span className="ml-2 text-white/35 text-xs">via {leg.transit_stop}</span>
+          )}
+        </p>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-xs text-white/25">{travelDate}</span>
+          <button
+            onClick={onAddStop}
+            className="text-xs text-white/35 hover:text-white/60 border border-white/12 rounded-full px-3 py-1 transition-all"
+            title="Add a stop between these destinations"
+          >
+            + Stop
+          </button>
+        </div>
+      </div>
+
+      {/* Mode selector */}
+      <div className="flex gap-1.5 flex-wrap">
+        {MODE_OPTIONS.map(opt => (
+          <button
+            key={opt.mode}
+            type="button"
+            onClick={() => onChange({ ...leg, mode: leg.mode === opt.mode ? null : opt.mode })}
+            className={[
+              'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all',
+              leg.mode === opt.mode
+                ? 'bg-[#C97552]/15 border-[#C97552]/40 text-white/85'
+                : 'border-white/12 text-white/40 hover:border-white/25 hover:text-white/60',
+            ].join(' ')}
+          >
+            <span>{opt.icon}</span>
+            <span>{opt.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Mode-specific details */}
+      {leg.mode === 'fly' && (
+        <div className="pt-0.5">
+          <a
+            href={flightLink} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-xs text-white/55 border border-white/12 rounded-full px-4 py-2 hover:border-white/25 hover:text-white/75 transition-all"
+          >
+            ✈️ Search flights {from.name} → {to.name} →
+          </a>
+        </div>
+      )}
+
+      {leg.mode === 'drive' && (
+        <div className="space-y-3 pt-0.5">
+          {driveInfo ? (
+            <div className="bg-white/4 border border-white/8 rounded-xl px-4 py-3">
+              <p className="text-sm text-white/70 font-medium">
+                🚗 {from.name} → {to.name}
+              </p>
+              <p className="text-xs text-white/40 mt-1">
+                ~{driveInfo.miles.toLocaleString()} miles · ~{driveInfo.hours}h driving
+              </p>
+              {driveInfo.hours > 10 && (
+                <p className="text-xs text-amber-400/70 mt-2 bg-amber-400/8 border border-amber-400/15 rounded-lg px-3 py-2">
+                  ⚠️ Very long drive — consider adding an overnight stop or splitting this leg
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-white/35">No pre-calculated route for this pair — open Maps for directions.</p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="block text-xs text-white/30">Depart date</label>
+              <input
+                type="date" value={leg.departure_date}
+                onChange={e => onChange({ ...leg, departure_date: e.target.value })}
+                className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#C97552]/60 [color-scheme:dark]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs text-white/30">Depart time</label>
+              <input
+                type="time" value={leg.departure_time}
+                onChange={e => onChange({ ...leg, departure_time: e.target.value })}
+                className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#C97552]/60 [color-scheme:dark]"
+              />
+            </div>
+          </div>
+          {leg.departure_date && leg.departure_time && driveInfo && (
+            <p className="text-xs text-white/35">
+              Depart {leg.departure_date} at {leg.departure_time} · est. arrival ~{
+                (() => {
+                  const [h, m] = leg.departure_time.split(':').map(Number)
+                  const totalMins = h * 60 + m + Math.round(driveInfo.hours * 60)
+                  const arrH = Math.floor(totalMins / 60) % 24
+                  const arrM = totalMins % 60
+                  const extra = Math.floor(totalMins / (60 * 24))
+                  return `${arrH.toString().padStart(2, '0')}:${arrM.toString().padStart(2, '0')}${extra > 0 ? ` (+${extra}d)` : ''}`
+                })()
+              }
+            </p>
+          )}
+          <a
+            href={mapsLink} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-xs text-white/55 border border-white/12 rounded-full px-4 py-2 hover:border-white/25 hover:text-white/75 transition-all"
+          >
+            🗺️ Open in Google Maps →
+          </a>
+        </div>
+      )}
+
+      {leg.mode === 'bus' && (
+        <div className="pt-0.5 space-y-2">
+          <p className="text-xs text-white/40">Check Flixbus, Greyhound, or local operators for schedules.</p>
+          <a
+            href={`https://www.google.com/search?q=bus+${encodeURIComponent(from.name)}+to+${encodeURIComponent(to.name)}`}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-xs text-white/55 border border-white/12 rounded-full px-4 py-2 hover:border-white/25 hover:text-white/75 transition-all"
+          >
+            🚌 Search bus routes →
+          </a>
+        </div>
+      )}
+
+      {leg.mode === 'train' && (
+        <div className="pt-0.5 space-y-2">
+          <p className="text-xs text-white/40">Book via national rail, Amtrak, Eurail, or local operators.</p>
+          <a
+            href={`https://www.google.com/search?q=train+${encodeURIComponent(from.name)}+to+${encodeURIComponent(to.name)}`}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-xs text-white/55 border border-white/12 rounded-full px-4 py-2 hover:border-white/25 hover:text-white/75 transition-all"
+          >
+            🚂 Search train routes →
+          </a>
+        </div>
+      )}
+
+      {leg.mode === 'ferry' && (
+        <div className="pt-0.5 space-y-2">
+          <p className="text-xs text-white/40">Check ferry schedules and cruise lines for this route.</p>
+          <a
+            href={`https://www.google.com/search?q=ferry+cruise+${encodeURIComponent(from.name)}+to+${encodeURIComponent(to.name)}`}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-xs text-white/55 border border-white/12 rounded-full px-4 py-2 hover:border-white/25 hover:text-white/75 transition-all"
+          >
+            🚢 Search ferry routes →
+          </a>
+        </div>
+      )}
     </div>
   )
 }
@@ -1185,6 +1513,11 @@ function PlanNewInner() {
   const [savedDestIds, setSavedDestIds] = useState<Record<string, string>>({})
   const [saveStatus,   setSaveStatus]   = useState<'idle' | 'saving' | 'saved'>('idle')
 
+  // transport legs — keyed by "fromId|toId"
+  const [transportLegs,   setTransportLegs]   = useState<Record<string, LegTransport>>({})
+  // index of the "from" destination when user clicks "+ Stop"
+  const [addStopBetween,  setAddStopBetween]  = useState<number | null>(null)
+
   const [replaceTarget, setReplaceTarget] = useState<{ destId: string; dayNum: number; slot: TimeSlot; activity: string } | null>(null)
   const [moveTarget,    setMoveTarget]    = useState<{ destId: string; dayNum: number; slot: TimeSlot; block: ItineraryBlock } | null>(null)
   const [addTarget,     setAddTarget]     = useState<{ destId: string; dayNum: number; slot: TimeSlot } | null>(null)
@@ -1252,6 +1585,30 @@ function PlanNewInner() {
 
   function updateDestination(id: string, updates: Partial<TripDestination>) {
     setDestinations(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d))
+  }
+
+  function getLeg(fromId: string, toId: string): LegTransport {
+    return transportLegs[`${fromId}|${toId}`] ?? emptyLeg()
+  }
+
+  function updateLeg(fromId: string, toId: string, updates: Partial<LegTransport>) {
+    const key = `${fromId}|${toId}`
+    setTransportLegs(prev => ({ ...prev, [key]: { ...emptyLeg(), ...prev[key], ...updates } }))
+  }
+
+  function setTransitStop(fromId: string, toId: string, transitStop: string) {
+    updateLeg(fromId, toId, { transit_stop: transitStop })
+  }
+
+  // Insert a new destination at position afterIdx+1 (0-indexed).
+  // Subsequent destinations keep their existing dates — user can adjust manually.
+  function insertDestinationAfter(afterIdx: number, newDest: TripDestination) {
+    setDestinations(prev => {
+      const updated = [...prev]
+      updated.splice(afterIdx + 1, 0, newDest)
+      return updated
+    })
+    setAddStopBetween(null)
   }
 
   // ── autoSave ─────────────────────────────────────────────────────────────────
@@ -1420,8 +1777,13 @@ function PlanNewInner() {
     }))
     setItineraries(initial)
 
-    const requests = destinations.map(async (dest) => {
+    const requests = destinations.map(async (dest, idx) => {
       const f = dest.flights
+      // Determine arrival transport mode for this destination
+      const inboundLeg: LegTransport | null = idx > 0
+        ? getLeg(destinations[idx - 1].id, dest.id)
+        : null
+      const transport_mode = inboundLeg?.mode ?? null
       try {
         const res = await fetch('/api/itinerary', {
           method: 'POST',
@@ -1443,7 +1805,8 @@ function PlanNewInner() {
             hotel: dest.hotel.status === 'booked' && dest.hotel.neighbourhood
               ? { neighbourhood: dest.hotel.neighbourhood, checkin_date: dest.hotel.checkin_date, checkout_date: dest.hotel.checkout_date }
               : undefined,
-            user_plans:  dest.user_plans || undefined,
+            user_plans:      dest.user_plans     || undefined,
+            transport_mode:  transport_mode      || undefined,
           }),
         })
         // Read as text first — non-JSON responses (timeout, Vercel error) won't crash
@@ -1566,7 +1929,27 @@ function PlanNewInner() {
           {destinations.map((dest, idx) => (
             <div key={dest.id} className="space-y-0">
               {idx > 0 && (
-                <TransportConnector from={destinations[idx - 1]} to={dest} />
+                <TransportConnectorSection
+                  from={destinations[idx - 1]}
+                  to={dest}
+                  leg={getLeg(destinations[idx - 1].id, dest.id)}
+                  onChange={l => updateLeg(destinations[idx - 1].id, dest.id, l)}
+                  onAddStop={() => setAddStopBetween(idx - 1)}
+                />
+              )}
+              {/* Inline "add stop" form between this connector and this destination */}
+              {addStopBetween === idx - 1 && idx > 0 && (
+                <AddStopOverlay
+                  fromName={destinations[idx - 1].name}
+                  toName={dest.name}
+                  nextDate={addDays(destinations[idx - 1].end_date, 1)}
+                  onAddTransit={city => {
+                    setTransitStop(destinations[idx - 1].id, dest.id, city)
+                    setAddStopBetween(null)
+                  }}
+                  onAddDest={newDest => insertDestinationAfter(idx - 1, newDest)}
+                  onCancel={() => setAddStopBetween(null)}
+                />
               )}
 
               {/* Destination header card */}
@@ -1642,17 +2025,33 @@ function PlanNewInner() {
         {destinations.length > 0 && (
           <div className="sticky bottom-20 md:bottom-4 z-10">
             <div className="bg-[#0d1f35]/95 backdrop-blur border border-white/12 rounded-2xl p-4 flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-white/50 text-xs">
-                  Total: <span className="text-white">{totalDays} {totalDays === 1 ? 'day' : 'days'}</span>
+                  <span className="text-white">{totalDays} {totalDays === 1 ? 'day' : 'days'}</span>
                   {tripStart && tripEnd && (
                     <span className="ml-2 text-white/35">· {formatDateRange(tripStart, tripEnd)}</span>
                   )}
                 </p>
-                <p className="text-white/25 text-xs mt-0.5">
-                  {destinations.length} {destinations.length === 1 ? 'destination' : 'destinations'}
-                  {' · '}{group.traveler_count} {group.traveler_count === 1 ? 'traveler' : 'travelers'}
-                </p>
+                {destinations.length > 1 ? (
+                  <p className="text-white/30 text-xs mt-0.5 truncate">
+                    {destinations.slice(0, -1).map((d, i) => {
+                      const leg = getLeg(d.id, destinations[i + 1].id)
+                      const icon = legModeIcon(leg.mode)
+                      return (
+                        <span key={d.id}>
+                          {i > 0 && <span className="mx-1 text-white/15">·</span>}
+                          {icon} {getIATA(d.name)}→{getIATA(destinations[i + 1].name)}
+                        </span>
+                      )
+                    })}
+                    <span className="ml-2 text-white/20">· {group.traveler_count} {group.traveler_count === 1 ? 'traveler' : 'travelers'}</span>
+                  </p>
+                ) : (
+                  <p className="text-white/25 text-xs mt-0.5">
+                    {destinations.length} {destinations.length === 1 ? 'destination' : 'destinations'}
+                    {' · '}{group.traveler_count} {group.traveler_count === 1 ? 'traveler' : 'travelers'}
+                  </p>
+                )}
               </div>
               <button onClick={buildItinerary} disabled={generating || destinations.length === 0}
                 className="bg-[#C97552] text-white text-sm font-semibold px-6 py-3 rounded-full disabled:opacity-40 hover:bg-[#b86644] transition-colors flex-shrink-0">
@@ -1732,7 +2131,13 @@ function PlanNewInner() {
 
                   {idx < destinations.length - 1 && !itin.loading && !itin.error && (
                     <div className="mt-4">
-                      <TransportConnector from={dest} to={destinations[idx + 1]} />
+                      <TransportConnectorSection
+                        from={dest}
+                        to={destinations[idx + 1]}
+                        leg={getLeg(dest.id, destinations[idx + 1].id)}
+                        onChange={l => updateLeg(dest.id, destinations[idx + 1].id, l)}
+                        onAddStop={() => setAddStopBetween(idx)}
+                      />
                     </div>
                   )}
                 </div>

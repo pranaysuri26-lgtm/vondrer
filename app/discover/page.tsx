@@ -105,6 +105,17 @@ function GemLegend() {
   )
 }
 
+// ─── Gem label for low-spread fallback ───────────────────────────────────────
+
+function gemLabel(score: number | undefined): string {
+  if (!score) return 'Hidden gem'
+  if (score >= 9) return 'Rare gem'
+  if (score >= 7) return 'Hidden gem'
+  if (score >= 5) return 'Local find'
+  if (score >= 3) return 'Off the map'
+  return 'Known spot'
+}
+
 // ─── Gem score dots ───────────────────────────────────────────────────────────
 
 function GemDots({ score }: { score?: number }) {
@@ -256,12 +267,13 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
 // ─── Destination card (expandable) ───────────────────────────────────────────
 
 function DestinationCard({
-  dest, rank, locked, currency,
+  dest, rank, locked, currency, gemEmphasis = false,
 }: {
-  dest:     RecommendedDestination
-  rank:     number
-  locked:   boolean
-  currency: CurrencyInfo
+  dest:        RecommendedDestination
+  rank:        number
+  locked:      boolean
+  currency:    CurrencyInfo
+  gemEmphasis?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -299,19 +311,27 @@ function DestinationCard({
             </div>
           </div>
 
-          {/* Right: match pill + gem dots — always visible, even locked */}
+          {/* Right: value signal — always visible, even locked */}
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            <div className={`flex items-center gap-1 rounded-full px-3 py-1 border ${
-              locked
-                ? 'bg-white/8 border-white/15'
-                : 'bg-[#C97552]/15 border-[#C97552]/30'
-            }`}>
-              <span className={`text-xs font-semibold ${locked ? 'text-white/50' : 'text-[#C97552]'}`}>
-                {dest.match_score}%
-              </span>
-              <span className={`text-xs ${locked ? 'text-white/30' : 'text-[#C97552]/70'}`}>match</span>
-            </div>
-            <GemDots score={dest.hidden_gem_score} />
+            {locked && gemEmphasis ? (
+              // Low spread — lead with gem score, not match %
+              <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-full px-3 py-1">
+                <GemDots score={dest.hidden_gem_score} />
+                <span className="text-xs text-white/50">{gemLabel(dest.hidden_gem_score)}</span>
+              </div>
+            ) : (
+              // Normal — show match %
+              <div className={`flex items-center gap-1 rounded-full px-3 py-1 border ${
+                locked ? 'bg-white/8 border-white/15' : 'bg-[#C97552]/15 border-[#C97552]/30'
+              }`}>
+                <span className={`text-xs font-semibold ${locked ? 'text-white/50' : 'text-[#C97552]'}`}>
+                  {dest.match_score}%
+                </span>
+                <span className={`text-xs ${locked ? 'text-white/30' : 'text-[#C97552]/70'}`}>match</span>
+              </div>
+            )}
+            {/* Gem dots shown separately when not in gemEmphasis pill */}
+            {!(locked && gemEmphasis) && <GemDots score={dest.hidden_gem_score} />}
           </div>
         </div>
 
@@ -520,9 +540,12 @@ export default function DiscoverPage() {
 
   // previewAll: show everything sorted best-first, no paywall
   // normal:     free = bottom FREE_TIER_LIMIT (lowest scores), locked = top N (highest scores)
-  const freeCards   = previewAll ? sorted : sorted.slice(-FREE_TIER_LIMIT)
-  const lockedCards = previewAll ? []     : sorted.slice(0, sorted.length - FREE_TIER_LIMIT)
+  const freeCards      = previewAll ? sorted : sorted.slice(-FREE_TIER_LIMIT)
+  const lockedCards    = previewAll ? []     : sorted.slice(0, sorted.length - FREE_TIER_LIMIT)
   const topLockedScore = lockedCards.length > 0 ? lockedCards[0].match_score : 0
+  const topFreeScore   = freeCards.length   > 0 ? freeCards[0].match_score   : 0
+  // When scores are bunched (gap < 10pts), lead with gem score on locked cards
+  const gemEmphasis    = lockedCards.length > 0 && (topLockedScore - topFreeScore) < 10
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
@@ -591,6 +614,7 @@ export default function DiscoverPage() {
                   rank={FREE_TIER_LIMIT + i + 1}
                   locked
                   currency={currency}
+                  gemEmphasis={gemEmphasis}
                 />
               ))}
             </>

@@ -72,6 +72,11 @@ interface ItineraryRequest {
   group?:        GroupComposition
   flights?:      FlightDetails
   user_plans?:   string
+  hotel?: {
+    neighbourhood:  string
+    checkin_date?:  string
+    checkout_date?: string
+  }
 }
 
 // ─── Budget day totals ────────────────────────────────────────────────────────
@@ -107,6 +112,13 @@ function getAirportTransit(dest: string): string {
 
 function buildPrompt(body: ItineraryRequest): { system: string; user: string } {
   const { destination, country, days, start_date, user_profile, group, flights, user_plans } = body
+  const hotelSection = body.hotel?.neighbourhood ? `
+HOTEL CONTEXT — ${body.hotel.neighbourhood}, ${destination}:
+The group is staying in ${body.hotel.neighbourhood}.
+- Day 1: start activities near ${body.hotel.neighbourhood} to minimize transit after check-in.
+- Each day's first and last activity should be accessible from ${body.hotel.neighbourhood}.
+- Avoid routing the group far from ${body.hotel.neighbourhood} late at night.
+- Prioritise restaurants and activities in or near ${body.hotel.neighbourhood} where quality allows.` : ''
 
   const budget      = user_profile?.budget_per_day ?? '50-150'
   const groupType   = user_profile?.group_type     ?? 'couple'
@@ -486,7 +498,8 @@ ${flightSection}
 ${userPlansSection}
 ${companionSection}
 ${beachSection}
-${cityIntelSection}`
+${cityIntelSection}
+${hotelSection}`
 
   const userPrompt = `Generate a ${days}-day itinerary for ${destination}, ${country}.
 

@@ -4,14 +4,15 @@ import { BUDGET_LABELS } from '@/lib/currency'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface OnboardingData {
-  home_country:   string   // e.g. 'United States', 'India', 'Australia'
-  home_city?:     string   // e.g. 'Sydney', 'Delhi', 'London' (optional, new field)
-  travel_scope?:  string   // 'anywhere' | 'closer' (optional, new field)
-  budget_per_day: string   // 'under-20' | '20-50' | '50-150' | '150-300' | '300+'
-  trip_duration:  string   // 'weekend' | '1-week' | '2-weeks' | 'month+'
-  group_type:     string   // 'solo' | 'couple' | 'small-group'
-  interests:      string[] // ['hidden-gems','local-food','adventure','culture','slow-travel','photography']
-  offbeat_score:  number   // 1–5
+  home_country:         string   // e.g. 'United States', 'India', 'Australia'
+  home_city?:           string   // e.g. 'Sydney', 'Delhi', 'London' (optional, new field)
+  travel_scope?:        string   // 'anywhere' | 'closer' (optional, new field)
+  budget_per_day:       string   // 'under-20' | '20-50' | '50-150' | '150-300' | '300+'
+  trip_duration:        string   // 'weekend' | '1-week' | '2-weeks' | 'month+'
+  group_type:           string   // 'solo' | 'couple' | 'small-group'
+  interests:            string[] // ['hidden-gems','local-food','adventure','culture','slow-travel','photography']
+  offbeat_score:        number   // 1–5
+  dietary_preferences?: string[] // ['vegetarian','vegan','halal','kosher','gluten-free','no-pork','no-beef','pescatarian','none']
 }
 
 export interface PastTrip {
@@ -19,13 +20,14 @@ export interface PastTrip {
 }
 
 export interface RecommendedDestination {
-  name:              string
-  country:           string
-  match_score:       number   // 0–100
-  reasons:           string[] // 2–3 short strings
+  name:               string
+  country:            string
+  match_score:        number   // 0–100
+  reasons:            string[] // 2–3 short strings
   budget_per_day_usd?: number
   best_time_to_visit?: string
-  hidden_gem_score?: number   // 1–10
+  hidden_gem_score?:  number   // 1–10
+  dietary_tags?:      string[] // e.g. ['vegetarian-friendly','halal-available'] — only set if genuinely true
 }
 
 export interface RecommendationResponse {
@@ -34,29 +36,129 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 4
+const PROMPT_VERSION = 5
 
 export function buildProfileHash(
   onboarding: OnboardingData,
   pastTrips: PastTrip[]
 ): string {
   const payload = {
-    prompt_version: PROMPT_VERSION,
-    home_country:   onboarding.home_country?.toLowerCase().trim() ?? '',
-    home_city:      onboarding.home_city?.toLowerCase().trim() ?? '',
-    travel_scope:   onboarding.travel_scope ?? 'anywhere',
-    budget_per_day: onboarding.budget_per_day,
-    trip_duration:  onboarding.trip_duration,
-    group_type:     onboarding.group_type,
-    interests:      [...onboarding.interests].sort(),
-    offbeat_score:  onboarding.offbeat_score,
-    past_trips:     pastTrips.map(t => t.destination_name.toLowerCase().trim()).sort(),
+    prompt_version:       PROMPT_VERSION,
+    home_country:         onboarding.home_country?.toLowerCase().trim() ?? '',
+    home_city:            onboarding.home_city?.toLowerCase().trim() ?? '',
+    travel_scope:         onboarding.travel_scope ?? 'anywhere',
+    budget_per_day:       onboarding.budget_per_day,
+    trip_duration:        onboarding.trip_duration,
+    group_type:           onboarding.group_type,
+    interests:            [...onboarding.interests].sort(),
+    offbeat_score:        onboarding.offbeat_score,
+    dietary_preferences:  [...(onboarding.dietary_preferences ?? [])].sort(),
+    past_trips:           pastTrips.map(t => t.destination_name.toLowerCase().trim()).sort(),
   }
 
   return crypto
     .createHash('sha256')
     .update(JSON.stringify(payload))
     .digest('hex')
+}
+
+// ─── Dietary prompt section ───────────────────────────────────────────────────
+
+export function buildDietarySection(prefs: string[]): string {
+  const active = prefs.filter(p => p !== 'none')
+  if (active.length === 0) return ''
+
+  const isVeg        = active.includes('vegetarian')
+  const isVegan      = active.includes('vegan')
+  const isHalal      = active.includes('halal')
+  const isKosher     = active.includes('kosher')
+  const isGlutenFree = active.includes('gluten-free')
+  const noPork       = active.includes('no-pork')
+  const noBeef       = active.includes('no-beef')
+  const isPescatarian = active.includes('pescatarian')
+
+  const rules: string[] = []
+
+  if (isVegan || isVeg) {
+    const label = isVegan ? 'vegan' : 'vegetarian'
+    rules.push(
+      `- Traveller is ${label}. Prioritise destinations with strong ${label} food scenes.`,
+      `- Cities with large Indian, Buddhist, or Mediterranean communities score higher.`,
+      `- In reasons, NEVER mention meat dishes. Mention plant-based local dishes, vegetarian street food culture, markets with fresh produce, specific vegetarian restaurants by name where they exist.`,
+      `- Penalise destinations where ${label} options are limited or hard to find.`,
+    )
+  }
+
+  if (isHalal) {
+    rules.push(
+      `- Traveller requires halal food. Prioritise destinations with large Muslim communities.`,
+      `- Middle East, Southeast Asia, parts of West and East Africa score higher.`,
+      `- Mention halal certification availability in reason tags when relevant.`,
+      `- Do not recommend destinations where halal food is extremely difficult to find.`,
+    )
+  }
+
+  if (isKosher) {
+    rules.push(
+      `- Traveller requires kosher food. Prioritise cities with established Jewish communities and kosher certification infrastructure.`,
+      `- Penalise destinations with very limited kosher options.`,
+    )
+  }
+
+  if (isGlutenFree) {
+    rules.push(
+      `- Traveller needs gluten-free options. Favour destinations where gluten-free food is widely available (most western cities, Japan, Mexico).`,
+      `- Flag destinations where wheat/gluten is central to almost every dish.`,
+    )
+  }
+
+  if (noPork) {
+    rules.push(
+      `- Traveller does not eat pork. Never mention pork dishes in reasons.`,
+      `- Note when a destination's local cuisine is heavily pork-based so traveller is aware it may be limiting.`,
+    )
+  }
+
+  if (noBeef) {
+    rules.push(
+      `- Traveller does not eat beef. Never mention beef dishes in reasons.`,
+      `- Note when beef is central to local food culture (e.g. Argentina, Texas BBQ cities) as a potential limitation.`,
+    )
+  }
+
+  if (isPescatarian) {
+    rules.push(
+      `- Traveller is pescatarian (fish and seafood OK, no land meat). Prioritise coastal destinations and cities with strong seafood scenes.`,
+      `- Never mention land-meat dishes in reasons.`,
+    )
+  }
+
+  const dietaryTagInstructions = `
+DIETARY TAGS:
+For each destination, return a "dietary_tags" array. Only include tags that are genuinely true for this destination — never include a tag just because the user asked for it. Leave dietary_tags empty ([]) if it is not a strong fit.
+Valid values (use only these exact strings):
+- "vegetarian-friendly" — strong vegetarian restaurant scene
+- "vegan-friendly" — strong vegan-specific options available
+- "halal-available" — halal certified restaurants easy to find
+- "kosher-available" — kosher certified options available
+- "gluten-free-options" — gluten-free food widely available
+- "pork-free-easy" — easy to eat pork-free here
+- "beef-free-easy" — easy to eat beef-free here
+- "pescatarian-friendly" — excellent seafood/fish, easy to eat pescatarian`
+
+  return `
+DIETARY PREFERENCES: ${active.join(', ')}
+
+DIETARY RULES FOR RECOMMENDATIONS:
+${rules.join('\n')}
+
+FOOD REASON TAG RULES:
+Every food mention in reasons must be something this traveller can actually eat.
+BAD (for vegetarian): "Street food scene centred on local meat dishes"
+GOOD (for vegetarian): "Pure vegetarian South Indian restaurants serving dosas and idlis"
+BAD (for halal): "Craft brewery culture and farm-to-table pork dishes"
+GOOD (for halal): "Large Moroccan community with halal certified tagine restaurants"
+${dietaryTagInstructions}`
 }
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
@@ -83,7 +185,9 @@ export function buildRecommendationPrompt(
     ? `${onboarding.home_city}, ${onboarding.home_country}`
     : onboarding.home_country
 
-  const travelScope = onboarding.travel_scope ?? 'anywhere'
+  const travelScope    = onboarding.travel_scope ?? 'anywhere'
+  const dietaryPrefs   = (onboarding.dietary_preferences ?? []).filter(p => p !== 'none')
+  const dietarySection = buildDietarySection(dietaryPrefs)
 
   // Hard budget caps per tier
   const BUDGET_CAPS: Record<string, { min: number; max: number; target: number }> = {
@@ -115,7 +219,7 @@ export function buildRecommendationPrompt(
 
   const system = `You are a travel recommendation engine for Voya.
 Return ONLY valid JSON. No explanation. No prose. No markdown.
-Response schema: { "destinations": [{ "name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number }] }
+Response schema: { "destinations": [{ "name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[] }] }
 
 RULES:
 - match_score: 0–100, ranked descending
@@ -142,7 +246,11 @@ HIDDEN GEM LISTS — use these when traveller is from these countries and wants 
 
 For Australian travellers consider: Broken Hill, Coober Pedy, Cooktown, Cape York Peninsula, Flinders Ranges, Kimberley region, Kangaroo Island (off-season), Norfolk Island, Ningaloo Reef, Lord Howe Island, Daintree (beyond tourist circuit), Kakadu interior
 
-For Indian travellers consider: Chettinad, Majuli Island, Spiti Valley, Ziro Valley, Dzukou Valley, Mawlynnong, Shekhawati, Rann of Kutch, Hampi agricultural surrounds, Gokarna (off-season)`
+For Indian travellers consider: Chettinad, Majuli Island, Spiti Valley, Ziro Valley, Dzukou Valley, Mawlynnong, Shekhawati, Rann of Kutch, Hampi agricultural surrounds, Gokarna (off-season)${dietarySection}`
+
+  const dietaryLine = dietaryPrefs.length > 0
+    ? `\n- Dietary preferences: ${dietaryPrefs.join(', ')}`
+    : ''
 
   const user = `Traveller profile:
 - Based in: ${homeLocation}
@@ -151,7 +259,7 @@ For Indian travellers consider: Chettinad, Majuli Island, Spiti Valley, Ziro Val
 - Trip duration: ${onboarding.trip_duration}
 - Travelling with: ${onboarding.group_type}
 - What matters most: ${onboarding.interests.join(', ')}
-- Off the beaten path preference (${onboarding.offbeat_score}/5): ${offbeatDescription}
+- Off the beaten path preference (${onboarding.offbeat_score}/5): ${offbeatDescription}${dietaryLine}
 
 Past trips (do not suggest these): ${pastTripsList}
 

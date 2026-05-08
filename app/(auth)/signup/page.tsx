@@ -8,26 +8,27 @@ import { detectCurrency, buildBudgetOptions, type CurrencyInfo } from '@/lib/cur
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Step = 'account' | 'location' | 'budget' | 'duration' | 'group' | 'interests' | 'offbeat' | 'past_trips'
+type Step = 'account' | 'location' | 'budget' | 'duration' | 'group' | 'interests' | 'dietary' | 'offbeat' | 'past_trips'
 
 interface FormData {
-  email:           string
-  password:        string
-  home_city:       string
-  home_country:    string
-  travel_scope:    'anywhere' | 'closer'
-  budget:          string
-  duration:        string
-  group_type:      string
-  interests:       string[]
-  offbeat_score:   number
-  past_trips:      string[]
-  past_trip_input: string
+  email:                string
+  password:             string
+  home_city:            string
+  home_country:         string
+  travel_scope:         'anywhere' | 'closer'
+  budget:               string
+  duration:             string
+  group_type:           string
+  interests:            string[]
+  dietary_preferences:  string[]
+  offbeat_score:        number
+  past_trips:           string[]
+  past_trip_input:      string
 }
 
 // ─── Step config ──────────────────────────────────────────────────────────────
 
-const ONBOARDING_STEPS: Step[] = ['location', 'budget', 'duration', 'group', 'interests', 'offbeat', 'past_trips']
+const ONBOARDING_STEPS: Step[] = ['location', 'budget', 'duration', 'group', 'interests', 'dietary', 'offbeat', 'past_trips']
 
 const DURATION_OPTIONS = [
   { value: 'weekend',  label: 'Weekend',    sub: '2–3 days'  },
@@ -62,6 +63,18 @@ const OFFBEAT_LABELS: Record<number, { label: string; sub: string }> = {
 const POPULAR_COUNTRIES = [
   'Australia', 'United States', 'United Kingdom', 'India',
   'Canada', 'Germany', 'France', 'Brazil', 'New Zealand', 'Singapore',
+]
+
+const DIETARY_OPTIONS = [
+  { value: 'vegetarian',   label: 'Vegetarian',                  icon: '🥗' },
+  { value: 'vegan',        label: 'Vegan',                       icon: '🌱' },
+  { value: 'halal',        label: 'Halal',                       icon: '☪️' },
+  { value: 'kosher',       label: 'Kosher',                      icon: '✡️' },
+  { value: 'gluten-free',  label: 'Gluten free',                 icon: '🌾' },
+  { value: 'no-pork',      label: 'No pork',                     icon: '🚫' },
+  { value: 'no-beef',      label: 'No beef',                     icon: '🐄' },
+  { value: 'pescatarian',  label: 'Pescatarian',                 icon: '🐟' },
+  { value: 'none',         label: 'No restrictions — I eat everything', icon: '🍽️' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -108,18 +121,19 @@ export default function SignupPage() {
   const [countrySearch, setCountrySearch] = useState('')
 
   const [form, setForm] = useState<FormData>({
-    email:           '',
-    password:        '',
-    home_city:       '',
-    home_country:    '',
-    travel_scope:    'anywhere',
-    budget:          '',
-    duration:        '',
-    group_type:      '',
-    interests:       [],
-    offbeat_score:   3,
-    past_trips:      [],
-    past_trip_input: '',
+    email:                '',
+    password:             '',
+    home_city:            '',
+    home_country:         '',
+    travel_scope:         'anywhere',
+    budget:               '',
+    duration:             '',
+    group_type:           '',
+    interests:            [],
+    dietary_preferences:  [],
+    offbeat_score:        3,
+    past_trips:           [],
+    past_trip_input:      '',
   })
 
   const currency     = detectCurrency(form.home_country)
@@ -137,6 +151,25 @@ export default function SignupPage() {
         ? prev.interests.filter(i => i !== val)
         : [...prev.interests, val],
     }))
+    setError('')
+  }
+
+  function toggleDietary(val: string) {
+    setForm(prev => {
+      const current = prev.dietary_preferences
+      if (val === 'none') {
+        // 'none' is exclusive — selecting it clears all others
+        return { ...prev, dietary_preferences: current.includes('none') ? [] : ['none'] }
+      }
+      // Selecting any other value removes 'none'
+      const without = current.filter(v => v !== 'none')
+      return {
+        ...prev,
+        dietary_preferences: without.includes(val)
+          ? without.filter(v => v !== val)
+          : [...without, val],
+      }
+    })
     setError('')
   }
 
@@ -159,6 +192,7 @@ export default function SignupPage() {
       case 'duration':   return !!form.duration
       case 'group':      return !!form.group_type
       case 'interests':  return form.interests.length >= 1
+      case 'dietary':    return true  // optional step — always skippable
       case 'offbeat':    return true
       case 'past_trips': return true
       default:           return false
@@ -195,15 +229,16 @@ export default function SignupPage() {
     const { error: onboardingError } = await supabase
       .from('onboarding_responses')
       .upsert({
-        user_id:        user.id,
-        home_city:      form.home_city.trim() || null,
-        home_country:   form.home_country,
-        travel_scope:   form.travel_scope,
-        budget_per_day: form.budget,
-        trip_duration:  form.duration,
-        group_type:     form.group_type,
-        interests:      form.interests,
-        offbeat_score:  form.offbeat_score,
+        user_id:              user.id,
+        home_city:            form.home_city.trim() || null,
+        home_country:         form.home_country,
+        travel_scope:         form.travel_scope,
+        budget_per_day:       form.budget,
+        trip_duration:        form.duration,
+        group_type:           form.group_type,
+        interests:            form.interests,
+        dietary_preferences:  form.dietary_preferences,
+        offbeat_score:        form.offbeat_score,
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setLoading(false); return }
@@ -462,6 +497,41 @@ export default function SignupPage() {
             <button onClick={() => { if (form.interests.length === 0) { setError('Pick at least one'); return } nextStep() }}
               className="w-full bg-white text-[#0d1f35] font-semibold py-3.5 rounded-full mt-4 disabled:opacity-40 hover:bg-white/90 transition-all">
               Continue →
+            </button>
+          </div>
+        )}
+
+        {/* ── DIETARY PREFERENCES ─────────────────────────────────────────── */}
+        {step === 'dietary' && (
+          <div className="space-y-4">
+            <div className="mb-8">
+              <h1 className="text-2xl font-light text-white mb-2">Any food preferences?</h1>
+              <p className="text-white/45 text-sm">We'll tailor every food recommendation to what works for you.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {DIETARY_OPTIONS.map(opt => {
+                const selected = form.dietary_preferences.includes(opt.value)
+                return (
+                  <button key={opt.value} type="button" onClick={() => toggleDietary(opt.value)}
+                    className={`text-left px-4 py-4 rounded-xl border transition-all duration-150
+                      ${selected
+                        ? 'border-[#C97552] bg-[#C97552]/10 text-white'
+                        : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                      }`}
+                  >
+                    <div className="text-2xl mb-1.5">{opt.icon}</div>
+                    <div className="font-medium text-sm">{opt.label}</div>
+                  </button>
+                )
+              })}
+            </div>
+            <button onClick={nextStep}
+              className="w-full bg-white text-[#0d1f35] font-semibold py-3.5 rounded-full mt-2 hover:bg-white/90 transition-all">
+              {form.dietary_preferences.length > 0 ? 'Continue →' : 'Continue →'}
+            </button>
+            <button type="button" onClick={nextStep}
+              className="w-full text-white/35 text-sm py-2 hover:text-white/55 transition-colors">
+              Skip — no preferences
             </button>
           </div>
         )}

@@ -81,7 +81,10 @@ export async function POST(req: NextRequest) {
     const pastTrips: PastTrip[]      = tripsResult.data || []
 
     const hash = buildProfileHash(onboarding, pastTrips)
-    const meta = { home_country: onboarding.home_country ?? '' }
+    const meta = {
+      home_country:        onboarding.home_country ?? '',
+      dietary_preferences: (onboarding.dietary_preferences ?? []).filter((p: string) => p !== 'none'),
+    }
 
     // ── Exact cache hit (and not forcing a refresh) ───────────────────────────
     if (!force_refresh) {

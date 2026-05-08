@@ -8,16 +8,17 @@ import { detectCurrency, buildBudgetOptions } from '@/lib/currency'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Profile {
-  home_city:       string
-  home_country:    string
-  travel_scope:    string
-  budget_per_day:  string
-  trip_duration:   string
-  group_type:      string
-  interests:       string[]
-  offbeat_score:   number
-  past_trips:      string[]
-  past_trip_input: string
+  home_city:            string
+  home_country:         string
+  travel_scope:         string
+  budget_per_day:       string
+  trip_duration:        string
+  group_type:           string
+  interests:            string[]
+  dietary_preferences:  string[]
+  offbeat_score:        number
+  past_trips:           string[]
+  past_trip_input:      string
 }
 
 // ─── Static config ────────────────────────────────────────────────────────────
@@ -42,6 +43,18 @@ const INTEREST_OPTIONS = [
   { value: 'culture',      label: 'Culture',      icon: '🏛️' },
   { value: 'slow-travel',  label: 'Slow travel',  icon: '🌿' },
   { value: 'photography',  label: 'Photography',  icon: '📸' },
+]
+
+const DIETARY_OPTIONS = [
+  { value: 'vegetarian',  label: 'Vegetarian',                   icon: '🥗' },
+  { value: 'vegan',       label: 'Vegan',                        icon: '🌱' },
+  { value: 'halal',       label: 'Halal',                        icon: '☪️' },
+  { value: 'kosher',      label: 'Kosher',                       icon: '✡️' },
+  { value: 'gluten-free', label: 'Gluten free',                  icon: '🌾' },
+  { value: 'no-pork',     label: 'No pork',                      icon: '🚫' },
+  { value: 'no-beef',     label: 'No beef',                      icon: '🐄' },
+  { value: 'pescatarian', label: 'Pescatarian',                  icon: '🐟' },
+  { value: 'none',        label: 'No restrictions — I eat everything', icon: '🍽️' },
 ]
 
 const OFFBEAT_LABELS: Record<number, { label: string; sub: string; icon: string }> = {
@@ -93,16 +106,17 @@ export default function ProfilePage() {
   const [error, setError]       = useState('')
 
   const [profile, setProfile] = useState<Profile>({
-    home_city:       '',
-    home_country:    '',
-    travel_scope:    'anywhere',
-    budget_per_day:  '',
-    trip_duration:   '',
-    group_type:      '',
-    interests:       [],
-    offbeat_score:   3,
-    past_trips:      [],
-    past_trip_input: '',
+    home_city:            '',
+    home_country:         '',
+    travel_scope:         'anywhere',
+    budget_per_day:       '',
+    trip_duration:        '',
+    group_type:           '',
+    interests:            [],
+    dietary_preferences:  [],
+    offbeat_score:        3,
+    past_trips:           [],
+    past_trip_input:      '',
   })
 
   // Derived currency from home_country
@@ -126,15 +140,16 @@ export default function ProfilePage() {
         const d = onboardingRes.data
         setProfile(prev => ({
           ...prev,
-          home_city:      d.home_city      ?? '',
-          home_country:   d.home_country   ?? '',
-          travel_scope:   d.travel_scope   ?? 'anywhere',
-          budget_per_day: d.budget_per_day ?? '',
-          trip_duration:  d.trip_duration  ?? '',
-          group_type:     d.group_type     ?? '',
-          interests:      d.interests      ?? [],
-          offbeat_score:  d.offbeat_score  ?? 3,
-          past_trips:     (tripsRes.data ?? []).map((t: { destination_name: string }) => t.destination_name),
+          home_city:            d.home_city            ?? '',
+          home_country:         d.home_country         ?? '',
+          travel_scope:         d.travel_scope         ?? 'anywhere',
+          budget_per_day:       d.budget_per_day       ?? '',
+          trip_duration:        d.trip_duration        ?? '',
+          group_type:           d.group_type           ?? '',
+          interests:            d.interests            ?? [],
+          dietary_preferences:  d.dietary_preferences  ?? [],
+          offbeat_score:        d.offbeat_score        ?? 3,
+          past_trips:           (tripsRes.data ?? []).map((t: { destination_name: string }) => t.destination_name),
         }))
       }
       setLoading(false)
@@ -156,6 +171,23 @@ export default function ProfilePage() {
         ? prev.interests.filter(i => i !== val)
         : [...prev.interests, val],
     }))
+    setSaved(false)
+  }
+
+  function toggleDietary(val: string) {
+    setProfile(prev => {
+      const current = prev.dietary_preferences
+      if (val === 'none') {
+        return { ...prev, dietary_preferences: current.includes('none') ? [] : ['none'] }
+      }
+      const without = current.filter(v => v !== 'none')
+      return {
+        ...prev,
+        dietary_preferences: without.includes(val)
+          ? without.filter(v => v !== val)
+          : [...without, val],
+      }
+    })
     setSaved(false)
   }
 
@@ -184,15 +216,16 @@ export default function ProfilePage() {
     const { error: onboardingError } = await supabase
       .from('onboarding_responses')
       .upsert({
-        user_id:        user.id,
-        home_city:      profile.home_city.trim() || null,
-        home_country:   profile.home_country,
-        travel_scope:   profile.travel_scope,
-        budget_per_day: profile.budget_per_day,
-        trip_duration:  profile.trip_duration,
-        group_type:     profile.group_type,
-        interests:      profile.interests,
-        offbeat_score:  profile.offbeat_score,
+        user_id:              user.id,
+        home_city:            profile.home_city.trim() || null,
+        home_country:         profile.home_country,
+        travel_scope:         profile.travel_scope,
+        budget_per_day:       profile.budget_per_day,
+        trip_duration:        profile.trip_duration,
+        group_type:           profile.group_type,
+        interests:            profile.interests,
+        dietary_preferences:  profile.dietary_preferences,
+        offbeat_score:        profile.offbeat_score,
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setSaving(false); return }
@@ -416,6 +449,30 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+        </Section>
+
+        {/* ── Dietary preferences ───────────────────────────────────────── */}
+        <Section title="Food preferences">
+          <div className="grid grid-cols-2 gap-2">
+            {DIETARY_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => toggleDietary(opt.value)}
+                className={`text-left px-4 py-4 rounded-xl border transition-all
+                  ${profile.dietary_preferences.includes(opt.value)
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
+                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                  }`}
+              >
+                <div className="text-xl mb-1">{opt.icon}</div>
+                <div className="font-medium text-sm">{opt.label}</div>
+              </button>
+            ))}
+          </div>
+          {profile.dietary_preferences.length === 0 && (
+            <p className="text-xs text-white/25 mt-3">Nothing selected — no dietary filters applied.</p>
+          )}
         </Section>
 
         {/* ── Offbeat slider ────────────────────────────────────────────── */}

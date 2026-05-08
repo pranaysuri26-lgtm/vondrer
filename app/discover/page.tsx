@@ -11,13 +11,14 @@ import type { RecommendedDestination } from '@/lib/recommendations'
 type LoadState = 'loading' | 'ready' | 'error'
 
 interface ApiResponse {
-  destinations?:  RecommendedDestination[]
-  home_country?:  string
-  cached?:        boolean
-  stale?:         boolean
-  needs_refresh?: boolean
-  fallback?:      boolean
-  error?:         string
+  destinations?:        RecommendedDestination[]
+  home_country?:        string
+  dietary_preferences?: string[]
+  cached?:              boolean
+  stale?:               boolean
+  needs_refresh?:       boolean
+  fallback?:            boolean
+  error?:               string
 }
 
 // ─── Loading screen ───────────────────────────────────────────────────────────
@@ -124,6 +125,57 @@ function GemDots({ score }: { score?: number }) {
     <div className="flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < Math.round(score / 2) ? 'bg-[#C97552]' : 'bg-white/15'}`} />
+      ))}
+    </div>
+  )
+}
+
+// ─── Dietary helpers ──────────────────────────────────────────────────────────
+
+const DIETARY_BADGE_MAP: Record<string, { icon: string; label: string; matchTag: string }> = {
+  vegetarian:  { icon: '🥗', label: 'Vegetarian friendly',  matchTag: 'vegetarian-friendly' },
+  vegan:       { icon: '🌱', label: 'Vegan friendly',       matchTag: 'vegan-friendly' },
+  halal:       { icon: '☪️', label: 'Halal options',        matchTag: 'halal-available' },
+  kosher:      { icon: '✡️', label: 'Kosher available',     matchTag: 'kosher-available' },
+  'gluten-free': { icon: '🌾', label: 'Gluten-free options', matchTag: 'gluten-free-options' },
+  'no-pork':   { icon: '🚫', label: 'Pork-free friendly',  matchTag: 'pork-free-easy' },
+  'no-beef':   { icon: '🐄', label: 'Beef-free friendly',  matchTag: 'beef-free-easy' },
+  pescatarian: { icon: '🐟', label: 'Great for pescatarians', matchTag: 'pescatarian-friendly' },
+}
+
+function dietaryFilterLabel(prefs: string[]): string {
+  if (prefs.length === 0) return ''
+  if (prefs.includes('vegetarian') && !prefs.includes('vegan')) return 'Vegetarian dining prioritised'
+  if (prefs.includes('vegan')) return 'Vegan dining prioritised'
+  if (prefs.includes('halal')) return 'Halal options prioritised'
+  if (prefs.length === 1) {
+    const pref = prefs[0]
+    if (pref === 'no-pork') return 'Filtered for no pork'
+    if (pref === 'no-beef') return 'Filtered for no beef'
+    if (pref === 'pescatarian') return 'Pescatarian dining prioritised'
+    if (pref === 'kosher') return 'Kosher options prioritised'
+    if (pref === 'gluten-free') return 'Gluten-free options prioritised'
+  }
+  return `Filtered for your dietary preferences`
+}
+
+function DietaryBadges({
+  dest, userPrefs,
+}: { dest: RecommendedDestination; userPrefs: string[] }) {
+  if (userPrefs.length === 0 || !dest.dietary_tags || dest.dietary_tags.length === 0) return null
+  const badges = userPrefs
+    .filter(p => p !== 'none')
+    .map(pref => DIETARY_BADGE_MAP[pref])
+    .filter(b => b && dest.dietary_tags!.includes(b.matchTag))
+  if (badges.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      {badges.map(b => (
+        <span key={b.matchTag}
+          className="flex items-center gap-1 text-[10px] text-white/50 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+          <span>{b.icon}</span>
+          <span>{b.label}</span>
+        </span>
       ))}
     </div>
   )
@@ -267,13 +319,14 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
 // ─── Destination card (expandable) ───────────────────────────────────────────
 
 function DestinationCard({
-  dest, rank, locked, currency, gemEmphasis = false,
+  dest, rank, locked, currency, gemEmphasis = false, dietaryPrefs = [],
 }: {
-  dest:        RecommendedDestination
-  rank:        number
-  locked:      boolean
-  currency:    CurrencyInfo
-  gemEmphasis?: boolean
+  dest:          RecommendedDestination
+  rank:          number
+  locked:        boolean
+  currency:      CurrencyInfo
+  gemEmphasis?:  boolean
+  dietaryPrefs?: string[]
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -369,6 +422,9 @@ function DestinationCard({
               ))}
             </div>
 
+            {/* Dietary badges — only unlocked, only if destination genuinely supports the preference */}
+            {!locked && <DietaryBadges dest={dest} userPrefs={dietaryPrefs} />}
+
             {/* Meta row */}
             <div className="flex items-end justify-between border-t border-white/8 pt-4">
               <div className="space-y-3">
@@ -451,6 +507,7 @@ export default function DiscoverPage() {
   const [state, setState]               = useState<LoadState>('loading')
   const [destinations, setDestinations] = useState<RecommendedDestination[]>([])
   const [currency, setCurrency]         = useState<CurrencyInfo>({ symbol: '$', code: 'USD', rate: 1 })
+  const [dietaryPrefs, setDietaryPrefs] = useState<string[]>([])
   const [errorMsg, setErrorMsg]         = useState('')
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
@@ -485,6 +542,7 @@ export default function DiscoverPage() {
         if (data.destinations && data.destinations.length > 0) {
           setDestinations(data.destinations)
           if (data.home_country) setCurrency(detectCurrency(data.home_country))
+          if (data.dietary_preferences) setDietaryPrefs(data.dietary_preferences.filter((p: string) => p !== 'none'))
           setState('ready')
           clearTimeout(slowTimer)
           clearTimeout(hardTimer)
@@ -501,6 +559,7 @@ export default function DiscoverPage() {
                 if (!cancelled && rd.destinations && rd.destinations.length > 0) {
                   setDestinations(rd.destinations)
                   if (rd.home_country) setCurrency(detectCurrency(rd.home_country))
+                  if (rd.dietary_preferences) setDietaryPrefs(rd.dietary_preferences.filter((p: string) => p !== 'none'))
                 }
               }
             } catch { /* silently ignore */ }
@@ -587,6 +646,11 @@ export default function DiscoverPage() {
             Ranked by how well they fit your travel style.
             {' '}Your top {FREE_TIER_LIMIT} are free forever.
           </p>
+          {dietaryPrefs.length > 0 && (
+            <p className="text-white/30 text-xs mt-2">
+              {dietaryFilterLabel(dietaryPrefs)}
+            </p>
+          )}
           <div className="mt-4"><GemLegend /></div>
         </div>
 
@@ -600,6 +664,7 @@ export default function DiscoverPage() {
               rank={i + 1}
               locked={false}
               currency={currency}
+              dietaryPrefs={dietaryPrefs}
             />
           ))}
 
@@ -615,6 +680,7 @@ export default function DiscoverPage() {
                   locked
                   currency={currency}
                   gemEmphasis={gemEmphasis}
+                  dietaryPrefs={dietaryPrefs}
                 />
               ))}
             </>

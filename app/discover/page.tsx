@@ -83,6 +83,18 @@ function GemDots({ score }: { score?: number }) {
 
 // ─── Destination card (expandable) ───────────────────────────────────────────
 
+// Gradient palettes — one per card index, cycles if > 8 destinations
+const GRAD_PALETTES = [
+  'from-[#1a3a5c] to-[#0d1f35]',
+  'from-[#2d1f3d] to-[#0d1f35]',
+  'from-[#1a3828] to-[#0d1f35]',
+  'from-[#3a2010] to-[#0d1f35]',
+  'from-[#1a2840] to-[#0d1f35]',
+  'from-[#2a1a30] to-[#0d1f35]',
+  'from-[#1e3530] to-[#0d1f35]',
+  'from-[#302010] to-[#0d1f35]',
+]
+
 function DestinationCard({
   dest, rank, locked, currency,
 }: {
@@ -91,10 +103,21 @@ function DestinationCard({
   locked:   boolean
   currency: CurrencyInfo
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded,  setExpanded]  = useState(false)
+  const [imgUrl,    setImgUrl]    = useState<string | null>(null)
+  const [imgLoaded, setImgLoaded] = useState(false)
 
-  const imgQuery = encodeURIComponent(`${dest.name} ${dest.country} travel landscape`)
-  const imgUrl   = `https://source.unsplash.com/featured/800x450/?${imgQuery}`
+  // Lazy-fetch the image only when the card is first expanded
+  useEffect(() => {
+    if (!expanded || locked || imgUrl !== null) return
+    const q = `${dest.name} ${dest.country} travel landscape`
+    fetch(`/api/destination-image?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(d => setImgUrl(d.url ?? ''))   // empty string = confirmed no image
+      .catch(() => setImgUrl(''))
+  }, [expanded, locked, dest.name, dest.country, imgUrl])
+
+  const gradClass = GRAD_PALETTES[(rank - 1) % GRAD_PALETTES.length]
 
   const skyscannerUrl = dest.name
     ? `https://www.skyscanner.com/transport/flights/to/${encodeURIComponent(dest.name.toLowerCase().replace(/\s+/g, '-'))}/`
@@ -172,14 +195,28 @@ function DestinationCard({
           className={locked ? 'relative overflow-hidden' : ''}>
           {/* Hero image */}
           {!locked && (
-            <div className="relative h-44 bg-white/5 overflow-hidden">
-              <img
-                src={imgUrl}
-                alt={dest.name}
-                className="w-full h-full object-cover opacity-80"
-                loading="lazy"
-                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-              />
+            <div className={`relative h-44 overflow-hidden bg-gradient-to-br ${gradClass}`}>
+              {/* Shimmer while waiting for URL */}
+              {imgUrl === null && (
+                <div className="absolute inset-0 bg-white/5 animate-pulse" />
+              )}
+              {/* Actual photo once URL resolves */}
+              {imgUrl && (
+                <img
+                  src={imgUrl}
+                  alt={dest.name}
+                  className={`w-full h-full object-cover transition-opacity duration-500 ${imgLoaded ? 'opacity-80' : 'opacity-0'}`}
+                  loading="lazy"
+                  onLoad={() => setImgLoaded(true)}
+                  onError={() => setImgUrl('')}
+                />
+              )}
+              {/* Destination name watermark over gradient (shows when no photo) */}
+              {(!imgUrl || !imgLoaded) && (
+                <div className="absolute inset-0 flex items-end p-4">
+                  <span className="font-serif italic text-white/20 text-2xl">{dest.name}</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             </div>
           )}

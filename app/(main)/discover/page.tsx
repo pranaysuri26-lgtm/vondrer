@@ -630,14 +630,13 @@ function DestinationCard({
             {!locked && <TransportBlock dest={dest} homeCity={homeCity} />}
 
             {/* Meta row */}
-            <div className="flex items-end justify-between border-t border-white/8 pt-4 mt-4">
+            <div className="flex items-start justify-between border-t border-white/8 pt-4 mt-4 mb-4">
               <div className="space-y-3">
                 {dest.budget_per_day_usd && (
                   <div>
                     <p className="text-xs text-white/30 uppercase tracking-widest mb-0.5">Budget</p>
                     <p className="text-sm text-white/80 font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
                     <p className="text-xs text-white/30 mt-0.5">on the ground · excl. flights</p>
-                    {/* Fallback flight link when no transport data from Claude */}
                     {(!dest.transport || dest.transport.length === 0) && (
                       <a
                         href={`https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(dest.name + ', ' + dest.country)}`}
@@ -656,20 +655,20 @@ function DestinationCard({
                   </div>
                 )}
               </div>
-              <div className="flex flex-col gap-2 items-end">
-                <button onClick={e => e.stopPropagation()}
-                  className="text-xs text-white/50 border border-white/15 rounded-full px-4 py-2 hover:border-white/35 hover:text-white/70 transition-all">
-                  Save
-                </button>
-                <a
-                  href={`/plan/new?dest=${encodeURIComponent(dest.name)}&country=${encodeURIComponent(dest.country)}`}
-                  onClick={e => e.stopPropagation()}
-                  className="text-xs text-white bg-[#C97552] rounded-full px-4 py-2 hover:bg-[#b86644] transition-colors font-medium"
-                >
-                  Plan this trip →
-                </a>
-              </div>
+              <button onClick={e => e.stopPropagation()}
+                className="text-xs text-white/40 border border-white/12 rounded-full px-4 py-2 hover:border-white/25 hover:text-white/60 transition-all flex-shrink-0">
+                Save
+              </button>
             </div>
+
+            {/* Full-width Plan CTA — primary action */}
+            <a
+              href={`/plan/new?dest=${encodeURIComponent(dest.name)}&country=${encodeURIComponent(dest.country)}`}
+              onClick={e => e.stopPropagation()}
+              className="block w-full text-center bg-[#C97552] text-white font-semibold text-sm py-3.5 rounded-full hover:bg-[#b86644] transition-colors"
+            >
+              Plan this trip →
+            </a>
           </div>
 
           {/* Frosted overlay for locked expanded */}
@@ -889,13 +888,25 @@ export default function DiscoverPage() {
       <main className="max-w-2xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="mb-8">
-          <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">Your results</p>
-          <h1 className="font-serif italic text-4xl text-white leading-tight">
-            {destinations.length} destinations
-            <br />
-            <span className="text-white/50">matched your profile</span>
-          </h1>
-          <p className="text-white/40 text-sm mt-3">
+          {/* Title row — Plan a trip button desktop right */}
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">Your results</p>
+              <h1 className="font-serif italic text-4xl text-white leading-tight">
+                {destinations.length} destinations
+                <br />
+                <span className="text-white/50">matched your profile</span>
+              </h1>
+            </div>
+            {/* Desktop Plan a trip button */}
+            <a
+              href="/plan/new"
+              className="hidden md:flex items-center gap-2 flex-shrink-0 bg-[#C97552] text-white text-sm font-medium px-4 py-2.5 rounded-full hover:bg-[#b86644] transition-colors mt-2"
+            >
+              🗺️ Plan a trip
+            </a>
+          </div>
+          <p className="text-white/40 text-sm">
             Ranked by how well they fit your travel style.
             {' '}Your top {FREE_TIER_LIMIT} are free forever.
           </p>
@@ -919,6 +930,14 @@ export default function DiscoverPage() {
             </button>
           </div>
         </div>
+
+        {/* Mobile floating Plan a trip button — above bottom nav */}
+        <a
+          href="/plan/new"
+          className="md:hidden fixed bottom-[70px] right-4 z-20 flex items-center gap-2 bg-[#C97552] text-white text-sm font-semibold px-5 py-3 rounded-full shadow-lg shadow-[#C97552]/20 hover:bg-[#b86644] transition-colors"
+        >
+          🗺️ Plan a trip
+        </a>
 
         {/* ── Mode selector ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3 mb-8">

@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
 
   const meta = {
     home_country:        onboarding.home_country ?? '',
+    home_city:           onboarding.home_city    ?? '',
     dietary_preferences: (onboarding.dietary_preferences ?? []).filter((p: string) => p !== 'none'),
   }
 

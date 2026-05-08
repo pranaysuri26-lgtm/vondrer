@@ -27,6 +27,13 @@ export interface UpcomingEvent {
   crowd_level: 'local' | 'mixed' | 'tourist'
 }
 
+export interface TransportMode {
+  mode:        'fly' | 'train' | 'bus' | 'drive' | 'ferry'
+  duration:    string   // e.g. "~2h", "~11h", "4h overnight"
+  note:        string   // e.g. "Direct from Heathrow", "Eurostar from St Pancras", "Via Dubai"
+  recommended: boolean  // true on the single best option
+}
+
 export interface RecommendedDestination {
   name:               string
   country:            string
@@ -39,6 +46,7 @@ export interface RecommendedDestination {
   timing_score?:      number   // 1–5 — how good is timing right now for this traveller
   timing_note?:       string   // one honest line on timing quality e.g. "May is monsoon — consider October"
   upcoming_event?:    UpcomingEvent | null
+  transport?:         TransportMode[]  // HOW TO GET THERE — realistic modes from traveller's home
 }
 
 export interface RecommendationResponse {
@@ -47,7 +55,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 6
+const PROMPT_VERSION = 7
 
 export function buildProfileHash(
   onboarding: OnboardingData,
@@ -364,10 +372,10 @@ Output each destination as a separate, complete JSON object on its own line.
 One destination per line. No outer array. No "destinations" wrapper key. No markdown. No explanation.
 Every line must be a complete, valid, parseable JSON object.
 Example of correct output:
-{"name":"Hampi","country":"India","match_score":91,"reasons":["...","..."],"budget_per_day_usd":25,"best_time_to_visit":"Oct–Feb","hidden_gem_score":7,"dietary_tags":[]}
-{"name":"Spiti Valley","country":"India","match_score":88,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[]}
+{"name":"Hampi","country":"India","match_score":91,"reasons":["...","..."],"budget_per_day_usd":25,"best_time_to_visit":"Oct–Feb","hidden_gem_score":7,"dietary_tags":[],"timing_score":3,"timing_note":"","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Via Delhi or Mumbai, no direct","recommended":true}]}
+{"name":"Spiti Valley","country":"India","match_score":88,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":4,"timing_note":"","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Fly to Delhi, then 12h drive","recommended":true}]}
 
-Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null}
+Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","duration":string,"note":string,"recommended":boolean}]}
 
 RULES:
 - match_score: 0–100, ranked descending
@@ -409,7 +417,27 @@ When know_it: locals-only mode, nothing a tourist would find.
 
 HIDDEN GEM LISTS — use when traveller wants hidden gems:
 Australian: Broken Hill, Coober Pedy, Cooktown, Cape York, Flinders Ranges, Kimberley, Kangaroo Island (off-season), Norfolk Island, Ningaloo Reef, Lord Howe Island
-Indian: Chettinad, Majuli Island, Spiti Valley, Ziro Valley, Dzukou Valley, Mawlynnong, Shekhawati, Rann of Kutch, Hampi surrounds, Gokarna (off-season)${dietarySection}`
+Indian: Chettinad, Majuli Island, Spiti Valley, Ziro Valley, Dzukou Valley, Mawlynnong, Shekhawati, Rann of Kutch, Hampi surrounds, Gokarna (off-season)
+${dietarySection}
+
+TRANSPORT — HOW TO GET THERE:
+For each destination, return a "transport" array of realistic options FROM the traveller's home city/country.
+Rules:
+- Only include modes that are genuinely viable for this origin–destination pair.
+- Maximum 2–3 modes. Never list a mode just to pad the list.
+- Mark exactly ONE mode as recommended: true — the best balance of time, cost, and experience.
+- drive: only if destination is within ~8 hours by road from home city. Never drive across oceans.
+- ferry: only if there is a genuine regular ferry service between home country/region and destination.
+- train: include if there is a real rail option (Eurostar, overnight rail, Amtrak, Indian Railways intercity, etc.).
+- bus: only if long-distance bus is a realistic and common option (e.g. South/Southeast Asia, Europe, Latin America).
+- fly: always include if destination requires or benefits from air travel.
+- duration: flight time or journey time. Be accurate. Include connections where relevant in the note.
+- note: one specific, useful line. Name the hub airport, rail terminal, or line. "Via" connections. Avoid vague filler.
+Examples:
+  Home: London → Paris: [{"mode":"train","duration":"2h20m","note":"Eurostar direct from St Pancras","recommended":true},{"mode":"fly","duration":"~1h","note":"City airports but airport time negates saving","recommended":false},{"mode":"drive","duration":"~6h via Eurotunnel","note":"Scenic but train is faster","recommended":false}]
+  Home: New York → Tokyo: [{"mode":"fly","duration":"~14h","note":"Direct on ANA or JAL from JFK","recommended":true}]
+  Home: Delhi → Rishikesh: [{"mode":"drive","duration":"~5h","note":"NH58 via Haridwar, scenic drive","recommended":true},{"mode":"bus","duration":"~6h","note":"Regular ISBT buses from Delhi","recommended":false},{"mode":"train","duration":"~5h","note":"Train to Haridwar then taxi","recommended":false}]
+  Home: Singapore → Bali: [{"mode":"fly","duration":"~2h30m","note":"Multiple daily flights, Ngurah Rai Airport","recommended":true}]`
 
   const dietaryLine = dietaryPrefs.length > 0
     ? `\n- Dietary: ${dietaryPrefs.join(', ')}`

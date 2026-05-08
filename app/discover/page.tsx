@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { detectCurrency, displayBudget, type CurrencyInfo } from '@/lib/currency'
-import type { RecommendedDestination } from '@/lib/recommendations'
+import type { RecommendedDestination, TransportMode } from '@/lib/recommendations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -215,6 +215,109 @@ function DietaryBadges({
   )
 }
 
+// ─── Transport block ──────────────────────────────────────────────────────────
+
+const TRANSPORT_ICONS: Record<string, string> = {
+  fly:   '✈️',
+  train: '🚂',
+  bus:   '🚌',
+  drive: '🚗',
+  ferry: '⛴️',
+}
+
+const TRANSPORT_LABELS: Record<string, string> = {
+  fly:   'Search flights',
+  train: 'Find trains',
+  bus:   'Find buses',
+  drive: 'Get directions',
+  ferry: 'Find ferries',
+}
+
+function buildTransportLink(
+  mode: string,
+  homeCity: string,
+  destName: string,
+  country: string,
+): string {
+  const from = encodeURIComponent(homeCity || 'your city')
+  const to   = encodeURIComponent(`${destName}, ${country}`)
+  if (mode === 'fly')
+    return `https://www.google.com/travel/flights?q=flights+from+${from}+to+${to}`
+  if (mode === 'drive')
+    return `https://www.google.com/maps/dir/${from}/${to}`
+  // train / bus / ferry → Rome2rio handles all
+  return `https://www.rome2rio.com/s/${from}/${to}`
+}
+
+function TransportBlock({
+  dest, homeCity,
+}: { dest: RecommendedDestination; homeCity: string }) {
+  const modes = dest.transport
+  if (!modes || modes.length === 0) return null
+
+  // Recommended first, then others
+  const sorted = [...modes].sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0))
+
+  return (
+    <div className="mt-4 mb-1">
+      <p className="text-[10px] text-white/25 uppercase tracking-widest mb-2.5 font-label">
+        How to get there
+      </p>
+      <div className="space-y-2">
+        {sorted.map((m: TransportMode) => {
+          const link  = buildTransportLink(m.mode, homeCity, dest.name, dest.country)
+          const icon  = TRANSPORT_ICONS[m.mode]  ?? '🗺️'
+          const label = TRANSPORT_LABELS[m.mode] ?? 'Find options'
+          return (
+            <div
+              key={m.mode}
+              className={`flex items-start gap-3 rounded-xl px-3 py-2.5 border ${
+                m.recommended
+                  ? 'bg-[#C97552]/8 border-[#C97552]/20'
+                  : 'bg-white/3 border-white/8'
+              }`}
+            >
+              {/* Icon + duration */}
+              <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
+                <span className="text-base leading-none">{icon}</span>
+                <span className={`text-xs font-medium ${m.recommended ? 'text-[#C97552]' : 'text-white/50'}`}>
+                  {m.duration}
+                </span>
+              </div>
+              {/* Note + link */}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-white/55 leading-snug">{m.note}</p>
+                <a
+                  href={link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className={`text-[11px] mt-1 inline-block transition-colors ${
+                    m.recommended
+                      ? 'text-[#C97552]/80 hover:text-[#C97552]'
+                      : 'text-white/30 hover:text-white/50'
+                  }`}
+                >
+                  {label} ↗
+                </a>
+              </div>
+              {/* Recommended pill */}
+              {m.recommended && (
+                <span className="flex-shrink-0 text-[9px] text-[#C97552]/70 border border-[#C97552]/25 rounded-full px-2 py-0.5 uppercase tracking-wider font-label">
+                  Best option
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-[10px] text-white/20 mt-2 leading-snug">
+        Times are approximate. Check providers for live schedules and prices.
+      </p>
+    </div>
+  )
+}
+
 // ─── Fallback gradient per destination type ───────────────────────────────────
 
 function getFallbackGradient(dest: RecommendedDestination): string {
@@ -353,7 +456,7 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
 // ─── Destination card (expandable) ───────────────────────────────────────────
 
 function DestinationCard({
-  dest, rank, locked, currency, gemEmphasis = false, dietaryPrefs = [],
+  dest, rank, locked, currency, gemEmphasis = false, dietaryPrefs = [], homeCity = '',
 }: {
   dest:          RecommendedDestination
   rank:          number
@@ -361,12 +464,9 @@ function DestinationCard({
   currency:      CurrencyInfo
   gemEmphasis?:  boolean
   dietaryPrefs?: string[]
+  homeCity?:     string
 }) {
   const [expanded, setExpanded] = useState(false)
-
-  const skyscannerUrl = dest.name
-    ? `https://www.skyscanner.com/transport/flights/to/${encodeURIComponent(dest.name.toLowerCase().replace(/\s+/g, '-'))}/`
-    : 'https://www.skyscanner.com'
 
   return (
     <div
@@ -459,19 +559,27 @@ function DestinationCard({
             {/* Dietary badges — only unlocked, only if destination genuinely supports the preference */}
             {!locked && <DietaryBadges dest={dest} userPrefs={dietaryPrefs} />}
 
+            {/* Transport block — HOW TO GET THERE */}
+            {!locked && <TransportBlock dest={dest} homeCity={homeCity} />}
+
             {/* Meta row */}
-            <div className="flex items-end justify-between border-t border-white/8 pt-4">
+            <div className="flex items-end justify-between border-t border-white/8 pt-4 mt-4">
               <div className="space-y-3">
                 {dest.budget_per_day_usd && (
                   <div>
                     <p className="text-xs text-white/30 uppercase tracking-widest mb-0.5">Budget</p>
                     <p className="text-sm text-white/80 font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
                     <p className="text-xs text-white/30 mt-0.5">on the ground · excl. flights</p>
-                    <a href={skyscannerUrl} target="_blank" rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="text-xs text-[#C97552]/70 hover:text-[#C97552] transition-colors mt-1 inline-block">
-                      Search flights →
-                    </a>
+                    {/* Fallback flight link when no transport data from Claude */}
+                    {(!dest.transport || dest.transport.length === 0) && (
+                      <a
+                        href={`https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(dest.name + ', ' + dest.country)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="text-xs text-[#C97552]/70 hover:text-[#C97552] transition-colors mt-1 inline-block">
+                        Search flights →
+                      </a>
+                    )}
                   </div>
                 )}
                 {dest.best_time_to_visit && (
@@ -542,6 +650,7 @@ export default function DiscoverPage() {
   const [destinations, setDestinations] = useState<RecommendedDestination[]>([])
   const [currency, setCurrency]         = useState<CurrencyInfo>({ symbol: '$', code: 'USD', rate: 1 })
   const [dietaryPrefs, setDietaryPrefs] = useState<string[]>([])
+  const [homeCity, setHomeCity]         = useState<string>('')
   const [errorMsg, setErrorMsg]         = useState('')
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
@@ -581,6 +690,7 @@ export default function DiscoverPage() {
           onMeta: (event) => {
             if (cancelled) return
             if (event.home_country)        setCurrency(detectCurrency(event.home_country as string))
+            if (event.home_city)           setHomeCity(event.home_city as string)
             if (event.dietary_preferences) setDietaryPrefs((event.dietary_preferences as string[]).filter(p => p !== 'none'))
             if (event.needs_refresh)       needsRefresh = true
           },
@@ -623,11 +733,13 @@ export default function DiscoverPage() {
 
             const refreshed: RecommendedDestination[] = []
             let refreshCountry = ''
+            let refreshCity    = ''
             let refreshDietary: string[] = []
 
             await readSSE(refreshRes, {
               onMeta:        (e) => {
                 if (e.home_country)        refreshCountry = e.home_country as string
+                if (e.home_city)           refreshCity    = e.home_city    as string
                 if (e.dietary_preferences) refreshDietary = (e.dietary_preferences as string[]).filter(p => p !== 'none')
               },
               onDestination: (d) => refreshed.push(d),
@@ -639,6 +751,7 @@ export default function DiscoverPage() {
             if (!cancelled && refreshed.length > 0) {
               setDestinations(refreshed)
               if (refreshCountry) setCurrency(detectCurrency(refreshCountry))
+              if (refreshCity)    setHomeCity(refreshCity)
               if (refreshDietary.length > 0) setDietaryPrefs(refreshDietary)
             }
           } catch { /* silently ignore */ }
@@ -740,6 +853,7 @@ export default function DiscoverPage() {
               locked={false}
               currency={currency}
               dietaryPrefs={dietaryPrefs}
+              homeCity={homeCity}
             />
           ))}
 
@@ -756,6 +870,7 @@ export default function DiscoverPage() {
                   currency={currency}
                   gemEmphasis={gemEmphasis}
                   dietaryPrefs={dietaryPrefs}
+                  homeCity={homeCity}
                 />
               ))}
             </>

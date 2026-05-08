@@ -424,7 +424,7 @@ Morning arrival — full Day 1 itinerary possible.`
     }
   }
 
-  // ── FIX 4: Departure rules with explicit leave-by time ────────────────────
+  // ── Departure rules with leave-by time ───────────────────────────────────
   if (departureTime && departureDate) {
     const [hr, min]  = departureTime.split(':').map(Number)
     const depMins    = hr * 60 + min
@@ -434,32 +434,75 @@ Morning arrival — full Day 1 itinerary possible.`
     const leaveByMins    = depMins - bufferMins
     const leaveByHr      = Math.floor(leaveByMins / 60)
     const leaveByMin     = leaveByMins % 60
-    const leaveByStr     = leaveByHr >= 0 ? padTime(leaveByHr, leaveByMin) : 'early morning'
+    const leaveByStr     = leaveByHr >= 0 ? padTime(leaveByHr, leaveByMin) : 'early morning (before dawn)'
 
     // Last activity must end 30 min before leaving
     const lastActMins    = leaveByMins - 30
     const lastActHr      = Math.floor(lastActMins / 60)
     const lastActMin     = lastActMins % 60
-    const lastActStr     = lastActHr >= 0 ? padTime(lastActHr, lastActMin) : 'morning'
+    const lastActStr     = lastActHr >= 0 ? padTime(lastActHr, lastActMin) : 'as early as possible'
 
-    flightSection += `
+    // FIX 1 — Early morning departure (midnight to 6am): no day activities at all
+    const isEarlyDeparture = hr < 6   // midnight → 5:59am
+
+    if (isEarlyDeparture) {
+      flightSection += `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EARLY MORNING DEPARTURE (flight at ${departureTime} on ${departureDate})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The group's flight departs at ${departureTime}. They must leave for the airport by ${leaveByStr}.
+This means NO sightseeing, NO breakfast out, NO morning activities on the departure day.
+The entire departure day is a logistics day — packing and travel only.
+
+Departure day MUST use this exact structure:
+morning block:
+  activity: "Pack & Prepare for Early Departure"
+  description: "Flight departs at ${departureTime} — an early start is essential. Tonight/this morning is for packing, checking out, and getting to the airport. ${transit}."
+  insider_tip: "Set multiple alarms. Pack the night before if possible. Arrange a taxi or rideshare in advance — don't rely on surge-priced last-minute rides at this hour."
+  estimated_cost: "$0"
+
+afternoon block:
+  activity: "🛫 Departure — ${departureTime} Flight"
+  description: "Leave for the airport by ${leaveByStr}. ${hasRentalCar ? `Return rental car before checking in — allow an extra 30 minutes for this.` : transit} Check-in, security, and boarding. Safe travels."
+  insider_tip: "Online check-in opens 24 hours before. Download your boarding pass now. Have your passport/ID and hotel checkout receipts ready."
+  estimated_cost: "$0"
+
+evening block:
+  activity: "Safe Travels ✈️"
+  description: "You're on your way home. This trip is a wrap."
+  insider_tip: ""
+  estimated_cost: "$0"
+
+day_total_estimate: "Departure day — no spend"
+
+NOTHING else on the departure day. No hotel breakfast, no last morning walk, no "one last stop". The group must sleep, pack, and leave.`
+
+    } else {
+      // FIX 2 — Normal departure: reminder ONLY in afternoon slot, evening is safe travels
+      flightSection += `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEPARTURE DAY RULES (${departureDate} — flight at ${departureTime})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Last day is a HALF DAY. Morning only — no afternoon activities.
-
-MANDATORY: The evening block of the last day must contain this exact departure reminder:
-"🛫 Your flight departs at ${departureTime}.
-Leave for the airport by ${leaveByStr}${hasRentalCar ? ' — or by ' + padTime(Math.floor((depMins - 210) / 60), (depMins - 210) % 60) + ' if returning rental car (allow 30 extra minutes)' : ''}.
-Last activity must end by ${lastActStr}.
-${transit}"
+Last day is a HALF DAY. Morning activities only.
 
 Last day structure:
-morning block: light activity — hotel breakfast, quick neighbourhood walk, or nearby café. Nothing that requires transport.
-afternoon block: DO NOT schedule afternoon activities. Use this block for the departure reminder above.
-evening block: same departure reminder — this IS the last thing on the itinerary.
-day_total_estimate: "Half day — departure afternoon/evening"`
+morning block: one light activity — hotel breakfast, quick neighbourhood walk, or nearby café. Nothing that requires transport or is far from the hotel. Must end by ${lastActStr}.
+afternoon block: DEPARTURE REMINDER — use this exact content:
+  activity: "🛫 Head to the Airport — ${departureTime} Flight"
+  description: "Pack up and check out. Leave for the airport by ${leaveByStr}${hasRentalCar ? ` — or by ${padTime(Math.floor((depMins - 210) / 60), (depMins - 210) % 60)} if returning rental car first` : ''}. ${transit}."
+  insider_tip: "Check in online. Have boarding passes on your phone. ${hasRentalCar ? 'Return the rental car before checking in at the terminal — allow 30 extra minutes.' : 'Arrange transport in advance if possible.'}"
+  estimated_cost: "$0"
+
+evening block: DO NOT repeat the departure reminder. Use only:
+  activity: "Safe Travels ✈️"
+  description: "You're on your way home."
+  insider_tip: ""
+  estimated_cost: "$0"
+
+day_total_estimate: "Half day — departure ${departureTime}"`
+    }
   }
 
   // ── User's existing plans ─────────────────────────────────────────────────────
@@ -594,6 +637,27 @@ Post-event: note late-night options. Warn about surge pricing for rideshare post
     }
   })() : ''
 
+  // ── Budget calibration for mixed-mobility groups ─────────────────────────────
+  const splitActivitiesSection = hasElderly && travelerCount > 2 ? `
+SPLIT ACTIVITIES — MANDATORY FOR MIXED-MOBILITY GROUP:
+This group includes elderly travelers (65+) who may not keep pace with the full group.
+For any activity that is physically demanding OR expensive (over $40/person):
+
+ALWAYS offer two options side-by-side:
+Option A (active/paid): [activity] — $XX per person — for those who want the full experience
+Option B (free/easy): [alternative at same location or nearby] — free — for those who prefer a lighter pace or want to rest
+
+Format in the description:
+"Active travelers: [Activity A] — $XX per person.
+While parents/elderly rest: [Activity B] — free, flat, easy — [same area]."
+
+NEVER recommend a $99+/person theme park as the ONLY option for the group.
+Budget constraints are real — expensive activities should ALWAYS have a free alternative mentioned in the same block.
+
+Example:
+"While parents rest at Clearwater Beach: Busch Gardens — $99/person, 30 min drive, full day.
+OR: Clearwater Beach — free, flat, accessible for elderly, same location — join when ready."` : ''
+
   // ── Enhanced accessibility ────────────────────────────────────────────────────
   const accessibilitySection = accessibility_needs && accessibility_needs.length > 0 ? `
 ACCESSIBILITY REQUIREMENTS:
@@ -726,7 +790,9 @@ Schema per day:
 ABSOLUTE RULES:
 - SPECIFIC real place names only — never "a local restaurant" or "a park"
 - Every activity must be real and currently operating
-- Day titles must be evocative: "Arrival & Wynwood After Dark" ✓, "Day 1" ✗
+- Day titles must use this exact format: "📍 ${destination} — Day [N] of [${days}]: [evocative subtitle]"
+  Examples: "📍 ${destination} — Day 1 of ${days}: Arrival & First Steps", "📍 ${destination} — Day 3 of ${days}: Coastal Morning"
+  Never just "Day 1" — always include the city prefix and "of [total]"
 - Budget must match the traveler tier throughout
 - Every restaurant must serve something this group can eat
 - Day 1 morning: light if arrival day — no forcing full tourism before check-in
@@ -734,6 +800,7 @@ ABSOLUTE RULES:
 ${groupSection}
 ${mixedDietSection}
 ${elderlySection}
+${splitActivitiesSection}
 ${childrenSection}
 ${costSection}
 ${largeGroupSection}

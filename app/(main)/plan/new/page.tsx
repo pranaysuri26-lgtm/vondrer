@@ -1385,21 +1385,31 @@ function AddStopOverlay({
 }
 
 function TransportConnectorSection({
-  from, to, leg, onChange, onAddStop,
+  from, to, leg, onChange, onAddStop, hasError,
 }: {
   from:      TripDestination
   to:        TripDestination
   leg:       LegTransport
   onChange:  (l: LegTransport) => void
   onAddStop: () => void
+  hasError?: boolean
 }) {
   const travelDate = to.start_date
   const driveInfo  = getDriveInfo(from.name, to.name)
   const flightLink = `https://www.skyscanner.com/transport/flights/${getIATA(from.name)}/${getIATA(to.name)}/${travelDate.replace(/-/g, '')}/`
   const mapsLink   = `https://www.google.com/maps/dir/${encodeURIComponent(from.name + ', ' + from.country)}/${encodeURIComponent(to.name + ', ' + to.country)}`
 
+  // Auto-suggest driving if from-city has rental car and this leg is unselected
+  const fromHasRentalCar = from.local_transport === 'rental_car'
+  const showDriveSuggestion = fromHasRentalCar && !leg.mode
+
   return (
-    <div className="bg-white/3 border border-white/8 rounded-xl p-4 space-y-3 my-1">
+    <div className={[
+      'rounded-xl p-4 space-y-3 my-1 border',
+      hasError
+        ? 'bg-amber-400/5 border-amber-400/40'
+        : 'bg-white/3 border-white/8',
+    ].join(' ')}>
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-white/55">
@@ -1441,6 +1451,38 @@ function TransportConnectorSection({
           </button>
         ))}
       </div>
+
+      {/* Validation error */}
+      {hasError && (
+        <p className="text-xs text-amber-400/90 font-medium">
+          ⚠️ Please select how you&apos;re traveling from {from.name} to {to.name}
+        </p>
+      )}
+
+      {/* Drive suggestion when from-city has rental car and no mode selected */}
+      {showDriveSuggestion && (
+        <div className="bg-amber-400/8 border border-amber-400/20 rounded-lg px-3 py-2.5">
+          <p className="text-xs text-amber-400/80">
+            You have a rental car in {from.name} — driving to {to.name}?
+          </p>
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => onChange({ ...leg, mode: 'drive' })}
+              className="text-xs bg-amber-400/15 border border-amber-400/30 text-amber-400/90 px-3 py-1.5 rounded-full hover:bg-amber-400/20 transition-all"
+            >
+              🚗 Yes, driving
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange({ ...leg, mode: 'fly' })}
+              className="text-xs border border-white/12 text-white/40 px-3 py-1.5 rounded-full hover:border-white/25 hover:text-white/60 transition-all"
+            >
+              ✈️ No, flying (returning car first)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Mode-specific details */}
       {leg.mode === 'fly' && (
@@ -2023,6 +2065,8 @@ function PlanNewInner() {
   const [transportLegs,   setTransportLegs]   = useState<Record<string, LegTransport>>({})
   // index of the "from" destination when user clicks "+ Stop"
   const [addStopBetween,  setAddStopBetween]  = useState<number | null>(null)
+  // connector validation errors — set of "fromId|toId" keys that have no mode selected
+  const [connectorErrors, setConnectorErrors] = useState<Set<string>>(new Set())
 
   const [replaceTarget, setReplaceTarget] = useState<{ destId: string; dayNum: number; slot: TimeSlot; activity: string } | null>(null)
   const [moveTarget,    setMoveTarget]    = useState<{ destId: string; dayNum: number; slot: TimeSlot; block: ItineraryBlock } | null>(null)
@@ -2108,6 +2152,10 @@ function PlanNewInner() {
   function updateLeg(fromId: string, toId: string, updates: Partial<LegTransport>) {
     const key = `${fromId}|${toId}`
     setTransportLegs(prev => ({ ...prev, [key]: { ...emptyLeg(), ...prev[key], ...updates } }))
+    // Clear connector error for this leg once a mode is selected
+    if (updates.mode) {
+      setConnectorErrors(prev => { const next = new Set(prev); next.delete(key); return next })
+    }
   }
 
   function setTransitStop(fromId: string, toId: string, transitStop: string) {
@@ -2276,6 +2324,25 @@ function PlanNewInner() {
   // ── Generate ──────────────────────────────────────────────────────────────────
   const buildItinerary = useCallback(async () => {
     if (destinations.length === 0) return
+
+    // FIX 3 — Validate all connectors between destinations have a mode selected
+    if (destinations.length > 1) {
+      const missingKeys = new Set<string>()
+      for (let i = 0; i < destinations.length - 1; i++) {
+        const key = `${destinations[i].id}|${destinations[i + 1].id}`
+        const leg = transportLegs[key]
+        if (!leg?.mode) missingKeys.add(key)
+      }
+      if (missingKeys.size > 0) {
+        setConnectorErrors(missingKeys)
+        // Scroll to first error
+        const firstKey = [...missingKeys][0]
+        document.getElementById(`connector-${firstKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+    }
+    setConnectorErrors(new Set())
+
     setGenerating(true)
     setItineraries([])
 
@@ -2366,7 +2433,7 @@ function PlanNewInner() {
       return { ...item, loading: false, days: mutableDays, error: '' }
     }))
     setGenerating(false)
-  }, [destinations, profile, group, tripInterests, tripPace, specialOccasion, occasionPerson, accessibility, tripContext])
+  }, [destinations, profile, group, tripInterests, tripPace, specialOccasion, occasionPerson, accessibility, tripContext, transportLegs])
 
   // ── Save ──────────────────────────────────────────────────────────────────────
   const saveTrip = useCallback(async () => {
@@ -2491,15 +2558,21 @@ function PlanNewInner() {
 
           {destinations.map((dest, idx) => (
             <div key={dest.id} className="space-y-0">
-              {idx > 0 && (
-                <TransportConnectorSection
-                  from={destinations[idx - 1]}
-                  to={dest}
-                  leg={getLeg(destinations[idx - 1].id, dest.id)}
-                  onChange={l => updateLeg(destinations[idx - 1].id, dest.id, l)}
-                  onAddStop={() => setAddStopBetween(idx - 1)}
-                />
-              )}
+              {idx > 0 && (() => {
+                const connKey = `${destinations[idx - 1].id}|${dest.id}`
+                return (
+                  <div id={`connector-${connKey}`}>
+                    <TransportConnectorSection
+                      from={destinations[idx - 1]}
+                      to={dest}
+                      leg={getLeg(destinations[idx - 1].id, dest.id)}
+                      onChange={l => updateLeg(destinations[idx - 1].id, dest.id, l)}
+                      onAddStop={() => setAddStopBetween(idx - 1)}
+                      hasError={connectorErrors.has(connKey)}
+                    />
+                  </div>
+                )
+              })()}
               {/* Inline "add stop" form between this connector and this destination */}
               {addStopBetween === idx - 1 && idx > 0 && (
                 <AddStopOverlay
@@ -2726,17 +2799,21 @@ function PlanNewInner() {
                     </div>
                   )}
 
-                  {idx < destinations.length - 1 && !itin.loading && !itin.error && (
-                    <div className="mt-4">
-                      <TransportConnectorSection
-                        from={dest}
-                        to={destinations[idx + 1]}
-                        leg={getLeg(dest.id, destinations[idx + 1].id)}
-                        onChange={l => updateLeg(dest.id, destinations[idx + 1].id, l)}
-                        onAddStop={() => setAddStopBetween(idx)}
-                      />
-                    </div>
-                  )}
+                  {idx < destinations.length - 1 && !itin.loading && !itin.error && (() => {
+                    const connKey = `${dest.id}|${destinations[idx + 1].id}`
+                    return (
+                      <div className="mt-4" id={`connector-${connKey}`}>
+                        <TransportConnectorSection
+                          from={dest}
+                          to={destinations[idx + 1]}
+                          leg={getLeg(dest.id, destinations[idx + 1].id)}
+                          onChange={l => updateLeg(dest.id, destinations[idx + 1].id, l)}
+                          onAddStop={() => setAddStopBetween(idx)}
+                          hasError={connectorErrors.has(connKey)}
+                        />
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}

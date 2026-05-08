@@ -16,6 +16,41 @@ export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
+// ─── Paywall enforcement ──────────────────────────────────────────────────────
+// How many destinations are fully visible to free-tier users.
+// Locked destinations are sent as stubs — real data never reaches the client.
+const FREE_TIER_LIMIT = 3
+
+/**
+ * Sort destinations best-first, then strip sensitive fields from any destination
+ * beyond FREE_TIER_LIMIT. Locked stubs retain only match_score + gem score
+ * so the client can render "XX% match" teasers without exposing real content.
+ */
+function applyPaywall(dests: RecommendedDestination[]): RecommendedDestination[] {
+  const sorted = [...dests].sort((a, b) => b.match_score - a.match_score)
+  return sorted.map((d, i) => {
+    if (i < FREE_TIER_LIMIT) return { ...d, locked: false }
+    // Locked stub — real name/country/reasons/transport never sent to client
+    return {
+      name:             '████████',
+      country:          '████████',
+      match_score:      d.match_score,
+      hidden_gem_score: d.hidden_gem_score,
+      locked:           true,
+      // Zero out everything else
+      reasons:          [],
+      best_time:        '',
+      budget_per_day:   '',
+      description:      '',
+      insider_tip:      '',
+      timing_note:      '',
+      timing_warning:   '',
+      upcoming_event:   '',
+      transport:        [],
+    } as unknown as RecommendedDestination
+  })
+}
+
 // ─── SSE helpers ──────────────────────────────────────────────────────────────
 
 const enc = new TextEncoder()
@@ -136,8 +171,9 @@ export async function POST(req: NextRequest) {
 
     if (exact?.destinations) {
       return makeSSEResponse(async (ctrl) => {
-        ctrl.enqueue(sseChunk({ type: 'meta', cached: true, ...meta }))
-        for (const dest of exact.destinations as RecommendedDestination[]) {
+        const paywalled = applyPaywall(exact.destinations as RecommendedDestination[])
+        ctrl.enqueue(sseChunk({ type: 'meta', cached: true, total_count: paywalled.length, ...meta }))
+        for (const dest of paywalled) {
           ctrl.enqueue(sseChunk({ type: 'destination', ...dest }))
         }
         ctrl.enqueue(sseChunk({ type: 'done' }))
@@ -160,8 +196,9 @@ export async function POST(req: NextRequest) {
 
     if (stale?.destinations) {
       return makeSSEResponse(async (ctrl) => {
-        ctrl.enqueue(sseChunk({ type: 'meta', stale: true, needs_refresh: true, ...meta }))
-        for (const dest of stale.destinations as RecommendedDestination[]) {
+        const paywalled = applyPaywall(stale.destinations as RecommendedDestination[])
+        ctrl.enqueue(sseChunk({ type: 'meta', stale: true, needs_refresh: true, total_count: paywalled.length, ...meta }))
+        for (const dest of paywalled) {
           ctrl.enqueue(sseChunk({ type: 'destination', ...dest }))
         }
         ctrl.enqueue(sseChunk({ type: 'done' }))
@@ -200,6 +237,9 @@ export async function POST(req: NextRequest) {
       let lineBuffer = ''
       let fullText   = ''
 
+      // Collect all lines — do NOT emit to client during streaming.
+      // Paywall is applied after we have the full sorted set, so locked data
+      // never reaches the client even partially.
       function tryParseLine(line: string) {
         const t = line.trim()
         if (!t) return
@@ -207,7 +247,6 @@ export async function POST(req: NextRequest) {
           const d = JSON.parse(t)
           if (d.name && d.country && typeof d.match_score === 'number') {
             collected.push(d)
-            ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
           }
         } catch { /* partial or non-destination line */ }
       }
@@ -218,7 +257,6 @@ export async function POST(req: NextRequest) {
           lineBuffer += chunk
           fullText   += chunk
 
-          // Emit complete lines as they arrive
           const lines = lineBuffer.split('\n')
           lineBuffer  = lines.pop() ?? ''
           for (const line of lines) tryParseLine(line)
@@ -228,15 +266,20 @@ export async function POST(req: NextRequest) {
       // Flush remaining buffer
       if (lineBuffer.trim()) tryParseLine(lineBuffer)
 
-      // If NDJSON parsing yielded nothing, Claude may have used JSON array format
+      // Fallback: Claude may have returned a JSON array instead of NDJSON
       if (collected.length === 0 && fullText.trim()) {
         try {
           const fallbackDests = validateResponse(fullText)
-          for (const d of fallbackDests) {
-            collected.push(d)
-            ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
-          }
+          collected.push(...fallbackDests)
         } catch { /* fallback also failed — retry below */ }
+      }
+
+      // Apply paywall and emit the full sorted+gated set at once
+      if (collected.length >= 8) {
+        const paywalled = applyPaywall(collected)
+        for (const d of paywalled) {
+          ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
+        }
       }
 
       streamSucceeded = collected.length >= 8
@@ -246,11 +289,7 @@ export async function POST(req: NextRequest) {
 
     // ── Attempt 2: regular call fallback (rare) ───────────────────────────────
     if (!streamSucceeded) {
-      // Tell the client to discard any partial results it already rendered
-      if (collected.length > 0) {
-        ctrl.enqueue(sseChunk({ type: 'retry' }))
-        collected.length = 0
-      }
+      collected.length = 0
 
       try {
         const response = await anthropic.messages.create({
@@ -261,8 +300,10 @@ export async function POST(req: NextRequest) {
         })
         const raw = response.content[0].type === 'text' ? response.content[0].text : ''
         const retryDests = validateResponse(raw)
-        for (const d of retryDests) {
-          collected.push(d)
+        collected.push(...retryDests)
+
+        const paywalled = applyPaywall(collected)
+        for (const d of paywalled) {
           ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
         }
         streamSucceeded = true
@@ -273,7 +314,6 @@ export async function POST(req: NextRequest) {
 
     // ── Last resort: serve stale cache ────────────────────────────────────────
     if (!streamSucceeded) {
-      // FIX 2: Same home_country + travel_scope guard as the stale path above.
       const { data: stale } = await supabase
         .from('recommendations')
         .select('destinations')
@@ -283,9 +323,9 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (stale?.destinations) {
-        if (collected.length > 0) ctrl.enqueue(sseChunk({ type: 'retry' }))
         ctrl.enqueue(sseChunk({ type: 'meta', fallback: true, ...meta }))
-        for (const d of stale.destinations as RecommendedDestination[]) {
+        const paywalled = applyPaywall(stale.destinations as RecommendedDestination[])
+        for (const d of paywalled) {
           ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
         }
       } else {

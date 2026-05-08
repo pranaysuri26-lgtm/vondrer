@@ -688,21 +688,102 @@ function DestinationCard({
   )
 }
 
-// ─── Conversion hook between free and locked sections ─────────────────────────
+// ─── Conversion hook — email waitlist capture (pre-Stripe) ────────────────────
 
 function ConversionHook({ lockedCount, topScore }: { lockedCount: number; topScore: number }) {
+  const [phase,   setPhase]   = useState<'cta' | 'form' | 'done'>('cta')
+  const [email,   setEmail]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [err,     setErr]     = useState('')
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email.trim()) return
+    setLoading(true)
+    setErr('')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: email.trim() }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        throw new Error(d.error ?? 'Something went wrong')
+      }
+      setPhase('done')
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (phase === 'done') {
+    return (
+      <div className="rounded-2xl border border-[#C97552]/25 bg-[#C97552]/5 px-6 py-5 text-center">
+        <p className="text-2xl mb-2">✓</p>
+        <p className="text-white/80 text-sm font-medium">You're on the list.</p>
+        <p className="text-white/40 text-xs mt-1">We'll email you the moment paid unlock goes live.</p>
+      </div>
+    )
+  }
+
+  if (phase === 'form') {
+    return (
+      <div className="rounded-2xl border border-[#C97552]/25 bg-[#C97552]/5 px-6 py-5">
+        <p className="text-white/80 text-sm font-medium mb-1">
+          Your {lockedCount} best match{lockedCount !== 1 ? 'es' : ''} — up to{' '}
+          <span className="text-[#C97552] font-semibold">{topScore}% match</span> — unlock soon.
+        </p>
+        <p className="text-white/40 text-xs mb-4">
+          Paid unlock is launching shortly. Join the list — be first to access.
+        </p>
+        <form onSubmit={submit} className="flex gap-2">
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            autoFocus
+            required
+            className="flex-1 bg-white/8 border border-white/15 rounded-full px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-[#C97552]/60"
+          />
+          <button
+            type="submit"
+            disabled={loading || !email.trim()}
+            className="bg-[#C97552] text-white font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-[#b86644] disabled:opacity-50 transition-colors flex-shrink-0"
+          >
+            {loading ? '…' : 'Notify me →'}
+          </button>
+        </form>
+        {err && <p className="text-red-400/80 text-xs mt-2">{err}</p>}
+        <button
+          onClick={() => setPhase('cta')}
+          className="text-white/25 text-xs mt-3 hover:text-white/45 transition-colors"
+        >
+          ← Back
+        </button>
+      </div>
+    )
+  }
+
+  // CTA phase
   return (
     <div className="rounded-2xl border border-[#C97552]/25 bg-[#C97552]/5 px-6 py-5">
       <p className="text-white/80 text-sm font-medium mb-1">
-        Your {lockedCount} best match{lockedCount !== 1 ? 'es' : ''} are locked
+        Your {lockedCount} best match{lockedCount !== 1 ? 'es' : ''} are waiting
         {' '}— including destinations up to{' '}
         <span className="text-[#C97552] font-semibold">{topScore}% match</span> for your profile.
       </p>
-      <p className="text-white/35 text-xs mb-4">One-time unlock · no subscription · 30 days access</p>
-      <button className="bg-[#C97552] text-white font-semibold text-sm px-6 py-2.5 rounded-full hover:bg-[#b86644] transition-colors">
-        Unlock all {lockedCount} destinations — $4.99
+      <p className="text-white/35 text-xs mb-4">Paid unlock launching soon · one-time · 30 days access</p>
+      <button
+        onClick={() => setPhase('form')}
+        className="bg-[#C97552] text-white font-semibold text-sm px-6 py-2.5 rounded-full hover:bg-[#b86644] transition-colors"
+      >
+        Get early access — be first to unlock →
       </button>
-      <p className="text-white/20 text-xs mt-3">Or get unlimited trips + Voya Pro for $29.99/year</p>
+      <p className="text-white/20 text-xs mt-3">No spam. One email when it's live.</p>
     </div>
   )
 }

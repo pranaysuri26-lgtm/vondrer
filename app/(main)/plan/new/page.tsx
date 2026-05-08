@@ -1317,7 +1317,8 @@ function PlanNewInner() {
           group:               { ...group },
         }),
       })
-      const newBlock = await res.json() as ItineraryBlock
+      const text = await res.text()
+      const newBlock = JSON.parse(text) as ItineraryBlock
       setItineraries(prev => prev.map(itin => {
         if (itin.destination_id !== destId) return itin
         const newDays = itin.days.map(d => d.day === dayNum ? { ...d, [slot]: newBlock, loading_slot: null } : d)
@@ -1368,7 +1369,8 @@ function PlanNewInner() {
           group:               { ...group },
         }),
       })
-      const newBlock = await res.json() as ItineraryBlock
+      const text = await res.text()
+      const newBlock = JSON.parse(text) as ItineraryBlock
       setItineraries(prev => prev.map(itin => {
         if (itin.destination_id !== destId) return itin
         const newDays = itin.days.map(d => d.day === dayNum ? { ...d, [slot]: newBlock, loading_slot: null } : d)
@@ -1444,7 +1446,14 @@ function PlanNewInner() {
             user_plans:  dest.user_plans || undefined,
           }),
         })
-        const data = await res.json() as ItineraryResult
+        // Read as text first — non-JSON responses (timeout, Vercel error) won't crash
+        const text = await res.text()
+        let data: ItineraryResult
+        try {
+          data = JSON.parse(text) as ItineraryResult
+        } catch {
+          throw new Error('Generation timed out — please try again.')
+        }
         if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Generation failed')
         return { id: dest.id, result: data, error: '' }
       } catch (err) {

@@ -238,33 +238,21 @@ export default function CollaboratePage({
     })
   }, [])
 
-  // Initial data load
+  // Initial data load — uses server API route with service role key so
+  // non-authenticated collaborators can view trips owned by others.
   useEffect(() => {
     if (!token) return
     async function load() {
-      const { data: tripData } = await anonClient
-        .from('trips')
-        .select('id, trip_name, user_id, start_date, end_date, share_token')
-        .eq('share_token', token)
-        .single()
-
-      if (!tripData) { setNotFound(true); setLoading(false); return }
-      setTrip(tripData)
-
-      const { data: destsData } = await anonClient
-        .from('trip_destinations')
-        .select('id, destination_name, country, days, start_date, end_date, position, itinerary_json')
-        .eq('trip_id', tripData.id)
-        .order('position', { ascending: true })
-      setDests(destsData ?? [])
-
-      const { data: commentsData } = await anonClient
-        .from('trip_comments')
-        .select('*')
-        .eq('trip_id', tripData.id)
-        .order('created_at', { ascending: true })
-      setComments(commentsData ?? [])
-
+      try {
+        const res = await fetch(`/api/collaborate/${token}`)
+        if (!res.ok) { setNotFound(true); setLoading(false); return }
+        const data = await res.json()
+        setTrip(data.trip)
+        setDests(data.destinations)
+        setComments(data.comments)
+      } catch {
+        setNotFound(true)
+      }
       setLoading(false)
     }
     load()

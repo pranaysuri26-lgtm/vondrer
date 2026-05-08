@@ -17,7 +17,9 @@ interface Profile {
   interests:            string[]
   dietary_preferences:  string[]
   offbeat_score:        number
-  trip_timing:          string   // 'next_month' | '2_3_months' | 'exploring' | ''
+  trip_timing:          string   // 'next-month' | '2-3-months' | 'exploring' | 'specific' | ''
+  date_from:            string
+  date_to:              string
   past_trips:           string[]
   past_trip_input:      string
 }
@@ -117,6 +119,8 @@ export default function ProfilePage() {
     dietary_preferences:  [],
     offbeat_score:        3,
     trip_timing:          '',
+    date_from:            '',
+    date_to:              '',
     past_trips:           [],
     past_trip_input:      '',
   })
@@ -139,7 +143,10 @@ export default function ProfilePage() {
       ])
 
       if (onboardingRes.data) {
-        const d = onboardingRes.data
+        const d       = onboardingRes.data
+        const raw     = d.trip_timing ?? ''
+        const isSpec  = raw.startsWith('specific:')
+        const dates   = isSpec ? raw.slice('specific:'.length).split('/') : []
         setProfile(prev => ({
           ...prev,
           home_city:            d.home_city            ?? '',
@@ -151,7 +158,9 @@ export default function ProfilePage() {
           interests:            d.interests            ?? [],
           dietary_preferences:  d.dietary_preferences  ?? [],
           offbeat_score:        d.offbeat_score        ?? 3,
-          trip_timing:          d.trip_timing          ?? '',
+          trip_timing:          isSpec ? 'specific' : raw,
+          date_from:            dates[0] ?? '',
+          date_to:              dates[1] ?? '',
           past_trips:           (tripsRes.data ?? []).map((t: { destination_name: string }) => t.destination_name),
         }))
       }
@@ -229,7 +238,9 @@ export default function ProfilePage() {
         interests:            profile.interests,
         dietary_preferences:  profile.dietary_preferences,
         offbeat_score:        profile.offbeat_score,
-        trip_timing:          profile.trip_timing || null,
+        trip_timing:          profile.trip_timing === 'specific'
+                                ? `specific:${profile.date_from}/${profile.date_to}`
+                                : profile.trip_timing || null,
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setSaving(false); return }
@@ -348,9 +359,10 @@ export default function ProfilePage() {
         <Section title="When are you thinking of going?">
           <div className="space-y-2">
             {[
-              { value: 'next_month',  icon: '📅', label: 'Next month',    sub: 'Planning very soon'   },
-              { value: '2_3_months',  icon: '🗓️', label: 'In 2–3 months', sub: 'Got time to plan'     },
-              { value: 'exploring',   icon: '🌍', label: 'Just exploring', sub: 'No fixed date yet'   },
+              { value: 'next-month',  icon: '📅', label: 'Next month',           sub: 'Planning very soon'    },
+              { value: '2-3-months',  icon: '🗓️', label: 'In 2–3 months',        sub: 'Got time to plan'      },
+              { value: 'exploring',   icon: '🌍', label: 'Just exploring',        sub: 'No fixed date'         },
+              { value: 'specific',    icon: '✏️', label: 'I have specific dates', sub: 'Pick your window'      },
             ].map(opt => (
               <button
                 key={opt.value}
@@ -372,6 +384,33 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+
+          {/* Date pickers — shown when 'specific' is selected */}
+          {profile.trip_timing === 'specific' && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">From</label>
+                <input
+                  type="date"
+                  value={profile.date_from}
+                  onChange={e => set('date_from', e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm [color-scheme:dark]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">To</label>
+                <input
+                  type="date"
+                  value={profile.date_to}
+                  onChange={e => set('date_to', e.target.value)}
+                  min={profile.date_from || new Date().toISOString().split('T')[0]}
+                  className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm [color-scheme:dark]"
+                />
+              </div>
+            </div>
+          )}
+
           {!profile.trip_timing && (
             <p className="text-xs text-white/25 mt-3">Not set — timing won&apos;t affect your recommendations.</p>
           )}

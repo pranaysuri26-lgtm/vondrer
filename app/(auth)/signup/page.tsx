@@ -8,7 +8,7 @@ import { detectCurrency, buildBudgetOptions, type CurrencyInfo } from '@/lib/cur
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Step = 'account' | 'location' | 'budget' | 'duration' | 'group' | 'interests' | 'dietary' | 'offbeat' | 'past_trips'
+type Step = 'account' | 'location' | 'budget' | 'duration' | 'group' | 'interests' | 'dietary' | 'offbeat' | 'timing' | 'past_trips'
 
 interface FormData {
   email:                string
@@ -22,13 +22,32 @@ interface FormData {
   interests:            string[]
   dietary_preferences:  string[]
   offbeat_score:        number
+  trip_timing:          string
+  date_from:            string
+  date_to:              string
   past_trips:           string[]
   past_trip_input:      string
 }
 
 // ─── Step config ──────────────────────────────────────────────────────────────
 
-const ONBOARDING_STEPS: Step[] = ['location', 'budget', 'duration', 'group', 'interests', 'dietary', 'offbeat', 'past_trips']
+const ONBOARDING_STEPS: Step[] = ['location', 'budget', 'duration', 'group', 'interests', 'dietary', 'offbeat', 'timing', 'past_trips']
+
+// ─── Dynamic timing options ───────────────────────────────────────────────────
+
+function getTimingOptions() {
+  const now      = new Date()
+  const next1    = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const next2    = new Date(now.getFullYear(), now.getMonth() + 2, 1)
+  const next3    = new Date(now.getFullYear(), now.getMonth() + 3, 1)
+  const fmt      = (d: Date) => d.toLocaleString('default', { month: 'short', year: 'numeric' })
+  return [
+    { value: 'next-month',  label: 'Next month',          sub: fmt(next1),                     icon: '📅' },
+    { value: '2-3-months',  label: 'In 2–3 months',       sub: `${fmt(next2)} – ${fmt(next3)}`, icon: '🗓️' },
+    { value: 'exploring',   label: 'Just exploring',       sub: 'No fixed date',                icon: '🌍' },
+    { value: 'specific',    label: 'I have specific dates', sub: 'Pick your window',            icon: '✏️' },
+  ]
+}
 
 const DURATION_OPTIONS = [
   { value: 'weekend',  label: 'Weekend',    sub: '2–3 days'  },
@@ -132,6 +151,9 @@ export default function SignupPage() {
     interests:            [],
     dietary_preferences:  [],
     offbeat_score:        3,
+    trip_timing:          '',
+    date_from:            '',
+    date_to:              '',
     past_trips:           [],
     past_trip_input:      '',
   })
@@ -194,6 +216,9 @@ export default function SignupPage() {
       case 'interests':  return form.interests.length >= 1
       case 'dietary':    return true  // optional step — always skippable
       case 'offbeat':    return true
+      case 'timing':     return !!form.trip_timing && (
+                           form.trip_timing !== 'specific' || (!!form.date_from && !!form.date_to)
+                         )
       case 'past_trips': return true
       default:           return false
     }
@@ -239,6 +264,9 @@ export default function SignupPage() {
         interests:            form.interests,
         dietary_preferences:  form.dietary_preferences,
         offbeat_score:        form.offbeat_score,
+        trip_timing:          form.trip_timing === 'specific'
+                                ? `specific:${form.date_from}/${form.date_to}`
+                                : form.trip_timing || null,
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setLoading(false); return }
@@ -562,6 +590,82 @@ export default function SignupPage() {
             <button onClick={nextStep}
               className="w-full bg-white text-[#0d1f35] font-semibold py-3.5 rounded-full mt-4 hover:bg-white/90 transition-all">
               Continue →
+            </button>
+          </div>
+        )}
+
+        {/* ── TIMING ──────────────────────────────────────────────────────── */}
+        {step === 'timing' && (
+          <div className="space-y-4">
+            <div className="mb-8">
+              <h1 className="text-2xl font-light text-white mb-2">When are you planning to travel?</h1>
+              <p className="text-white/45 text-sm">We'll factor in seasonal conditions, festivals, and crowds.</p>
+            </div>
+
+            <div className="space-y-3">
+              {getTimingOptions().map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => set('trip_timing', opt.value)}
+                  className={`w-full text-left px-5 py-4 rounded-xl border transition-all duration-150
+                    ${form.trip_timing === opt.value
+                      ? 'border-[#C97552] bg-[#C97552]/10 text-white'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:bg-white/8 hover:text-white'
+                    }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{opt.icon}</span>
+                      <div>
+                        <div className="font-medium">{opt.label}</div>
+                        <div className="text-sm opacity-55 mt-0.5">{opt.sub}</div>
+                      </div>
+                    </div>
+                    {form.trip_timing === opt.value && (
+                      <span className="text-[#C97552] text-lg">✓</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Date pickers — only shown when 'specific' is selected */}
+            {form.trip_timing === 'specific' && (
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">From</label>
+                  <input
+                    type="date"
+                    value={form.date_from}
+                    onChange={e => set('date_from', e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors [color-scheme:dark]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">To</label>
+                  <input
+                    type="date"
+                    value={form.date_to}
+                    onChange={e => set('date_to', e.target.value)}
+                    min={form.date_from || new Date().toISOString().split('T')[0]}
+                    className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors [color-scheme:dark]"
+                  />
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={nextStep}
+              disabled={!canAdvance()}
+              className="w-full bg-white text-[#0d1f35] font-semibold py-3.5 rounded-full mt-2 disabled:opacity-40 hover:bg-white/90 transition-all"
+            >
+              Continue →
+            </button>
+            <button type="button" onClick={nextStep}
+              className="w-full text-white/35 text-sm py-2 hover:text-white/55 transition-colors">
+              Skip — I'll decide later
             </button>
           </div>
         )}

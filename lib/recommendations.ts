@@ -56,7 +56,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 8
+const PROMPT_VERSION = 9
 
 export function buildProfileHash(
   onboarding: OnboardingData,
@@ -394,7 +394,7 @@ One destination per line. No outer array. No "destinations" wrapper key. No mark
 Every line must be a complete, valid, parseable JSON object.
 Example of correct output:
 {"name":"Hampi","country":"India","match_score":91,"reasons":["...","..."],"budget_per_day_usd":25,"best_time_to_visit":"Oct–Feb","hidden_gem_score":7,"dietary_tags":[],"timing_score":3,"timing_note":"","timing_warning":"","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Via Delhi or Mumbai, no direct","recommended":true}]}
-{"name":"Spiti Valley","country":"India","match_score":38,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":1,"timing_note":"Road access closed until mid-June","timing_warning":"⚠️ Road access closed in May — open Jun–Sep only","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Fly to Delhi, then 12h drive when road opens","recommended":true}]}
+{"name":"Spiti Valley","country":"India","match_score":89,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":1,"timing_note":"Road access closed until mid-June","timing_warning":"⚠️ Road access closed in May — open Jun–Sep only","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Fly to Delhi, then 12h drive when road opens","recommended":true}]}
 
 Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "timing_warning": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","duration":string,"note":string,"recommended":boolean}]}
 
@@ -410,21 +410,24 @@ RULES:
 - ${budgetConstraint}
 - best_time_to_visit: concise e.g. "October–March" or "Year-round"
 - timing_score: 1–5 for how good the current/upcoming travel window is for this destination
-    1 = destination is effectively inaccessible or strongly inadvisable (road closed, extreme season, dangerous conditions)
+    1 = effectively inaccessible or strongly inadvisable (road closed, extreme season, dangerous)
     2 = significant limitations but still visitable
     3 = acceptable, not ideal
     4 = good window
     5 = perfect timing
 - timing_note: one honest line — only include if timing has a meaningful implication. Empty string "" if neutral.
-- timing_warning: SHORT amber badge text shown on the card. ONLY populate for genuine physical access restrictions
-    that conflict with the traveller's timing window (road closures, seasonal inaccessibility, extreme weather).
-    Format: "⚠️ [specific reason]" e.g. "⚠️ Road access closes May–Oct" or "⚠️ Monsoon season in June"
-    Empty string "" if no access restriction.
-    Do NOT use for mild timing considerations — only hard restrictions.
-- RANKING RULE FOR INACCESSIBLE DESTINATIONS: If timing_score is 1, assign match_score no higher than 40.
-    This pushes inaccessible destinations to the bottom of the list. Do not put a timing_score 1
-    destination in the top half of results. If the destination is completely inaccessible and there are
-    enough viable alternatives, you may exclude it entirely.
+- timing_warning: SHORT amber badge text. Populate ONLY for genuine hard restrictions during the traveller's
+    window: road closures, seasonal inaccessibility, monsoon, extreme heat/cold, hurricane season,
+    dangerous conditions. Covers ALL conflict types — not just road closures.
+    Format: "⚠️ [specific reason]" e.g. "⚠️ Monsoon June–Sep", "⚠️ Extreme heat Nov–Mar",
+    "⚠️ Hurricane season Aug–Oct", "⚠️ Road access closes May–Oct", "⚠️ Extreme cold Dec–Feb"
+    Empty string "" if no hard restriction. Do NOT use for mild timing preferences.
+- MATCH SCORE — CRITICAL: match_score is the RAW profile-fit score only. Do NOT reduce match_score
+    for timing conflicts. Score the destination on profile fit as if timing were perfect, then
+    separately flag timing issues via timing_score and timing_warning.
+    The UI applies a deterministic −20 point penalty client-side whenever timing_warning is non-empty.
+    If timing_score is 1 AND the destination is completely inaccessible during travel window AND you
+    have 8+ viable alternatives, exclude the destination entirely rather than including it at any score.
 - upcoming_event: festival or event within the traveller's travel window. null if none relevant.
 - Return MINIMUM 8, MAXIMUM 12 destinations. Never fewer than 8.
 - Never suggest a destination the traveller has already visited.

@@ -326,6 +326,17 @@ function crowdLabel(level: string): string {
   return 'Peak tourist season'
 }
 
+/**
+ * Deterministic −20 penalty for any destination with a timing_warning.
+ * Applied universally: monsoon, road closures, heat, cold, hurricanes,
+ * overcrowding — all conflict types reduce by the same fixed amount.
+ * Claude gives the raw profile-fit score; this function produces the
+ * display/sort score.
+ */
+function effectiveScore(dest: RecommendedDestination): number {
+  return Math.max(0, dest.match_score - (dest.timing_warning ? 20 : 0))
+}
+
 // ─── Fallback gradient per destination type ───────────────────────────────────
 
 function getFallbackGradient(dest: RecommendedDestination): string {
@@ -475,6 +486,8 @@ function DestinationCard({
   homeCity?:     string
 }) {
   const [expanded, setExpanded] = useState(false)
+  const displayScore  = effectiveScore(dest)
+  const timingPenalty = dest.timing_warning ? dest.match_score - displayScore : 0
 
   return (
     <div
@@ -515,14 +528,22 @@ function DestinationCard({
                 <span className="text-xs text-white/50">{gemLabel(dest.hidden_gem_score)}</span>
               </div>
             ) : (
-              // Normal — show match %
+              // Normal — show effective (timing-adjusted) match %
               <div className={`flex items-center gap-1 rounded-full px-3 py-1 border ${
-                locked ? 'bg-white/8 border-white/15' : 'bg-[#C97552]/15 border-[#C97552]/30'
+                locked
+                  ? 'bg-white/8 border-white/15'
+                  : timingPenalty > 0
+                    ? 'bg-amber-400/10 border-amber-400/30'
+                    : 'bg-[#C97552]/15 border-[#C97552]/30'
               }`}>
-                <span className={`text-xs font-semibold ${locked ? 'text-white/50' : 'text-[#C97552]'}`}>
-                  {dest.match_score}%
+                <span className={`text-xs font-semibold ${
+                  locked ? 'text-white/50' : timingPenalty > 0 ? 'text-amber-400' : 'text-[#C97552]'
+                }`}>
+                  {displayScore}%
                 </span>
-                <span className={`text-xs ${locked ? 'text-white/30' : 'text-[#C97552]/70'}`}>match</span>
+                <span className={`text-xs ${
+                  locked ? 'text-white/30' : timingPenalty > 0 ? 'text-amber-400/70' : 'text-[#C97552]/70'
+                }`}>match</span>
               </div>
             )}
             {/* Gem dots shown separately when not in gemEmphasis pill */}
@@ -838,15 +859,15 @@ export default function DiscoverPage() {
     )
   }
 
-  // Sort descending by match_score
-  const sorted = [...destinations].sort((a, b) => b.match_score - a.match_score)
+  // Sort descending by effective score (raw match_score − 20 if timing_warning)
+  const sorted = [...destinations].sort((a, b) => effectiveScore(b) - effectiveScore(a))
 
   // previewAll: show everything sorted best-first, no paywall
   // normal:     free = bottom FREE_TIER_LIMIT (lowest scores), locked = top N (highest scores)
   const freeCards      = previewAll ? sorted : sorted.slice(-FREE_TIER_LIMIT)
   const lockedCards    = previewAll ? []     : sorted.slice(0, sorted.length - FREE_TIER_LIMIT)
-  const topLockedScore = lockedCards.length > 0 ? lockedCards[0].match_score : 0
-  const topFreeScore   = freeCards.length   > 0 ? freeCards[0].match_score   : 0
+  const topLockedScore = lockedCards.length > 0 ? effectiveScore(lockedCards[0]) : 0
+  const topFreeScore   = freeCards.length   > 0 ? effectiveScore(freeCards[0])   : 0
   // When scores are bunched (gap < 10pts), lead with gem score on locked cards
   const gemEmphasis    = lockedCards.length > 0 && (topLockedScore - topFreeScore) < 10
 

@@ -109,7 +109,13 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  const onboarding: OnboardingData = onboardingResult.data
+  const raw = onboardingResult.data
+  const onboarding: OnboardingData = {
+    ...raw,
+    trip_start_date:   raw.trip_start_date   ?? undefined,
+    trip_end_date:     raw.trip_end_date     ?? undefined,
+    trip_duration_days: raw.trip_duration_days ?? undefined,
+  }
   const pastTrips: PastTrip[]      = tripsResult.data || []
   const hash = buildProfileHash(onboarding, pastTrips)
 

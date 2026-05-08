@@ -36,17 +36,23 @@ const ONBOARDING_STEPS: Step[] = ['location', 'budget', 'duration', 'group', 'in
 // ─── Dynamic timing options ───────────────────────────────────────────────────
 
 function getTimingOptions() {
-  const now      = new Date()
-  const next1    = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  const next2    = new Date(now.getFullYear(), now.getMonth() + 2, 1)
-  const next3    = new Date(now.getFullYear(), now.getMonth() + 3, 1)
-  const fmt      = (d: Date) => d.toLocaleString('default', { month: 'short', year: 'numeric' })
+  const now   = new Date()
+  const next1 = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const next2 = new Date(now.getFullYear(), now.getMonth() + 2, 1)
+  const next3 = new Date(now.getFullYear(), now.getMonth() + 3, 1)
+  const fmt   = (d: Date) => d.toLocaleString('default', { month: 'short', year: 'numeric' })
   return [
-    { value: 'next-month',  label: 'Next month',          sub: fmt(next1),                     icon: '📅' },
-    { value: '2-3-months',  label: 'In 2–3 months',       sub: `${fmt(next2)} – ${fmt(next3)}`, icon: '🗓️' },
-    { value: 'exploring',   label: 'Just exploring',       sub: 'No fixed date',                icon: '🌍' },
-    { value: 'specific',    label: 'I have specific dates', sub: 'Pick your window',            icon: '✏️' },
+    { value: 'next_month',  label: 'Next month',           sub: fmt(next1),                      icon: '📅' },
+    { value: '2_3_months',  label: 'In 2–3 months',        sub: `${fmt(next2)} – ${fmt(next3)}`,  icon: '🗓️' },
+    { value: 'exploring',   label: 'Just exploring',        sub: 'No fixed date',                 icon: '🌍' },
+    { value: 'specific',    label: 'I have specific dates', sub: 'Pick your exact window',        icon: '✏️' },
   ]
+}
+
+function calcDays(from: string, to: string): number | null {
+  if (!from || !to) return null
+  const diff = new Date(to).getTime() - new Date(from).getTime()
+  return diff > 0 ? Math.round(diff / 86400000) : null
 }
 
 const DURATION_OPTIONS = [
@@ -264,9 +270,12 @@ export default function SignupPage() {
         interests:            form.interests,
         dietary_preferences:  form.dietary_preferences,
         offbeat_score:        form.offbeat_score,
-        trip_timing:          form.trip_timing === 'specific'
-                                ? `specific:${form.date_from}/${form.date_to}`
-                                : form.trip_timing || null,
+        trip_timing:          form.trip_timing || null,
+        trip_start_date:      form.trip_timing === 'specific' && form.date_from ? form.date_from : null,
+        trip_end_date:        form.trip_timing === 'specific' && form.date_to   ? form.date_to   : null,
+        trip_duration_days:   form.trip_timing === 'specific'
+                                ? calcDays(form.date_from, form.date_to)
+                                : null,
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setLoading(false); return }
@@ -631,30 +640,38 @@ export default function SignupPage() {
             </div>
 
             {/* Date pickers — only shown when 'specific' is selected */}
-            {form.trip_timing === 'specific' && (
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">From</label>
-                  <input
-                    type="date"
-                    value={form.date_from}
-                    onChange={e => set('date_from', e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors [color-scheme:dark]"
-                  />
+            {form.trip_timing === 'specific' && (() => {
+              const days = calcDays(form.date_from, form.date_to)
+              return (
+                <div className="space-y-3 pt-1">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">Departure</label>
+                      <input
+                        type="date"
+                        value={form.date_from}
+                        onChange={e => set('date_from', e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors [color-scheme:dark]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">Return</label>
+                      <input
+                        type="date"
+                        value={form.date_to}
+                        onChange={e => set('date_to', e.target.value)}
+                        min={form.date_from || new Date().toISOString().split('T')[0]}
+                        className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors [color-scheme:dark]"
+                      />
+                    </div>
+                  </div>
+                  {days !== null && (
+                    <p className="text-center text-sm text-[#C97552] font-medium">{days} {days === 1 ? 'day' : 'days'}</p>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">To</label>
-                  <input
-                    type="date"
-                    value={form.date_to}
-                    onChange={e => set('date_to', e.target.value)}
-                    min={form.date_from || new Date().toISOString().split('T')[0]}
-                    className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors [color-scheme:dark]"
-                  />
-                </div>
-              </div>
-            )}
+              )
+            })()}
 
             <button
               onClick={nextStep}

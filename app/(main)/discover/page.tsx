@@ -661,10 +661,13 @@ function DestinationCard({
                   className="text-xs text-white/50 border border-white/15 rounded-full px-4 py-2 hover:border-white/35 hover:text-white/70 transition-all">
                   Save
                 </button>
-                <button onClick={e => e.stopPropagation()}
-                  className="text-xs text-white bg-[#C97552] rounded-full px-4 py-2 hover:bg-[#b86644] transition-colors font-medium">
+                <a
+                  href={`/plan/new?dest=${encodeURIComponent(dest.name)}&country=${encodeURIComponent(dest.country)}`}
+                  onClick={e => e.stopPropagation()}
+                  className="text-xs text-white bg-[#C97552] rounded-full px-4 py-2 hover:bg-[#b86644] transition-colors font-medium"
+                >
                   Plan this trip →
-                </button>
+                </a>
               </div>
             </div>
           </div>

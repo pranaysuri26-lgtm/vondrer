@@ -13,7 +13,10 @@ export interface OnboardingData {
   interests:            string[]  // ['hidden-gems','local-food','adventure','culture','slow-travel','photography']
   offbeat_score:        number    // 1–5
   dietary_preferences?: string[]  // ['vegetarian','vegan','halal','kosher','gluten-free','no-pork','no-beef','pescatarian','none']
-  trip_timing?:         string    // 'next_month' | '2_3_months' | 'exploring' — when they plan to travel
+  trip_timing?:         string    // 'next_month' | '2_3_months' | 'exploring' | 'specific' — when they plan to travel
+  trip_start_date?:     string    // ISO date string e.g. '2026-06-15' — only when trip_timing = 'specific'
+  trip_end_date?:       string    // ISO date string e.g. '2026-06-22'
+  trip_duration_days?:  number | null
 }
 
 export interface PastTrip {
@@ -56,7 +59,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 9
+const PROMPT_VERSION = 10
 
 export function buildProfileHash(
   onboarding: OnboardingData,
@@ -74,6 +77,8 @@ export function buildProfileHash(
     offbeat_score:        onboarding.offbeat_score,
     dietary_preferences:  [...(onboarding.dietary_preferences ?? [])].sort(),
     trip_timing:          onboarding.trip_timing ?? '',
+    trip_start_date:      onboarding.trip_start_date  ?? '',
+    trip_end_date:        onboarding.trip_end_date    ?? '',
     past_trips:           pastTrips.map(t => t.destination_name.toLowerCase().trim()).sort(),
   }
 
@@ -481,9 +486,24 @@ Examples:
     ? `\n- Dietary: ${dietaryPrefs.join(', ')}`
     : ''
 
-  const timingLine = tripTiming
-    ? `\n- Trip timing: ${tripTiming === 'next_month' ? 'Travelling next month' : tripTiming === '2_3_months' ? 'Travelling in 2–3 months' : 'Exploring options, no fixed date'}`
-    : ''
+  const tripStartDate   = onboarding.trip_start_date ?? null
+  const tripEndDate     = onboarding.trip_end_date   ?? null
+  const tripDurationDays = onboarding.trip_duration_days ?? null
+
+  let timingLine = ''
+  if (tripTiming === 'specific' && tripStartDate && tripEndDate) {
+    const days = tripDurationDays ?? Math.round((new Date(tripEndDate).getTime() - new Date(tripStartDate).getTime()) / 86400000)
+    timingLine = `\n- Travel dates: ${tripStartDate} to ${tripEndDate} (${days} days)
+  Use these EXACT dates for: festival and event detection, timing warnings, seasonal recommendations.
+  upcoming_event must only include events that fall within this specific date range.
+  timing_warning must reflect conditions during this exact window, not general seasonal advice.`
+  } else if (tripTiming === 'next_month') {
+    timingLine = `\n- Trip timing: Travelling next month`
+  } else if (tripTiming === '2_3_months') {
+    timingLine = `\n- Trip timing: Travelling in 2–3 months`
+  } else if (tripTiming === 'exploring') {
+    timingLine = `\n- Trip timing: Exploring options, no fixed date`
+  }
 
   const user = `Traveller profile:
 - Based in: ${homeLocation}

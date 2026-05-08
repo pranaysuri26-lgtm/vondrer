@@ -25,10 +25,16 @@ export default function TripsPage() {
         </p>
 
         <button
-          onClick={() => router.push('/discover')}
+          onClick={() => router.push('/plan/new')}
           className="mt-10 bg-[#C97552] text-white text-sm font-medium px-6 py-3 rounded-full hover:bg-[#b86644] transition-colors"
         >
-          Start exploring →
+          Start planning →
+        </button>
+        <button
+          onClick={() => router.push('/discover')}
+          className="mt-3 text-white/30 text-xs hover:text-white/50 transition-colors"
+        >
+          Browse destinations first →
         </button>
       </main>
     </div>

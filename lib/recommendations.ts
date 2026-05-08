@@ -45,6 +45,7 @@ export interface RecommendedDestination {
   dietary_tags?:      string[] // e.g. ['vegetarian-friendly','halal-available'] — only set if genuinely true
   timing_score?:      number   // 1–5 — how good is timing right now for this traveller
   timing_note?:       string   // one honest line on timing quality e.g. "May is monsoon — consider October"
+  timing_warning?:    string   // amber badge text — ONLY for genuine access restrictions e.g. "Road access closes May–Oct"
   upcoming_event?:    UpcomingEvent | null
   transport?:         TransportMode[]  // HOW TO GET THERE — realistic modes from traveller's home
 }
@@ -55,7 +56,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 7
+const PROMPT_VERSION = 8
 
 export function buildProfileHash(
   onboarding: OnboardingData,
@@ -211,7 +212,20 @@ function buildDNASection(pastTrips: PastTrip[]): string {
 
   // Music, food, culture, walkability
   if (names.some(n => /new orleans|nola/.test(n))) {
-    dnaHints.push(`New Orleans visitor: values music culture, food depth, local character, walkable neighbourhoods, history, authenticity. Avoids: sterile, resort-style, corporate. Find destinations with same emotional fingerprint on a different map. Say in one reason tag: "Same energy as New Orleans — completely different map"`)
+    dnaHints.push(`New Orleans visitor: values live music culture, food depth (not just "good food" — food as identity), walkable neighbourhoods, late-night street life, local character, history layered into everyday life. Avoids: sterile, resort-style, corporate, theme-park touristy.
+
+REQUIREMENT — MANDATORY: At least one result MUST have a reason tag that explicitly says one of:
+  "Same live music and food culture energy as New Orleans"
+  "Similar street life energy to New Orleans — different continent"
+  "Same late-night neighbourhood energy as New Orleans"
+
+NOLA-DNA destinations — consider these first, include at least one:
+  - Cartagena, Colombia: colonial walled city, cumbia music spilling from doorways, Caribbean heat, street food culture, painted buildings, local nightlife
+  - Tbilisi, Georgia: thriving live music scene, polyphonic singing tradition, remarkable food culture (khinkali, natural wine), walkable old town, late-night energy, raw authenticity
+  - Porto, Portugal: fado music in neighbourhood tascas, genuine port wine culture, steep walkable streets, local festivals, not yet overrun
+  - Oaxaca, Mexico: one of the world's great food cities, mezcal as ritual not trend, local market life, indigenous artisan scene, Day of the Dead authenticity, music every evening
+
+These destinations carry the same emotional fingerprint as New Orleans on a completely different map. Include at least one and say so explicitly in a reason tag.`)
   }
   if (names.some(n => /nashville/.test(n))) {
     dnaHints.push(`Nashville visitor: values live music scenes, food halls, neighbourhood culture, late-night energy. Find destinations with authentic music/arts scenes.`)
@@ -250,9 +264,10 @@ Build DNA profile from ALL regions visited and find destinations that match the 
 
 function buildProximitySection(homeCity: string): string {
   if (!homeCity) return `
-PROXIMITY AWARENESS:
-Never recommend destinations that are obvious weekend trips from the user's home city.
-Find equivalent quality destinations one level less obvious.`
+PROXIMITY AWARENESS — SCOPE:
+Block only obvious nearby weekend trips (within ~6 hours, well-known to every local).
+Do NOT block all domestic destinations — most domestic destinations are fine and should be included.
+Only exclude the handful of places every local already knows as their default weekend escape.`
 
   const city = homeCity.toLowerCase().trim()
 
@@ -291,18 +306,24 @@ Find equivalent quality destinations one level less obvious.`
 
   if (cityExclusions.length === 0) {
     return `
-PROXIMITY AWARENESS:
-Never recommend destinations that are obvious weekend trips from ${homeCity}.
-These are what every local already knows — they are not hidden gems for someone from ${homeCity}.
-Find the equivalent quality destination one level less obvious.`
+PROXIMITY AWARENESS — SCOPE:
+Block only the handful of destinations every local from ${homeCity} already knows as obvious weekend escapes (within ~6 hours drive, heavily promoted locally).
+Do NOT block all domestic destinations — most are perfectly valid and should appear in results.
+Only ask: "Would every ${homeCity} local already know this as a weekend trip?" If no, it is fine to recommend.`
   }
 
   return `
-PROXIMITY AWARENESS:
-NEVER recommend these destinations to someone based in ${homeCity} — they are obvious local weekend trips, not hidden gems:
+PROXIMITY AWARENESS — CRITICAL SCOPE CLARIFICATION:
+The list below contains ONLY the obvious nearby weekend trips that every ${homeCity} local already knows.
+Blocking these does NOT mean blocking all domestic destinations.
+
+BLOCK ONLY these specific nearby weekend trips from ${homeCity}:
 ${cityExclusions.join(', ')}
-Find the equivalent quality destination one level less obvious.
-Example logic: everyone from ${homeCity} knows these places. Find what they haven't found yet.`
+
+ALLOW freely — these are examples of domestic destinations that are NOT weekend trips and ARE valid recommendations:
+${homeCity.toLowerCase().includes('atlanta') ? 'Marfa TX, Natchez MS, Muscle Shoals AL, Beaufort SC, Bisbee AZ, Whitefish MT, Arcata CA — all valid for an Atlanta user' : `any ${homeCity.split(',')[0].trim()} domestic destination that is NOT an obvious local weekend drive`}
+
+Rule: "Is this an obvious 6-hour-or-less weekend escape that every ${homeCity} local already knows?" → if yes, block it. If no, it is fine.`
 }
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
@@ -372,10 +393,10 @@ Output each destination as a separate, complete JSON object on its own line.
 One destination per line. No outer array. No "destinations" wrapper key. No markdown. No explanation.
 Every line must be a complete, valid, parseable JSON object.
 Example of correct output:
-{"name":"Hampi","country":"India","match_score":91,"reasons":["...","..."],"budget_per_day_usd":25,"best_time_to_visit":"Oct–Feb","hidden_gem_score":7,"dietary_tags":[],"timing_score":3,"timing_note":"","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Via Delhi or Mumbai, no direct","recommended":true}]}
-{"name":"Spiti Valley","country":"India","match_score":88,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":4,"timing_note":"","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Fly to Delhi, then 12h drive","recommended":true}]}
+{"name":"Hampi","country":"India","match_score":91,"reasons":["...","..."],"budget_per_day_usd":25,"best_time_to_visit":"Oct–Feb","hidden_gem_score":7,"dietary_tags":[],"timing_score":3,"timing_note":"","timing_warning":"","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Via Delhi or Mumbai, no direct","recommended":true}]}
+{"name":"Spiti Valley","country":"India","match_score":38,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":1,"timing_note":"Road access closed until mid-June","timing_warning":"⚠️ Road access closed in May — open Jun–Sep only","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Fly to Delhi, then 12h drive when road opens","recommended":true}]}
 
-Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","duration":string,"note":string,"recommended":boolean}]}
+Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "timing_warning": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","duration":string,"note":string,"recommended":boolean}]}
 
 RULES:
 - match_score: 0–100, ranked descending
@@ -389,7 +410,21 @@ RULES:
 - ${budgetConstraint}
 - best_time_to_visit: concise e.g. "October–March" or "Year-round"
 - timing_score: 1–5 for how good the current/upcoming travel window is for this destination
-- timing_note: one honest line — only include if timing has a meaningful implication. Empty string "" if timing is neutral.
+    1 = destination is effectively inaccessible or strongly inadvisable (road closed, extreme season, dangerous conditions)
+    2 = significant limitations but still visitable
+    3 = acceptable, not ideal
+    4 = good window
+    5 = perfect timing
+- timing_note: one honest line — only include if timing has a meaningful implication. Empty string "" if neutral.
+- timing_warning: SHORT amber badge text shown on the card. ONLY populate for genuine physical access restrictions
+    that conflict with the traveller's timing window (road closures, seasonal inaccessibility, extreme weather).
+    Format: "⚠️ [specific reason]" e.g. "⚠️ Road access closes May–Oct" or "⚠️ Monsoon season in June"
+    Empty string "" if no access restriction.
+    Do NOT use for mild timing considerations — only hard restrictions.
+- RANKING RULE FOR INACCESSIBLE DESTINATIONS: If timing_score is 1, assign match_score no higher than 40.
+    This pushes inaccessible destinations to the bottom of the list. Do not put a timing_score 1
+    destination in the top half of results. If the destination is completely inaccessible and there are
+    enough viable alternatives, you may exclude it entirely.
 - upcoming_event: festival or event within the traveller's travel window. null if none relevant.
 - Return MINIMUM 8, MAXIMUM 12 destinations. Never fewer than 8.
 - Never suggest a destination the traveller has already visited.

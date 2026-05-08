@@ -522,6 +522,15 @@ function DestinationCard({
           </div>
         </div>
 
+        {/* Timing warning — shown even when collapsed, always visible */}
+        {dest.timing_warning && (
+          <div className="mt-2.5">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-400/80 bg-amber-400/8 border border-amber-400/20 rounded-full px-2.5 py-1">
+              {dest.timing_warning}
+            </span>
+          </div>
+        )}
+
         {/* First reason tag (unlocked collapsed preview only) */}
         {!locked && dest.reasons?.[0] && !expanded && (
           <div className="mt-3">

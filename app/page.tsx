@@ -8,16 +8,24 @@ import { cookies } from 'next/headers'
 export default async function RootPage() {
   const cookieStore = await cookies()
 
+  // In Next.js 15+, cookies().set() throws in Server Components.
+  // The try/catch swallows it safely — middleware handles session refresh.
+  // See: https://supabase.com/docs/guides/auth/server-side/nextjs
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (cs) =>
-          cs.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          ),
+        setAll: (cs) => {
+          try {
+            cs.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Expected in Server Components — middleware keeps the session fresh
+          }
+        },
       },
     }
   )

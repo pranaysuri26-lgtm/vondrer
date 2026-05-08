@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
       // Use stream: true for async-iterable raw events
       const claudeStream = await anthropic.messages.create({
         model:      'claude-haiku-4-5',
-        max_tokens: 2000,
+        max_tokens: 3000,
         stream:     true,
         system,
         messages:   [{ role: 'user', content: userPrompt }],
@@ -233,7 +233,7 @@ export async function POST(req: NextRequest) {
       try {
         const response = await anthropic.messages.create({
           model:      'claude-haiku-4-5',
-          max_tokens: 2000,
+          max_tokens: 3000,
           system,
           messages:   [{ role: 'user', content: userPrompt }],
         })

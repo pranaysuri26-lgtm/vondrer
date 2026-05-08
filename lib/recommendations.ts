@@ -4,19 +4,27 @@ import { BUDGET_LABELS } from '@/lib/currency'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface OnboardingData {
-  home_country:         string   // e.g. 'United States', 'India', 'Australia'
-  home_city?:           string   // e.g. 'Sydney', 'Delhi', 'London' (optional, new field)
-  travel_scope?:        string   // 'anywhere' | 'closer' (optional, new field)
-  budget_per_day:       string   // 'under-20' | '20-50' | '50-150' | '150-300' | '300+'
-  trip_duration:        string   // 'weekend' | '1-week' | '2-weeks' | 'month+'
-  group_type:           string   // 'solo' | 'couple' | 'small-group'
-  interests:            string[] // ['hidden-gems','local-food','adventure','culture','slow-travel','photography']
-  offbeat_score:        number   // 1–5
-  dietary_preferences?: string[] // ['vegetarian','vegan','halal','kosher','gluten-free','no-pork','no-beef','pescatarian','none']
+  home_country:         string    // e.g. 'United States', 'India', 'Australia'
+  home_city?:           string    // e.g. 'Sydney', 'Delhi', 'London'
+  travel_scope?:        string    // 'anywhere' | 'closer'
+  budget_per_day:       string    // 'under-20' | '20-50' | '50-150' | '150-300' | '300+'
+  trip_duration:        string    // 'weekend' | '1-week' | '2-weeks' | 'month+'
+  group_type:           string    // 'solo' | 'couple' | 'small-group'
+  interests:            string[]  // ['hidden-gems','local-food','adventure','culture','slow-travel','photography']
+  offbeat_score:        number    // 1–5
+  dietary_preferences?: string[]  // ['vegetarian','vegan','halal','kosher','gluten-free','no-pork','no-beef','pescatarian','none']
+  trip_timing?:         string    // 'next_month' | '2_3_months' | 'exploring' — when they plan to travel
 }
 
 export interface PastTrip {
   destination_name: string
+}
+
+export interface UpcomingEvent {
+  name:        string  // festival or event name
+  when:        string  // month e.g. "November"
+  what:        string  // one-line description
+  crowd_level: 'local' | 'mixed' | 'tourist'
 }
 
 export interface RecommendedDestination {
@@ -28,6 +36,9 @@ export interface RecommendedDestination {
   best_time_to_visit?: string
   hidden_gem_score?:  number   // 1–10
   dietary_tags?:      string[] // e.g. ['vegetarian-friendly','halal-available'] — only set if genuinely true
+  timing_score?:      number   // 1–5 — how good is timing right now for this traveller
+  timing_note?:       string   // one honest line on timing quality e.g. "May is monsoon — consider October"
+  upcoming_event?:    UpcomingEvent | null
 }
 
 export interface RecommendationResponse {
@@ -36,7 +47,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 5
+const PROMPT_VERSION = 6
 
 export function buildProfileHash(
   onboarding: OnboardingData,
@@ -53,6 +64,7 @@ export function buildProfileHash(
     interests:            [...onboarding.interests].sort(),
     offbeat_score:        onboarding.offbeat_score,
     dietary_preferences:  [...(onboarding.dietary_preferences ?? [])].sort(),
+    trip_timing:          onboarding.trip_timing ?? '',
     past_trips:           pastTrips.map(t => t.destination_name.toLowerCase().trim()).sort(),
   }
 
@@ -135,30 +147,154 @@ export function buildDietarySection(prefs: string[]): string {
 
   const dietaryTagInstructions = `
 DIETARY TAGS:
-For each destination, return a "dietary_tags" array. Only include tags that are genuinely true for this destination — never include a tag just because the user asked for it. Leave dietary_tags empty ([]) if it is not a strong fit.
-Valid values (use only these exact strings):
-- "vegetarian-friendly" — strong vegetarian restaurant scene
-- "vegan-friendly" — strong vegan-specific options available
-- "halal-available" — halal certified restaurants easy to find
-- "kosher-available" — kosher certified options available
-- "gluten-free-options" — gluten-free food widely available
-- "pork-free-easy" — easy to eat pork-free here
-- "beef-free-easy" — easy to eat beef-free here
-- "pescatarian-friendly" — excellent seafood/fish, easy to eat pescatarian`
+For each destination, return a "dietary_tags" array. Only include tags genuinely true for this destination — never include a tag just because the user asked for it. Leave dietary_tags as [] if not a strong fit.
+Valid values: "vegetarian-friendly" | "vegan-friendly" | "halal-available" | "kosher-available" | "gluten-free-options" | "pork-free-easy" | "beef-free-easy" | "pescatarian-friendly"`
 
   return `
 DIETARY PREFERENCES: ${active.join(', ')}
 
-DIETARY RULES FOR RECOMMENDATIONS:
+DIETARY RULES:
 ${rules.join('\n')}
-
-FOOD REASON TAG RULES:
 Every food mention in reasons must be something this traveller can actually eat.
-BAD (for vegetarian): "Street food scene centred on local meat dishes"
-GOOD (for vegetarian): "Pure vegetarian South Indian restaurants serving dosas and idlis"
-BAD (for halal): "Craft brewery culture and farm-to-table pork dishes"
-GOOD (for halal): "Large Moroccan community with halal certified tagine restaurants"
+BAD (vegetarian): "street food centred on meat dishes"
+GOOD (vegetarian): "pure vegetarian South Indian restaurants serving dosas and idlis"
+BAD (halal): "craft brewery culture and farm-to-table pork"
+GOOD (halal): "large Moroccan community with halal-certified tagine restaurants"
 ${dietaryTagInstructions}`
+}
+
+// ─── Companion awareness ──────────────────────────────────────────────────────
+
+function buildCompanionSection(groupType: string): string {
+  if (groupType === 'couple') return `
+COMPANION AWARENESS — COUPLE:
+Write reason tags acknowledging BOTH travelers. Never write solo-focused copy.
+Good: "Perfect for couples who want X without compromising on Y"
+Good: "Flexible enough that one explores while the other relaxes"
+Bad: "Great for solo exploration" (never for a couple profile)
+Every reason tag should implicitly include both people.`
+
+  if (groupType === 'solo') return `
+COMPANION AWARENESS — SOLO:
+Write for the solo experience where relevant:
+- Mention solo-friendly infrastructure where genuinely true
+- "Easy to meet other travelers at [type of venue]" if applicable
+- Safety context for solo exploration if relevant
+- Never write couple-focused copy`
+
+  if (groupType === 'small-group') return `
+COMPANION AWARENESS — SMALL GROUP:
+Write for a group of friends or family:
+- Mention variety of options to split the group or stay together
+- Activity range that works for mixed interests
+- Group-friendly accommodation contexts`
+
+  return ''
+}
+
+// ─── Past trip DNA matching ───────────────────────────────────────────────────
+
+function buildDNASection(pastTrips: PastTrip[]): string {
+  if (pastTrips.length === 0) return ''
+
+  const names = pastTrips.map(t => t.destination_name.toLowerCase())
+
+  const dnaHints: string[] = []
+
+  // Music, food, culture, walkability
+  if (names.some(n => /new orleans|nola/.test(n))) {
+    dnaHints.push(`New Orleans visitor: values music culture, food depth, local character, walkable neighbourhoods, history, authenticity. Avoids: sterile, resort-style, corporate. Find destinations with same emotional fingerprint on a different map. Say in one reason tag: "Same energy as New Orleans — completely different map"`)
+  }
+  if (names.some(n => /nashville/.test(n))) {
+    dnaHints.push(`Nashville visitor: values live music scenes, food halls, neighbourhood culture, late-night energy. Find destinations with authentic music/arts scenes.`)
+  }
+  // SE Asia familiarity
+  if (names.some(n => /thailand|vietnam|cambodia|laos|myanmar|indonesia|bali|bangkok|hanoi|saigon|ho chi minh/.test(n))) {
+    dnaHints.push(`Southeast Asia traveller: comfortable with street food culture, immersive chaos, budget accommodation, language barriers, heat. Find similarly immersive but different region. Don't over-explain basic travel logistics.`)
+  }
+  // Europe appreciation
+  if (names.some(n => /paris|rome|barcelona|amsterdam|berlin|prague|lisbon|madrid|vienna/.test(n))) {
+    dnaHints.push(`European city traveller: appreciates history, walkable architecture, cafe culture, museum density. Find destinations with same qualities in less obvious locations.`)
+  }
+  // Japan
+  if (names.some(n => /japan|tokyo|kyoto|osaka/.test(n))) {
+    dnaHints.push(`Japan traveller: values precision, design, food culture, public transport excellence, safety, hidden depth. Find destinations that reward slow exploration and attention to detail.`)
+  }
+  // Latin America
+  if (names.some(n => /mexico|colombia|peru|argentina|chile|brazil|cuba|costa rica/.test(n))) {
+    dnaHints.push(`Latin America traveller: values colour, music, street food, local warmth, colonial architecture, outdoor adventure. Find destinations with similar vibrancy.`)
+  }
+  // India
+  if (names.some(n => /india|rajasthan|kerala|goa|mumbai|delhi|bangalore/.test(n))) {
+    dnaHints.push(`India traveller: comfortable with sensory intensity, street life, regional food variations, heritage depth. Find destinations that reward patience and curiosity.`)
+  }
+
+  if (dnaHints.length === 0) return ''
+
+  return `
+PAST TRIP DNA MATCHING:
+Analyse the traveller's past trips not just to exclude destinations but to build an emotional fingerprint.
+${dnaHints.join('\n')}
+Build DNA profile from ALL regions visited and find destinations that match the emotional fingerprint, not just the geography. Where DNA match is strong, say so explicitly in one reason tag.`
+}
+
+// ─── Proximity awareness ─────────────────────────────────────────────────────
+
+function buildProximitySection(homeCity: string): string {
+  if (!homeCity) return `
+PROXIMITY AWARENESS:
+Never recommend destinations that are obvious weekend trips from the user's home city.
+Find equivalent quality destinations one level less obvious.`
+
+  const city = homeCity.toLowerCase().trim()
+
+  const exclusions: Record<string, string[]> = {
+    atlanta:       ['Asheville', 'Savannah', 'Nashville', 'Charleston', 'New Orleans', 'Blue Ridge', 'Helen', 'Chattanooga', 'Charlotte', 'Memphis'],
+    'new york':    ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills', 'Cape Cod', 'Providence'],
+    'new york city': ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills', 'Cape Cod'],
+    nyc:           ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills'],
+    london:        ['Paris', 'Amsterdam', 'Dublin', 'Edinburgh', 'Bath', 'Brighton', 'Cotswolds', 'Cambridge', 'Oxford', 'Brussels'],
+    sydney:        ['Melbourne', 'Gold Coast', 'Byron Bay', 'Blue Mountains', 'Hunter Valley', 'Cairns', 'Uluru'],
+    melbourne:     ['Sydney', 'Gold Coast', 'Byron Bay', 'Grampians', 'Mornington Peninsula', 'Great Ocean Road'],
+    delhi:         ['Agra', 'Jaipur', 'Rishikesh', 'Shimla', 'Manali', 'Haridwar', 'Amritsar', 'Chandigarh', 'Mussoorie'],
+    mumbai:        ['Goa', 'Pune', 'Lonavala', 'Mahabaleshwar', 'Alibaug', 'Nashik'],
+    dubai:         ['Abu Dhabi', 'Muscat', 'Doha', 'Bahrain'],
+    singapore:     ['Kuala Lumpur', 'Batam', 'Bintan', 'Bangkok', 'Bali', 'Phuket'],
+    toronto:       ['Montreal', 'Niagara Falls', 'Ottawa', 'Quebec City', 'Muskoka'],
+    chicago:       ['Milwaukee', 'Indianapolis', 'Detroit', 'St Louis', 'Minneapolis'],
+    'los angeles': ['San Diego', 'Santa Barbara', 'Palm Springs', 'Las Vegas', 'San Francisco'],
+    la:            ['San Diego', 'Santa Barbara', 'Palm Springs', 'Las Vegas'],
+    sf:            ['Napa', 'Sonoma', 'Monterey', 'Lake Tahoe', 'Los Angeles'],
+    'san francisco': ['Napa', 'Sonoma', 'Monterey', 'Lake Tahoe', 'Los Angeles'],
+    berlin:        ['Prague', 'Warsaw', 'Amsterdam', 'Copenhagen', 'Hamburg'],
+    paris:         ['London', 'Amsterdam', 'Brussels', 'Lyon', 'Bordeaux', 'Nice'],
+    beijing:       ['Shanghai', 'Chengdu', 'Xian', 'Tianjin'],
+    shanghai:      ['Beijing', 'Hangzhou', 'Suzhou', 'Nanjing'],
+  }
+
+  // Find matching city
+  let cityExclusions: string[] = []
+  for (const [key, list] of Object.entries(exclusions)) {
+    if (city.includes(key) || key.includes(city)) {
+      cityExclusions = list
+      break
+    }
+  }
+
+  if (cityExclusions.length === 0) {
+    return `
+PROXIMITY AWARENESS:
+Never recommend destinations that are obvious weekend trips from ${homeCity}.
+These are what every local already knows — they are not hidden gems for someone from ${homeCity}.
+Find the equivalent quality destination one level less obvious.`
+  }
+
+  return `
+PROXIMITY AWARENESS:
+NEVER recommend these destinations to someone based in ${homeCity} — they are obvious local weekend trips, not hidden gems:
+${cityExclusions.join(', ')}
+Find the equivalent quality destination one level less obvious.
+Example logic: everyone from ${homeCity} knows these places. Find what they haven't found yet.`
 }
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
@@ -185,9 +321,13 @@ export function buildRecommendationPrompt(
     ? `${onboarding.home_city}, ${onboarding.home_country}`
     : onboarding.home_country
 
-  const travelScope    = onboarding.travel_scope ?? 'anywhere'
-  const dietaryPrefs   = (onboarding.dietary_preferences ?? []).filter(p => p !== 'none')
-  const dietarySection = buildDietarySection(dietaryPrefs)
+  const travelScope      = onboarding.travel_scope ?? 'anywhere'
+  const dietaryPrefs     = (onboarding.dietary_preferences ?? []).filter(p => p !== 'none')
+  const dietarySection   = buildDietarySection(dietaryPrefs)
+  const companionSection = buildCompanionSection(onboarding.group_type)
+  const dnaSection       = buildDNASection(pastTrips)
+  const proximitySection = buildProximitySection(onboarding.home_city ?? '')
+  const tripTiming       = onboarding.trip_timing ?? null
 
   // Hard budget caps per tier
   const BUDGET_CAPS: Record<string, { min: number; max: number; target: number }> = {
@@ -227,37 +367,56 @@ Example of correct output:
 {"name":"Hampi","country":"India","match_score":91,"reasons":["...","..."],"budget_per_day_usd":25,"best_time_to_visit":"Oct–Feb","hidden_gem_score":7,"dietary_tags":[]}
 {"name":"Spiti Valley","country":"India","match_score":88,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[]}
 
-Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[]}
+Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null}
 
 RULES:
 - match_score: 0–100, ranked descending
-- reasons: exactly 2–3 short strings explaining why this destination fits this specific traveller
-- hidden_gem_score: 1–10 scale:
-    1–3 = famous tourist destinations everyone knows (Paris, Bali, Santorini, Asheville, Queenstown, Goa, etc.)
-    4–6 = moderately known, some tourists but not overwhelmed
-    7–10 = genuinely obscure — most travellers have never heard of them
-  A destination well-known within its home country scores 1–3 even if less known internationally.
-  Never assign hidden_gem_score above 4 to any destination featured in mainstream travel listicles.
+- reasons: exactly 2–3 short strings. Specific, evocative, personal to THIS traveller.
+- hidden_gem_score: 1–10:
+    1–3 = famous everywhere (Paris, Bali, Santorini, Asheville, Queenstown, Goa, etc.)
+    4–6 = moderately known, some tourists
+    7–10 = genuinely obscure to most travellers
+  A destination well-known in its home country scores 1–3 even if less known internationally.
+  Never assign hidden_gem_score above 4 to any destination in mainstream travel listicles.
 - ${budgetConstraint}
-- best_time_to_visit: concise string e.g. "October–March" or "Year-round"
+- best_time_to_visit: concise e.g. "October–March" or "Year-round"
+- timing_score: 1–5 for how good the current/upcoming travel window is for this destination
+- timing_note: one honest line — only include if timing has a meaningful implication. Empty string "" if timing is neutral.
+- upcoming_event: festival or event within the traveller's travel window. null if none relevant.
 - Return MINIMUM 8, MAXIMUM 12 destinations. Never fewer than 8.
 - Never suggest a destination the traveller has already visited.
 
+TONE RULES — reason tags:
+NEVER USE: weird, strange, odd, bizarre, unusual, peculiar, quirky, underrated, overlooked, forgotten, hidden away, tucked away
+ALWAYS USE: authentic, raw, one-of-a-kind, remarkable, genuinely local, unscripted, untouched, undiscovered, unlike anywhere else
+Never frame a destination as a lesser alternative ("the poor man's X"). Every destination IS the destination.
+
 GEOGRAPHIC RULES:
 - Always include 2–3 destinations within the traveller's home country first (unless they've visited them all).
-- Then add international destinations appropriate to their travel scope and budget.
+- Then add international destinations appropriate to scope and budget.
 - Never recommend a destination where estimated flight cost exceeds 50% of total trip budget.
 
 ${scopeRules}
+${proximitySection}
+${companionSection}
+${dnaSection}
 
-HIDDEN GEM LISTS — use these when traveller is from these countries and wants hidden gems:
+DESTINATION FAMILIARITY (default: null — hidden gems mode):
+When familiarity_level is null: prioritise undiscovered, hidden gem focused recommendations.
+When first_time: include 2–3 well-known attractions with honest positive framing, then deeper cuts.
+When been_once: skip obvious attractions, lead with neighbourhood exploration, one thing they probably missed.
+When know_it: locals-only mode, nothing a tourist would find.
 
-For Australian travellers consider: Broken Hill, Coober Pedy, Cooktown, Cape York Peninsula, Flinders Ranges, Kimberley region, Kangaroo Island (off-season), Norfolk Island, Ningaloo Reef, Lord Howe Island, Daintree (beyond tourist circuit), Kakadu interior
-
-For Indian travellers consider: Chettinad, Majuli Island, Spiti Valley, Ziro Valley, Dzukou Valley, Mawlynnong, Shekhawati, Rann of Kutch, Hampi agricultural surrounds, Gokarna (off-season)${dietarySection}`
+HIDDEN GEM LISTS — use when traveller wants hidden gems:
+Australian: Broken Hill, Coober Pedy, Cooktown, Cape York, Flinders Ranges, Kimberley, Kangaroo Island (off-season), Norfolk Island, Ningaloo Reef, Lord Howe Island
+Indian: Chettinad, Majuli Island, Spiti Valley, Ziro Valley, Dzukou Valley, Mawlynnong, Shekhawati, Rann of Kutch, Hampi surrounds, Gokarna (off-season)${dietarySection}`
 
   const dietaryLine = dietaryPrefs.length > 0
-    ? `\n- Dietary preferences: ${dietaryPrefs.join(', ')}`
+    ? `\n- Dietary: ${dietaryPrefs.join(', ')}`
+    : ''
+
+  const timingLine = tripTiming
+    ? `\n- Trip timing: ${tripTiming === 'next_month' ? 'Travelling next month' : tripTiming === '2_3_months' ? 'Travelling in 2–3 months' : 'Exploring options, no fixed date'}`
     : ''
 
   const user = `Traveller profile:
@@ -267,14 +426,18 @@ For Indian travellers consider: Chettinad, Majuli Island, Spiti Valley, Ziro Val
 - Trip duration: ${onboarding.trip_duration}
 - Travelling with: ${onboarding.group_type}
 - What matters most: ${onboarding.interests.join(', ')}
-- Off the beaten path preference (${onboarding.offbeat_score}/5): ${offbeatDescription}${dietaryLine}
+- Off the beaten path preference (${onboarding.offbeat_score}/5): ${offbeatDescription}${dietaryLine}${timingLine}
+- Familiarity level per destination: null (default hidden gems mode)
 
-Past trips (do not suggest these): ${pastTripsList}
+Past trips — build DNA profile from these AND exclude them from recommendations: ${pastTripsList}
 
-Prioritise the offbeat_score heavily — it is the most important dimension.
-For offbeat_score 4–5: only suggest destinations with hidden_gem_score 7–10.
-Budget is a hard constraint on ground costs. Flight costs are separate and must be realistic for their tier.
-Return 8–12 destinations.`
+Rules:
+- Prioritise offbeat_score heavily — it is the most important single dimension
+- For offbeat_score 4–5: only suggest destinations with hidden_gem_score 7–10
+- Budget is a hard constraint on ground costs. Flight costs are separate and must be realistic
+- Apply proximity awareness — do not suggest obvious weekend trips from ${onboarding.home_city ?? onboarding.home_country}
+- Apply companion awareness for ${onboarding.group_type} travel style
+- Return 8–12 destinations`
 
   return { system, user }
 }

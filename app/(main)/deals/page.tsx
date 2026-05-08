@@ -123,17 +123,6 @@ export default function DealsPage() {
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
-      {/* Nav */}
-      <nav className="sticky top-0 z-20 bg-[#0d1f35]/90 backdrop-blur-md border-b border-white/8 px-6 py-4 flex items-center justify-between">
-        <button onClick={() => router.push('/discover')}
-          className="font-serif italic text-xl text-white/90 hover:text-white transition-colors">
-          ← Voya
-        </button>
-        <span className="text-xs text-white/25 font-label tracking-widest uppercase">
-          {country && `For ${country} travellers`}
-        </span>
-      </nav>
-
       <main className="max-w-2xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="mb-8">
@@ -143,6 +132,7 @@ export default function DealsPage() {
               ? <span className="ml-2 text-[#C97552]/50">· updated today</span>
               : <span className="ml-2 text-white/25">· fresh now</span>
             }
+            {country && <span className="ml-2 text-white/20">· {country}</span>}
           </p>
           <h1 className="font-serif italic text-4xl text-white leading-tight">
             What's running

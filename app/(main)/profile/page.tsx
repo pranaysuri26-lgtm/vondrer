@@ -272,23 +272,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
-      {/* ── Nav ───────────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-20 bg-[#0d1f35]/90 backdrop-blur-md border-b border-white/8 px-6 py-4 flex items-center justify-between">
-        <button
-          onClick={() => router.push('/discover')}
-          className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase flex items-center gap-2"
-        >
-          ← Discover
-        </button>
-        <span className="font-serif italic text-xl text-white/90">Voya</span>
-        <button
-          onClick={handleSignOut}
-          className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase"
-        >
-          Sign out
-        </button>
-      </nav>
-
       <main className="max-w-2xl mx-auto px-4 py-10 space-y-6">
 
         {/* Header */}

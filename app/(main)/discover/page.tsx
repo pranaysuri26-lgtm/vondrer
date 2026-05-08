@@ -724,8 +724,18 @@ export default function DiscoverPage() {
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
   const [previewAll, setPreviewAll]     = useState(false)
-  const [mode, setMode]                 = useState<Mode>('discover')
+  // Initialise from URL so AppNav Search tab activates correctly
+  const [mode, setMode]                 = useState<Mode>(() =>
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('search') === '1'
+      ? 'search' : 'discover'
+  )
   const [searchQuery, setSearchQuery]   = useState('')
+
+  // Keep URL in sync so AppNav can read ?search=1 for active-tab highlight
+  useEffect(() => {
+    window.history.replaceState({}, '', mode === 'search' ? '/discover?search=1' : '/discover')
+  }, [mode])
 
   const handleSearch = useCallback(() => {
     const q = searchQuery.trim()
@@ -873,31 +883,6 @@ export default function DiscoverPage() {
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
-      {/* Nav */}
-      <nav className="sticky top-0 z-20 bg-[#0d1f35]/90 backdrop-blur-md border-b border-white/8 px-6 py-4 flex items-center justify-between">
-        <span className="font-serif italic text-xl text-white/90">Voya</span>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setPreviewAll(p => !p)}
-            className={`text-xs font-label tracking-widest uppercase transition-colors px-3 py-1 rounded-full border ${
-              previewAll
-                ? 'border-[#C97552]/60 text-[#C97552] bg-[#C97552]/10'
-                : 'border-white/15 text-white/35 hover:text-white/60 hover:border-white/30'
-            }`}
-          >
-            {previewAll ? '🔓 All unlocked' : '👁 Preview all'}
-          </button>
-          <button onClick={() => router.push('/deals')}
-            className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase">
-            Deals
-          </button>
-          <button onClick={() => router.push('/profile')}
-            className="text-xs text-white/35 hover:text-white/60 transition-colors font-label tracking-widest uppercase">
-            Profile
-          </button>
-        </div>
-      </nav>
-
       <main className="max-w-2xl mx-auto px-4 py-10">
         {/* Header */}
         <div className="mb-8">
@@ -916,7 +901,20 @@ export default function DiscoverPage() {
               {dietaryFilterLabel(dietaryPrefs)}
             </p>
           )}
-          <div className="mt-4"><GemLegend /></div>
+          {/* Gem legend + PreviewAll toggle on the same row */}
+          <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+            <GemLegend />
+            <button
+              onClick={() => setPreviewAll(p => !p)}
+              className={`text-xs font-label tracking-widest uppercase transition-colors px-3 py-1 rounded-full border flex-shrink-0 ${
+                previewAll
+                  ? 'border-[#C97552]/60 text-[#C97552] bg-[#C97552]/10'
+                  : 'border-white/15 text-white/35 hover:text-white/60 hover:border-white/30'
+              }`}
+            >
+              {previewAll ? '🔓 All unlocked' : '👁 Preview all'}
+            </button>
+          </div>
         </div>
 
         {/* ── Mode selector ─────────────────────────────────────────────────── */}
@@ -1025,10 +1023,8 @@ export default function DiscoverPage() {
         )}
 
         {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-white/8 text-center space-y-2">
+        <div className="mt-12 pt-8 border-t border-white/8 text-center">
           <p className="text-white/20 text-xs">Results refresh when your profile changes.</p>
-          <button onClick={handleLogout}
-            className="text-white/20 text-xs hover:text-white/40 transition-colors">Sign out</button>
         </div>
       </main>
     </div>

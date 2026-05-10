@@ -40,6 +40,7 @@ export interface TransportMode {
 export interface RecommendedDestination {
   name:               string
   country:            string
+  state_province?:    string   // state, province, or region — e.g. "Tennessee", "Tuscany", "Patagonia"
   match_score:        number   // 0–100
   reasons:            string[] // 2–3 short strings
   budget_per_day_usd?: number
@@ -51,6 +52,7 @@ export interface RecommendedDestination {
   timing_warning?:    string   // amber badge text — ONLY for genuine access restrictions e.g. "Road access closes May–Oct"
   upcoming_event?:    UpcomingEvent | null
   transport?:         TransportMode[]  // HOW TO GET THERE — realistic modes from traveller's home
+  locked?:            boolean  // set server-side by applyPaywall — authoritative paywall state
 }
 
 export interface RecommendationResponse {
@@ -59,7 +61,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 11
+const PROMPT_VERSION = 18
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -330,18 +332,32 @@ Do NOT block all domestic destinations — most are perfectly valid and should a
 Only ask: "Would every ${homeCity} local already know this as a weekend trip?" If no, it is fine to recommend.`
   }
 
+  // Filter out major iconic cities from the exclusion list — they are never blocked
+  // by proximity alone if the user hasn't visited them
+  const MAJOR_CITIES = new Set([
+    'new york', 'new york city', 'nyc', 'los angeles', 'la', 'chicago', 'san francisco', 'sf',
+    'seattle', 'miami', 'boston', 'washington dc', 'washington', 'new orleans', 'las vegas',
+    'london', 'paris', 'amsterdam', 'barcelona', 'rome', 'lisbon', 'madrid', 'prague',
+    'vienna', 'budapest', 'berlin', 'athens', 'istanbul', 'florence', 'edinburgh',
+    'tokyo', 'bangkok', 'singapore', 'bali', 'sydney', 'melbourne', 'seoul', 'dubai',
+    'toronto', 'vancouver', 'montreal', 'mexico city', 'buenos aires', 'cape town',
+  ])
+  const filteredExclusions = cityExclusions.filter(
+    c => !MAJOR_CITIES.has(c.toLowerCase())
+  )
+
   return `
 PROXIMITY AWARENESS — CRITICAL SCOPE CLARIFICATION:
-The list below contains ONLY the obvious nearby weekend trips that every ${homeCity} local already knows.
-Blocking these does NOT mean blocking all domestic destinations.
+The list below contains ONLY the obvious nearby weekend trips that every ${homeCity} local already knows — small towns, resorts, day-trip destinations.
+This list does NOT block major iconic cities. A traveller from ${homeCity} who has never visited a major city in this list should absolutely receive it as a recommendation.
 
-BLOCK ONLY these specific nearby weekend trips from ${homeCity}:
-${cityExclusions.join(', ')}
+BLOCK ONLY these specific nearby weekend trips from ${homeCity} (only if traveller has NOT visited them already):
+${filteredExclusions.length > 0 ? filteredExclusions.join(', ') : `obvious day-trip or weekend destinations within 3 hours drive of ${homeCity}`}
 
-ALLOW freely — these are examples of domestic destinations that are NOT weekend trips and ARE valid recommendations:
-${homeCity.toLowerCase().includes('atlanta') ? 'Marfa TX, Natchez MS, Muscle Shoals AL, Beaufort SC, Bisbee AZ, Whitefish MT, Arcata CA — all valid for an Atlanta user' : `any ${homeCity.split(',')[0].trim()} domestic destination that is NOT an obvious local weekend drive`}
+NEVER block a major city on this list: New York, London, Paris, Tokyo, Sydney, Dubai, Singapore, LA, Chicago, Seattle, Rome, Barcelona, Amsterdam, Lisbon, Seoul, Bangkok, Toronto, Vancouver, Cape Town, Buenos Aires, Mexico City.
+These are only excluded if they appear in the traveller's past trips.
 
-Rule: "Is this an obvious 6-hour-or-less weekend escape that every ${homeCity} local already knows?" → if yes, block it. If no, it is fine.`
+Rule: "Is this an obvious 3-hour-or-less weekend escape that every ${homeCity} local already knows as a day trip?" → if yes, block it. If no, it is fine.`
 }
 
 // ─── Hard geographic enforcement ─────────────────────────────────────────────
@@ -365,37 +381,36 @@ function buildGeographicEnforcement(homeCountry: string, travelScope: string): s
   const isJapan    = c.includes('japan')
 
   if (isUSA || isCanada) {
+    const domesticLabel = isUSA ? 'United States' : 'Canada'
+    const domesticDetail = isUSA
+      ? 'All 50 US states — including Alaska, Hawaii, Puerto Rico, US Virgin Islands'
+      : 'All Canadian provinces and territories'
+    const crossBorderNote = isUSA
+      ? 'Canada is permitted (shares land border, no passport required for many travellers)'
+      : 'United States is permitted (shares land border)'
     return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HARD GEOGRAPHIC CONSTRAINT — USA/CANADA + CLOSER SCOPE
+HARD GEOGRAPHIC CONSTRAINT — ${domesticLabel.toUpperCase()} + DOMESTIC SCOPE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+User selected "Closer to home" — this means DOMESTIC destinations only.
+
 PERMITTED destinations ONLY:
-  • United States (all states including Hawaii and Alaska)
-  • Canada
-  • Mexico
-  • Caribbean islands (Cuba, Jamaica, Dominican Republic, Puerto Rico, Bahamas,
-    Barbados, Trinidad, St Lucia, Turks & Caicos, Cayman Islands, etc.)
-  • Central America (Costa Rica, Guatemala, Belize, Panama, Honduras, Nicaragua,
-    El Salvador)
-  • Bermuda
-  • Colombia (as the closest South American country, 5h flight)
+  • ${domesticDetail}
+  • ${crossBorderNote}
 
-COMPLETELY FORBIDDEN — DO NOT OUTPUT ANY OF THESE:
-  ✗ India — ANY Indian city or state (Mumbai, Delhi, Goa, Kerala, Rajasthan, etc.)
-  ✗ ALL of Asia — Thailand, Japan, Vietnam, Indonesia, Bali, Philippines, China,
-    South Korea, Nepal, Sri Lanka, Bangladesh, Pakistan, Cambodia, Laos, Myanmar,
-    Singapore, Malaysia, Hong Kong, Taiwan, etc.
-  ✗ ALL of Europe — Italy, France, Spain, UK, Portugal, Greece, Germany,
-    Netherlands, Switzerland, Austria, Croatia, Czechia, Iceland, Scandinavia, etc.
-  ✗ ALL of Africa — Morocco, South Africa, Egypt, Kenya, Tanzania, Ethiopia, etc.
-  ✗ ALL of the Middle East — UAE/Dubai, Jordan, Turkey, Israel, Oman, Qatar, etc.
-  ✗ South America (except Colombia) — Brazil, Argentina, Peru, Chile, Bolivia, etc.
-  ✗ Australia, New Zealand, Pacific Islands
+COMPLETELY FORBIDDEN — EVERY international destination outside USA/Canada:
+  ✗ Mexico — ANY Mexican city (Cancún, Mexico City, Cabo, Tulum, Oaxaca, etc.)
+  ✗ Caribbean — Cuba, Jamaica, Dominican Republic, Puerto Rico (external), Bahamas,
+    Barbados, Turks & Caicos, Cayman Islands, St Lucia, Aruba, etc.
+  ✗ Central America — Costa Rica, Guatemala, Belize, Panama, Honduras, etc.
+  ✗ South America — Colombia, Brazil, Argentina, Peru, Chile, Bolivia, etc.
+  ✗ ALL of Europe — Italy, France, Spain, UK, Portugal, Greece, Germany, etc.
+  ✗ ALL of Asia — India, Thailand, Japan, Vietnam, Indonesia, Bali, China, etc.
+  ✗ ALL of Africa, Middle East, Australia, New Zealand, Pacific Islands
 
-Before you write each destination line: ask "Is this in the USA, Canada, Mexico,
-Caribbean, Central America, or Colombia?" If NO → do not include it.
-ZERO EXCEPTIONS. Replace any forbidden destination with a valid US/Mexico/Caribbean
-destination instead.
+Before writing each destination: ask "Is this in the USA${isUSA ? ' or Canada' : ' or United States'}?"
+If NO → do not include it. ZERO EXCEPTIONS.
+Replace any forbidden destination with a genuinely interesting domestic city or region.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
   }
 
@@ -515,15 +530,125 @@ export function buildRecommendationPrompt(
 
   const geoEnforcement = buildGeographicEnforcement(onboarding.home_country, travelScope)
 
+  // ── FIX 1: Dietary reason tag rule ──────────────────────────────────────────
+  const dietaryReasonTagRule = dietaryPrefs.length > 0 ? `
+DIETARY REASON TAG RULE — MANDATORY:
+This traveller has dietary restrictions: ${dietaryPrefs.join(', ')}.
+Every single destination MUST include at least one reason tag that specifically names what ${dietaryPrefs.join('/')} travellers can eat there.
+Name specific dishes, food culture, restaurant types, or community infrastructure. Generic food language is not acceptable.
+
+BAD: "great food scene" / "diverse culinary options" / "local cuisine worth exploring" / "plenty of options for all diets"
+GOOD (vegetarian): "Pure vegetarian thali culture — dal baati churma, sabudana khichdi, and bajre ki roti made the way it was before restaurants existed"
+GOOD (vegan): "Buddhist-influenced cooking means entirely plant-based staples — tofu, fermented vegetables, rice noodles with no animal products in traditional recipes"
+GOOD (halal): "Large Moroccan community with halal-certified tagine restaurants lining the medina streets — certification visible, not assumed"
+GOOD (kosher): "Established Jewish quarter with kosher-certified restaurants and a community infrastructure that has existed for centuries"
+GOOD (gluten-free): "Rice and corn-based cuisine throughout — tortillas, tamales, pozole — where gluten-free eating is the default, not the accommodation"
+
+If a destination cannot honestly support a strong, specific dietary reason tag — do not include it. Replace it with a destination that genuinely serves this traveller's diet well.` : ''
+
+  // ── FIX 2: Offbeat 5 strict verification block ───────────────────────────────
+  const offbeatVerificationBlock = onboarding.offbeat_score === 5 ? `
+OFFBEAT SCORE 5 — MANDATORY VERIFICATION:
+Before including any destination, apply this exact test. Ask: would this destination appear on ANY of the following?
+  • Lonely Planet top destinations or "best in" lists
+  • Travel + Leisure annual best places to travel
+  • Condé Nast Traveler Hot List
+  • Any major airline in-flight magazine
+  • First page of Google results for "hidden gems [country]"
+  • Any mainstream travel blog or Instagram account with over 100k followers
+
+If YES to even ONE of the above — do not include it at offbeat score 5.
+
+Offbeat score 5 means: a well-traveled person from this user's home city has genuinely never heard of it.
+Not "less popular." Not "off the beaten path." Truly unknown to the mainstream travel world.
+Asheville is not offbeat. Tbilisi is not offbeat anymore. Chiang Mai is not offbeat. Hoi An is not offbeat.
+If you cannot find 8 destinations that pass this test, score borderline ones at hidden_gem_score 6–7, never 9–10.` : ''
+
+  // ── FIX 3: Budget tier quality rules ────────────────────────────────────────
+  const budgetQualityRules = (() => {
+    const tier             = onboarding.budget_per_day
+    const homeCountryLower = (onboarding.home_country ?? '').toLowerCase()
+    const isUSA            = /united states|usa|\bus\b/.test(homeCountryLower)
+    const isCanada         = homeCountryLower.includes('canada')
+    const isNorthAmerica   = isUSA || isCanada
+
+    if (tier === '300+') return `
+BUDGET TIER QUALITY RULES — LUXURY ($300+/day):
+Only recommend destinations where spending more genuinely unlocks better access and experience.
+Every destination must include:
+  - Private or exclusive experiences unavailable to budget travellers (private guides, after-hours access, chartered transport)
+  - Exceptional dining — name specific types: chef's table, tasting menu, a restaurant with genuine culinary reputation
+  - Accommodation that is exceptional, not merely expensive — ryokan, riad, design hotel, private villa
+Reason tags must reflect exclusivity and depth, not just discovery.
+Never recommend a destination purely on novelty if the experience is the same regardless of budget.`
+
+    if (tier === '150-300') {
+      const intlPush = (() => {
+      // Where $150-300/day feels luxurious vs just normal
+      const luxuryValue = `
+COMFORTABLE BUDGET — WHERE THE MONEY ACTUALLY GOES FURTHER:
+$150–300/day is the budget. In some destinations this is extraordinary; in others it is unremarkable.
+
+Destinations where $150–300/day feels genuinely luxurious — PRIORITISE THESE:
+  Japan: $200/day covers ryokan stays, omakase dinners, bullet trains — exceptional value for the quality
+  Portugal: $200/day is very comfortable — boutique hotels, wine tastings, Michelin-adjacent restaurants
+  Colombia: $200/day is exceptional — private guides, boutique fincas, fine dining for a fraction of Western prices
+  Morocco: $150/day covers premium riad, private medina tours, proper tagine restaurants
+  Peru: $150/day covers everything including Machu Picchu private tours and top ceviche restaurants
+  Georgia (country): $100/day is luxury — polyphonic dinner experiences, wine country stays, private drivers
+  Vietnam: $150/day is exceptional — private boat charters, resort-quality stays, top restaurants
+  Sri Lanka: $150/day covers boutique eco-lodges, private safaris, excellent local cooking
+  Türkiye: $150/day covers boutique cave hotels, private Bosphorus tours, excellent mezes
+
+Destinations where $150–300/day is just normal spending — DEPRIORITISE OR JUSTIFY:
+  US domestic cities: $200/day is average in most major cities — hotel + meals, nothing special
+  Western European capitals (Paris, London, Zurich): $200/day is tight, not comfortable
+  Australia: $200/day is budget, not comfortable
+  Scandinavia: $300/day is mid-range at best`
+
+      if (isNorthAmerica) return `${luxuryValue}
+
+NORTH AMERICA SPECIFIC:
+This traveller spends $200/day at home in the US or Canada without feeling it. Domestic destinations at this tier need a categorical reason to appear — a unique experience unavailable elsewhere, not just "it's nice."
+Do NOT fill the result set with domestic US/Canada destinations for a comfortable-budget traveller.`
+
+      return luxuryValue
+    })()
+
+      return `
+BUDGET TIER QUALITY RULES — COMFORTABLE ($150–300/day):
+Every destination must have all three of the following:
+  1. At least one genuinely excellent restaurant worth $80–150/person — name the category or type (omakase, farm-to-table, a restaurant with real culinary identity)
+  2. Accommodation with genuine character — boutique hotel, riad, ryokan, converted historic building — not just a clean chain hotel
+  3. At least one experience where spending money improves it meaningfully — private tour, tasting experience, exclusive access, chartered boat
+Reason tags must reflect quality and depth of experience, not just discovery.
+Do NOT write the same reason tags you would write for a mid-range traveller. Money should be visible in the recommendation.${intlPush}`
+    }
+
+    if (tier === '50-150') return `
+BUDGET TIER QUALITY RULES — MID-RANGE ($50–150/day):
+Recommend destinations where $50–150/day feels generous, not stretched.
+A mix of comfort and genuine local experience — good guesthouses, sit-down local restaurants, day tours.
+Reason tags should reflect good value: quality without compromise, experiences that don't require cutting corners.`
+
+    if (tier === 'under-20' || tier === '20-50') return `
+BUDGET TIER QUALITY RULES — BUDGET ($20–50/day or under):
+Only recommend destinations where this budget is genuinely sufficient for a good experience — not survival mode.
+Street food culture, local transport, guesthouses that are clean and characterful.
+Be honest: never recommend a destination where this budget forces miserable compromises or locks the traveller out of the real experience.`
+
+    return ''
+  })()
+
   const scopeRules = travelScope === 'closer'
-    ? `TRAVEL SCOPE: CLOSER TO HOME
-- ONLY recommend destinations within the traveller's home region or nearby countries.
-- No transcontinental flights. No intercontinental travel.
-- For Australia: domestic destinations + New Zealand, SE Asia, Pacific Islands only.
-- For India: domestic destinations + Sri Lanka, Nepal, Bhutan, Maldives, Thailand only.
-- For UK/Europe: domestic + European destinations only.
-- For USA/Canada: domestic + Mexico, Caribbean, Central America only.
-- Maximum flight time: 6 hours from home city.
+    ? `TRAVEL SCOPE: CLOSER TO HOME (DOMESTIC)
+- User explicitly chose "Closer to home" — recommend DOMESTIC destinations only.
+- No international flights. No passport-required destinations.
+- For USA: US domestic only (all 50 states + US territories). Canada permitted.
+- For Canada: Canadian domestic only. United States permitted.
+- For Australia: domestic destinations + New Zealand only.
+- For India: domestic destinations + Sri Lanka, Nepal, Bhutan only.
+- For UK/Europe: domestic + European Union / Schengen area only.
 - See HARD GEOGRAPHIC CONSTRAINT block below — those rules override everything.`
     : `TRAVEL SCOPE: GLOBAL
 - Worldwide destinations are fine.
@@ -543,10 +668,18 @@ Output each destination as a separate, complete JSON object on its own line.
 One destination per line. No outer array. No "destinations" wrapper key. No markdown. No explanation.
 Every line must be a complete, valid, parseable JSON object.
 Example of correct output:
-{"name":"Hampi","country":"India","match_score":91,"reasons":["...","..."],"budget_per_day_usd":25,"best_time_to_visit":"Oct–Feb","hidden_gem_score":7,"dietary_tags":[],"timing_score":3,"timing_note":"","timing_warning":"","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Via Delhi or Mumbai, no direct","recommended":true}]}
-{"name":"Spiti Valley","country":"India","match_score":89,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":1,"timing_note":"Road access closed until mid-June","timing_warning":"⚠️ Road access closed in May — open Jun–Sep only","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Fly to Delhi, then 12h drive when road opens","recommended":true}]}
+{"name":"Nashville","country":"United States","state_province":"Tennessee","match_score":91,"reasons":["...","..."],"budget_per_day_usd":120,"best_time_to_visit":"Apr–Jun","hidden_gem_score":3,"dietary_tags":[],"timing_score":4,"timing_note":"","timing_warning":"","upcoming_event":null,"transport":[{"mode":"fly","duration":"~2h","note":"Direct from most US hubs","recommended":true}]}
+{"name":"Spiti Valley","country":"India","state_province":"Himachal Pradesh","match_score":89,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":1,"timing_note":"Road access closed until mid-June","timing_warning":"⚠️ Road access closed in May — open Jun–Sep only","upcoming_event":null,"transport":[{"mode":"fly","duration":"~10h","note":"Fly to Delhi, then 12h drive when road opens","recommended":true}]}
 
-Per-line schema: {"name": string, "country": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "timing_warning": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","duration":string,"note":string,"recommended":boolean}]}
+Per-line schema: {"name": string, "country": string, "state_province": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "timing_warning": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","duration":string,"note":string,"recommended":boolean}]}
+
+state_province rules:
+- US cities: always include the state (e.g. "California", "New York", "Texas")
+- Canadian cities: always include the province (e.g. "Ontario", "British Columbia")
+- Cities in large countries with meaningful regions (India, Australia, Brazil, China, Mexico): include state/province
+- European cities: include region only if it adds meaningful context (e.g. "Tuscany" for Florence, "Catalonia" for Barcelona, "Bavaria" for Munich) — omit for capital cities where country alone is clear
+- City-states and small countries (Singapore, Dubai, Hong Kong, Maldives): omit state_province
+- Leave as empty string "" if not applicable
 
 RULES:
 - match_score: 0–100, ranked descending
@@ -557,6 +690,28 @@ RULES:
     7–10 = genuinely obscure to most travellers
   A destination well-known in its home country scores 1–3 even if less known internationally.
   Never assign hidden_gem_score above 4 to any destination in mainstream travel listicles.
+${offbeatVerificationBlock}
+- state_province: REQUIRED for every destination — always populate this field.
+    The goal: give the reader enough geographic context to know exactly where in the country this is.
+    Rule: include the most meaningful administrative region (state, province, county, region, territory).
+    Examples by region:
+      USA — always state: Nashville → "Tennessee", Chicago → "Illinois", Miami → "Florida", Portland → "Oregon"
+      Canada — always province: Vancouver → "British Columbia", Montreal → "Quebec", Calgary → "Alberta"
+      Australia — always state: Sydney → "New South Wales", Melbourne → "Victoria", Cairns → "Queensland"
+      India — always state: Goa → "Goa", Jaipur → "Rajasthan", Hampi → "Karnataka", Munnar → "Kerala"
+      Brazil — always state: Rio → "Rio de Janeiro", Salvador → "Bahia", Manaus → "Amazonas"
+      Mexico — always state: Oaxaca → "Oaxaca", Mérida → "Yucatán", San Cristóbal → "Chiapas"
+      China — always province: Guilin → "Guangxi", Chengdu → "Sichuan", Zhangjiajie → "Hunan"
+      Japan — always prefecture: Kyoto → "Kyoto Prefecture", Hiroshima → "Hiroshima Prefecture", Hakone → "Kanagawa"
+      Europe — always region or country subdivision: Florence → "Tuscany", Barcelona → "Catalonia", Dubrovnik → "Dalmatia", Hallstatt → "Upper Austria", Bergen → "Vestland", Cinque Terre → "Liguria"
+      UK — always country/region: Edinburgh → "Scotland", Bath → "England", Cardiff → "Wales"
+      Southeast Asia — province/region where meaningful: Chiang Mai → "Chiang Rai Province" NO — "Chiang Mai Province", Hoi An → "Quảng Nam", Luang Prabang → "Luang Prabang Province"
+      Africa — region/province: Cape Town → "Western Cape", Marrakech → "Marrakesh-Safi", Zanzibar → "Zanzibar Archipelago"
+      South America — province/department: Cartagena → "Bolívar", Medellín → "Antioquia", Cusco → "Cusco Region"
+      Middle East — emirate/region: Dubai → "Dubai Emirate", Petra → "Ma'an Governorate"
+      Single-city countries and city-states (Singapore, Luxembourg, Monaco, Vatican, Maldives, Bahrain): state_province: ""
+      Capital cities where the city IS the region (Paris → "", London → "", Tokyo → "", Rome → ""): state_province: ""
+    When in doubt, include it. An extra region tag never hurts. A missing one loses geographic context.
 - ${budgetConstraint}
 - best_time_to_visit: concise e.g. "October–March" or "Year-round"
 - timing_score: 1–5 for how good the current/upcoming travel window is for this destination
@@ -592,22 +747,105 @@ GEOGRAPHIC RULES:
 - Then add international destinations appropriate to scope and budget.
 - Never recommend a destination where estimated flight cost exceeds 50% of total trip budget.
 
+GEOGRAPHIC DIVERSITY — HARD LIMITS:
+Never return more than 2 destinations from the same country in one result set.
+Never return more than 3 destinations from the same continent.
+If you have already included 2 Indian destinations — do not include a third regardless of fit score.
+Spread results across at minimum 4 different countries and 3 different continents.
+
+These regions are consistently underrepresented in AI results despite being equally obscure — actively consider them:
+  Central Asia: Kyrgyzstan, Tajikistan, Uzbekistan (beyond Samarkand), Azerbaijan, Armenia
+  Eastern Europe: Albania, Moldova, Kosovo, North Macedonia, Bosnia, Belarus
+  West Africa: Senegal, Ghana, Benin, Togo, Burkina Faso
+  Central America: Belize interior, Honduras, El Salvador, Nicaragua
+  South America (beyond Peru/Colombia): Bolivia, Paraguay, Guyana, Suriname, Ecuador highlands
+  Southeast Asia beyond Thailand/Bali: Timor-Leste, Laos beyond Luang Prabang, Cambodia beyond Angkor, remote Myanmar
+  Pacific: Vanuatu, Tonga, Kiribati, Solomon Islands, Niue
+
+INDIA FREQUENCY CAP:
+India may appear at most ONCE per result set — not twice, not three times — unless the traveller is FROM India, has specifically requested Indian destinations, or their past trip history shows strong South/Southeast Asia preference.
+For travellers from the US, UK, Australia, Canada, or Western Europe: India appears once at most, and only when it genuinely outcompetes alternatives from other regions.
+This rule exists because India was overrepresented in training data and the model has a systematic bias toward it. Actively compensate.
+
+HOME CITY RELEVANCE — HIDDEN GEMS MUST BE HIDDEN FROM THIS PERSON:
+A destination is only a hidden gem if it is obscure from the perspective of someone living in ${homeLocation}.
+India is NOT a hidden gem for someone from Los Angeles — LAX has 50+ weekly direct flights to India, Indian food and culture are omnipresent in LA, every travel magazine covers it.
+Ask for each destination: "Would a typical person from ${homeLocation} have this destination on their travel radar?"
+If yes — it scores lower as a hidden gem for this specific user, regardless of objective obscurity.
+Calibrate hidden_gem_score to the traveller's actual home city and cultural context, not to the world at large.
+
+MAJOR CITY LOCAL LENS RULE:
+When recommending a major iconic city (New York, London, Tokyo, Paris, LA, Sydney, etc.), the reason tags MUST show the experience most visitors completely miss — not the tourist highlights that appear in every guidebook.
+This is the Voya angle: what do people who actually live there do on weekends?
+
+NEVER for major cities:
+✗ "Visit Times Square and the Empire State Building"
+✗ "See the Eiffel Tower and the Louvre"
+✗ "Explore Central Park and catch a Broadway show"
+✗ Any attraction that appears in the first paragraph of the city's Wikipedia article
+
+ALWAYS for major cities — show the neighbourhood, subculture, or food scene most tourists never find:
+New York → "Flushing, Queens — the most concentrated and authentic Asian food destination in the Western hemisphere. Tourists never come. Locals eat here weekly."
+Los Angeles → "Boyle Heights — East LA's unfiltered cultural core: 40-year-old family birria spots, Chicano murals, zero Hollywood artifice. 20 min from downtown."
+Seattle → "Georgetown neighbourhood — artists, microbreweries, vintage shops. The city Seattleites actually live in vs. the Pike Place fish-toss tourists see."
+London → "Peckham — South London's creative explosion. Rye Lane market, roof terrace bars, West African restaurants that have no Yelp pages. Nothing in any guidebook."
+Tokyo → "Koenji — Tokyo's underground music and vintage scene. Kissaten coffee shops from 1970, jazz bars down alleyways, zero Shibuya energy."
+Paris → "Belleville — the Paris immigrants built. Vietnamese pho, Algerian pastries, street art, zero pretension. The opposite of the Marais."
+
+Rule: the reason tags for any major city must make a first-time visitor think "I had no idea that existed." If the reason tag could appear on a TripAdvisor homepage, rewrite it.
+
+RESULT SET VARIETY — SIZE MIX BY OFFBEAT SCORE:
+Every result set should contain a deliberate mix of destination sizes. Do not cluster all results at one end of the familiarity spectrum.
+
+offbeat_score 1–2 (popularity mode):
+  • 2–3 major iconic cities (NYC, Tokyo, London, Paris, Sydney, Dubai, etc.) — hidden_gem_score 1–4
+  • 3–4 interesting mid-size cities (Lisbon, Medellín, Tbilisi, Porto, Chiang Mai) — hidden_gem_score 4–6
+  • 1–2 smaller gems the user is unlikely to know — hidden_gem_score 6–8
+
+offbeat_score 3 (mixed mode):
+  • 0–1 major city (with strong local angle)
+  • 3–4 mid-size interesting cities — hidden_gem_score 4–7
+  • 3–4 smaller/emerging destinations — hidden_gem_score 7–9
+
+offbeat_score 4–5 (offbeat mode):
+  • 0 major cities
+  • 1–2 mid-size lesser-known cities — hidden_gem_score 7–8
+  • 6–8 genuinely unknown destinations — hidden_gem_score 8–10
+
+PROXIMITY AWARENESS — EXPERIENCE-BASED BLOCKING:
+Proximity blocks a destination ONLY when it is genuinely obvious to THIS specific user based on their past trips and home city.
+
+A major iconic city is NEVER blocked by proximity alone. If the traveller has never visited it — it is not obvious to them, regardless of how close it is.
+
+Specific rule: a destination is blockable by proximity ONLY if:
+  1. It appears in the traveller's past trips list (they've already been), OR
+  2. It is within ~3 hours by road AND is a well-known local weekend escape (e.g. Napa for SF, Asheville for Atlanta)
+
+Proximity does NOT block:
+  • Major iconic cities the user has not visited — a user from Atlanta who has never been to New York: New York is a valid, exciting recommendation
+  • Cities in different countries, regardless of flight time
+  • Any city where flight time + airport logistics makes it a multi-day trip rather than a weekend escape
+
 ${scopeRules}
 ${geoEnforcement}
 ${proximitySection}
 ${companionSection}
 ${dnaSection}
 
-DESTINATION FAMILIARITY (default: null — hidden gems mode):
-When familiarity_level is null: prioritise undiscovered, hidden gem focused recommendations.
-When first_time: include 2–3 well-known attractions with honest positive framing, then deeper cuts.
-When been_once: skip obvious attractions, lead with neighbourhood exploration, one thing they probably missed.
-When know_it: locals-only mode, nothing a tourist would find.
+DESTINATION FAMILIARITY — calibrated to offbeat_score:
+${onboarding.offbeat_score <= 2
+  ? 'Popularity mode: this traveller wants iconic, well-known destinations. Major world cities are expected and correct. Tourist infrastructure (organised tours, major landmarks, popular restaurants) is a feature, not a penalty — but the reason tags must always show the local angle most visitors miss (see MAJOR CITY LOCAL LENS RULE above).'
+  : onboarding.offbeat_score === 3
+  ? 'Mixed mode: blend well-known cities with a few deeper cuts. Classic destinations are fine but the reason tags must always go deeper than what a guidebook says.'
+  : 'Hidden gems mode: prioritise undiscovered, low-footprint destinations. Avoid anything on a mainstream bucket list.'
+}
 
 HIDDEN GEM LISTS — use when traveller wants hidden gems:
 Australian: Broken Hill, Coober Pedy, Cooktown, Cape York, Flinders Ranges, Kimberley, Kangaroo Island (off-season), Norfolk Island, Ningaloo Reef, Lord Howe Island
 Indian: Chettinad, Majuli Island, Spiti Valley, Ziro Valley, Dzukou Valley, Mawlynnong, Shekhawati, Rann of Kutch, Hampi surrounds, Gokarna (off-season)
 ${dietarySection}
+${dietaryReasonTagRule}
+${budgetQualityRules}
 
 TRANSPORT — HOW TO GET THERE:
 For each destination, return a "transport" array of realistic options FROM the traveller's home city/country.
@@ -651,6 +889,28 @@ Examples:
     timingLine = `\n- Trip timing: Exploring options, no fixed date`
   }
 
+  // Build the offbeat mode rule block — the single most important selection constraint
+  const offbeatModeRules = onboarding.offbeat_score <= 2 ? `
+OFFBEAT SCORE ${onboarding.offbeat_score}/5 — POPULARITY MODE. This traveller wants well-known destinations.
+
+MANDATORY: At least 2–3 results MUST be major iconic world cities from this list (or equivalent):
+  North America: New York City, Los Angeles, Chicago, San Francisco, Seattle, Miami, Boston, Washington DC, New Orleans, Las Vegas, Toronto, Vancouver, Montreal, Mexico City, Cancún area
+  Europe: London, Paris, Barcelona, Rome, Amsterdam, Lisbon, Madrid, Prague, Vienna, Budapest, Berlin, Athens, Istanbul, Dubrovnik, Florence, Edinburgh, Copenhagen, Stockholm
+  Asia-Pacific: Tokyo, Kyoto, Bangkok, Singapore, Bali, Sydney, Melbourne, Seoul, Hong Kong, Dubai, Kuala Lumpur, Mumbai, Hanoi
+  Latin America / Africa: Buenos Aires, Rio de Janeiro, Cape Town, Marrakech, Cartagena
+
+A city is only "too obvious" to recommend if THIS specific traveller has already visited it (check past trips list).
+If the traveller has never been to New York — New York City is a genuinely exciting discovery for them. Recommend it.
+If past trips list is empty or short — assume they have visited very few places. Major cities are highly appropriate.
+
+DO NOT substitute an obscure town when the traveller wants a major city. hidden_gem_score 1–4 is correct and expected for iconic destinations.
+Apply RESULT SET VARIETY as defined in the system prompt.` : onboarding.offbeat_score === 3 ? `
+OFFBEAT SCORE 3/5 — MIXED MODE. Balance well-known and lesser-known.
+Include 0–1 major iconic cities (apply local lens rule). Mix in mid-size interesting cities (Lisbon, Medellín, Tbilisi, Porto, Chiang Mai, Oaxaca, Bologna). Finish with a few genuinely lesser-known gems.
+hidden_gem_score range: 3–8 across the set. Apply RESULT SET VARIETY as defined in the system prompt.` : `
+OFFBEAT SCORE ${onboarding.offbeat_score}/5 — OFFBEAT MODE. Only suggest destinations with hidden_gem_score 7–10.${onboarding.offbeat_score === 5 ? ' Apply the OFFBEAT SCORE 5 MANDATORY VERIFICATION test — no exceptions.' : ''}
+Apply RESULT SET VARIETY as defined in the system prompt.`
+
   const user = `Traveller profile:
 - Based in: <user_location>${homeLocation}</user_location>
 - Travel scope: ${travelScope === 'closer' ? 'Closer to home (regional only)' : 'Anywhere in the world'}
@@ -659,15 +919,15 @@ Examples:
 - Travelling with: ${onboarding.group_type}
 - What matters most: <user_interests>${onboarding.interests.join(', ')}</user_interests>
 - Off the beaten path preference (${onboarding.offbeat_score}/5): ${offbeatDescription}${dietaryLine}${timingLine}
-- Familiarity level per destination: null (default hidden gems mode)
 
-Past trips — build DNA profile from these AND exclude them from recommendations: <past_trips>${pastTripsList}</past_trips>
+Past trips (already visited — EXCLUDE from results + use for DNA profiling): <past_trips>${pastTripsList}</past_trips>
 
 Rules:
-- Prioritise offbeat_score heavily — it is the most important single dimension
-- For offbeat_score 4–5: only suggest destinations with hidden_gem_score 7–10
-- Budget is a hard constraint on ground costs. Flight costs are separate and must be realistic
-- Apply proximity awareness — do not suggest obvious weekend trips from <user_city>${onboarding.home_city ?? onboarding.home_country}</user_city>
+${offbeatModeRules}
+- PROXIMITY: Only block a destination if it appears in past trips above, OR it is a well-known local weekend drive (<3h) from <user_city>${onboarding.home_city ?? onboarding.home_country}</user_city>. Never block a major city the user has not visited regardless of distance.
+- GEOGRAPHIC DIVERSITY: max 2 per country, max 3 per continent, India cap in effect
+- Hidden gem scores calibrated to what is genuinely obscure from ${homeLocation}, not globally
+- Budget is a hard constraint on ground costs. Flight costs are separate
 - Apply companion awareness for ${onboarding.group_type} travel style
 - Return 8–12 destinations`
 

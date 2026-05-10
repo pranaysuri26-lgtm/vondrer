@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export const maxDuration = 30
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
 // Accepted MIME types
 const ACCEPTED = new Set([
@@ -95,46 +95,65 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Convert to base64 ─────────────────────────────────────────────────────────
-  const buffer   = await file.arrayBuffer()
-  const base64   = Buffer.from(buffer).toString('base64')
-  const isPdf    = mimeType === 'application/pdf'
+  const buffer = await file.arrayBuffer()
+  const base64 = Buffer.from(buffer).toString('base64')
+  const isPdf  = mimeType === 'application/pdf'
 
-  // ── Build Claude message ──────────────────────────────────────────────────────
-  type ContentBlock =
-    | { type: 'text'; text: string }
-    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
-    | { type: 'document'; source: { type: 'base64'; media_type: string; data: string } }
+  // ── Build OpenAI message content ──────────────────────────────────────────────
+  type ImageContentPart = {
+    type: 'image_url'
+    image_url: { url: string; detail: 'high' }
+  }
+  type FileContentPart = {
+    type: 'file'
+    file: { filename: string; file_data: string }
+  }
+  type TextContentPart = { type: 'text'; text: string }
 
-  const content: ContentBlock[] = []
+  type ContentPart = ImageContentPart | FileContentPart | TextContentPart
+
+  const content: ContentPart[] = []
 
   if (isPdf) {
+    // GPT-4o supports inline PDF via file content type
     content.push({
-      type: 'document',
-      source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+      type: 'file',
+      file: {
+        filename:  'booking.pdf',
+        file_data: `data:application/pdf;base64,${base64}`,
+      },
     })
   } else {
     content.push({
-      type: 'image',
-      source: { type: 'base64', media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: base64 },
+      type:      'image_url',
+      image_url: {
+        url:    `data:${mimeType};base64,${base64}`,
+        detail: 'high',
+      },
     })
   }
 
   content.push({ type: 'text', text: EXTRACTION_PROMPT })
 
-  // ── Call Claude ───────────────────────────────────────────────────────────────
+  // ── Call GPT-4o ───────────────────────────────────────────────────────────────
   try {
-    const response = await anthropic.messages.create({
-      model:    'claude-haiku-4-5',
+    const response = await openai.chat.completions.create({
+      model:      'gpt-4o',
       max_tokens: 1000,
-      messages: [{ role: 'user', content: content as Anthropic.MessageParam['content'] }],
+      messages:   [
+        {
+          role:    'user',
+          content: content as OpenAI.Chat.Completions.ChatCompletionContentPart[],
+        },
+      ],
+      response_format: { type: 'json_object' },
     })
 
-    const raw     = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+    const raw = response.choices[0]?.message?.content?.trim() ?? ''
 
     let parsed: { flights: unknown[]; booking_reference: string | null; passenger_count: number | null }
     try {
-      parsed = JSON.parse(cleaned)
+      parsed = JSON.parse(raw)
       if (!Array.isArray(parsed.flights)) throw new Error('flights must be array')
     } catch {
       console.error('[parse-flight-pdf] Parse error:', raw.slice(0, 300))
@@ -143,7 +162,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(parsed)
   } catch (err) {
-    console.error('[parse-flight-pdf] Claude error:', err)
+    console.error('[parse-flight-pdf] GPT-4o error:', err)
     return NextResponse.json({ error: 'Extraction failed. Please enter details manually.' }, { status: 500 })
   }
 }

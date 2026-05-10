@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
-import type { ItineraryBlock, ItineraryResult } from '@/app/api/itinerary/route'
+import type { ItineraryBlock, ItineraryResult, PreTripInfo } from '@/app/api/itinerary/route'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ interface TripDestination {
   nice_to_do:        string
   things_to_avoid:   string[]
   avoid_notes:       string
-  local_transport:   string | null
+  local_transport:   string[]
   booked_activities: BookedActivity[]
 }
 
@@ -119,6 +119,7 @@ interface EditableItinerary {
   country:        string
   start_date:     string
   end_date:       string
+  pre_trip?:      PreTripInfo
   days:           MutableDay[]
   loading:        boolean
   error:          string
@@ -250,7 +251,7 @@ function emptyDest(id: string, name: string, country: string, days: number, star
     flights: emptyFlight(), hotel: emptyHotel(),
     must_do: '', nice_to_do: '',
     things_to_avoid: [], avoid_notes: '',
-    local_transport: null, booked_activities: [],
+    local_transport: [], booked_activities: [],
   }
 }
 
@@ -990,13 +991,34 @@ const OCCASION_OPTIONS = [
 ] as const
 
 function SpecialOccasionSection({
-  occasion, person, onOccasionChange, onPersonChange,
+  occasion, person, date, time, venue, eventName,
+  onOccasionChange, onPersonChange, onDateChange, onTimeChange, onVenueChange, onEventNameChange,
+  tripStartDate, tripEndDate,
 }: {
-  occasion:         string
-  person:           string
-  onOccasionChange: (v: string) => void
-  onPersonChange:   (v: string) => void
+  occasion:           string
+  person:             string
+  date:               string
+  time:               string
+  venue:              string
+  eventName:          string
+  onOccasionChange:   (v: string) => void
+  onPersonChange:     (v: string) => void
+  onDateChange:       (v: string) => void
+  onTimeChange:       (v: string) => void
+  onVenueChange:      (v: string) => void
+  onEventNameChange:  (v: string) => void
+  tripStartDate:      string
+  tripEndDate:        string
 }) {
+  // Check if provided date falls within trip dates
+  const dateInTrip = date && tripStartDate && tripEndDate
+    ? date >= tripStartDate && date <= tripEndDate
+    : null
+
+  const inputCls = 'w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60'
+  const dateCls  = `${inputCls} [color-scheme:dark]`
+  const labelCls = 'block text-xs text-white/35 mb-1.5'
+
   return (
     <div className="bg-white/4 border border-white/8 rounded-2xl p-5 space-y-4">
       <p className="text-xs text-white/35 uppercase tracking-widest font-label">Is this trip for a special occasion?</p>
@@ -1004,17 +1026,118 @@ function SpecialOccasionSection({
         {OCCASION_OPTIONS.map(opt => (
           <label key={opt.key} className="flex items-center gap-3 cursor-pointer py-0.5">
             <input type="radio" name="special-occasion" checked={occasion === opt.key}
-              onChange={() => onOccasionChange(opt.key)} className="accent-[#C97552]" />
+              onChange={() => { onOccasionChange(opt.key); onDateChange(''); onTimeChange(''); onVenueChange(''); onEventNameChange('') }}
+              className="accent-[#C97552]" />
             <span className="text-sm text-white/65">{opt.label}</span>
           </label>
         ))}
       </div>
+
+      {/* BIRTHDAY */}
       {occasion === 'birthday' && (
-        <div className="ml-7 space-y-1">
-          <label className="block text-xs text-white/35">Whose birthday? (optional)</label>
-          <input type="text" value={person} onChange={e => onPersonChange(e.target.value)}
-            placeholder="e.g. Alex"
-            className="w-full bg-white/5 border border-white/15 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60" />
+        <div className="ml-7 space-y-3">
+          <div>
+            <label className={labelCls}>Whose birthday? (optional)</label>
+            <input type="text" value={person} onChange={e => onPersonChange(e.target.value)}
+              placeholder="e.g. Alex" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>When is the birthday?</label>
+            <input type="date" value={date} onChange={e => onDateChange(e.target.value)} className={dateCls} />
+          </div>
+          {date && dateInTrip === false && tripStartDate && tripEndDate && (
+            <p className="text-xs text-amber-400/80">Birthday is outside your trip dates — we&apos;ll pick the best day to celebrate instead.</p>
+          )}
+          {date && dateInTrip === true && (
+            <p className="text-xs text-[#C97552]/80">🎂 Birthday falls on this trip — that day gets the full birthday treatment.</p>
+          )}
+        </div>
+      )}
+
+      {/* ANNIVERSARY / HONEYMOON */}
+      {(occasion === 'anniversary' || occasion === 'honeymoon') && (
+        <div className="ml-7 space-y-3">
+          <div>
+            <label className={labelCls}>Anniversary date (optional)</label>
+            <input type="date" value={date} onChange={e => onDateChange(e.target.value)} className={dateCls} />
+          </div>
+          {date && dateInTrip === true && (
+            <p className="text-xs text-[#C97552]/80">💑 Anniversary falls during this trip — that evening gets the special dinner.</p>
+          )}
+        </div>
+      )}
+
+      {/* CONCERT / EVENT */}
+      {occasion === 'concert' && (
+        <div className="ml-7 space-y-3">
+          <div>
+            <label className={labelCls}>Event name</label>
+            <input type="text" value={eventName} onChange={e => onEventNameChange(e.target.value)}
+              placeholder="e.g. Taylor Swift Eras Tour" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Venue</label>
+            <input type="text" value={venue} onChange={e => onVenueChange(e.target.value)}
+              placeholder="e.g. Wrigley Field, Chicago" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Date</label>
+              <input type="date" value={date} onChange={e => onDateChange(e.target.value)} className={dateCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Start time</label>
+              <input type="time" value={time} onChange={e => onTimeChange(e.target.value)} className={dateCls} />
+            </div>
+          </div>
+          {date && dateInTrip === false && (
+            <p className="text-xs text-amber-400/80">⚠️ Event date is outside your trip dates — check your trip dates above.</p>
+          )}
+          {date && dateInTrip === true && (
+            <p className="text-xs text-[#C97552]/80">🎵 Concert day is in your trip — that entire day will be scheduled around it.</p>
+          )}
+        </div>
+      )}
+
+      {/* WEDDING */}
+      {occasion === 'wedding' && (
+        <div className="ml-7 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Wedding date</label>
+              <input type="date" value={date} onChange={e => onDateChange(e.target.value)} className={dateCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Ceremony time</label>
+              <input type="time" value={time} onChange={e => onTimeChange(e.target.value)} className={dateCls} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Venue area (optional)</label>
+            <input type="text" value={venue} onChange={e => onVenueChange(e.target.value)}
+              placeholder="e.g. Lincoln Park area" className={inputCls} />
+          </div>
+        </div>
+      )}
+
+      {/* GRADUATION */}
+      {occasion === 'graduation' && (
+        <div className="ml-7 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Graduation date</label>
+              <input type="date" value={date} onChange={e => onDateChange(e.target.value)} className={dateCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Ceremony time (optional)</label>
+              <input type="time" value={time} onChange={e => onTimeChange(e.target.value)} className={dateCls} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Location (optional)</label>
+            <input type="text" value={venue} onChange={e => onVenueChange(e.target.value)}
+              placeholder="e.g. Madison Square Garden" className={inputCls} />
+          </div>
         </div>
       )}
     </div>
@@ -1190,30 +1313,35 @@ function AvoidSection({
 // ─── Local transport section ──────────────────────────────────────────────────
 
 const LOCAL_TRANSPORT_OPTIONS = [
-  { key: 'rental_car', label: '🚗 Rental car'                       },
-  { key: 'transit',    label: '🚇 Public transit'                   },
-  { key: 'rideshare',  label: '🚖 Rideshare only (Uber/Lyft)'       },
-  { key: 'walking',    label: '🚶 Walking + rideshare for longer'    },
-  { key: 'mix',        label: '🔀 Mix — whatever makes sense'        },
-] as const
+  { key: 'rental_car',   label: '🚗 Rental car'              },
+  { key: 'transit',      label: '🚇 Public transit'           },
+  { key: 'rideshare',    label: '🚖 Rideshare (Uber/Lyft)'   },
+  { key: 'walking',      label: '🚶 Walking where possible'  },
+  { key: 'bike_scooter', label: '🚲 Bike / scooter rental'   },
+  { key: 'mix',          label: '🔀 Mix — whatever makes sense' },
+]
 
 function LocalTransportSection({
   destName, transport, onChange,
 }: {
   destName:  string
-  transport: string | null
-  onChange:  (v: string | null) => void
+  transport: string[]
+  onChange:  (v: string[]) => void
 }) {
+  function toggle(key: string) {
+    onChange(transport.includes(key) ? transport.filter(k => k !== key) : [...transport, key])
+  }
   return (
     <div className="mt-2 bg-white/3 border border-white/8 rounded-xl p-4 space-y-3">
       <p className="text-xs text-white/35 uppercase tracking-widest font-label">Getting around {destName}</p>
+      <p className="text-xs text-white/25">Select all that apply</p>
       <div className="space-y-2">
         {LOCAL_TRANSPORT_OPTIONS.map(opt => (
           <label key={opt.key} className="flex items-center gap-3 cursor-pointer py-0.5">
-            <input type="radio" name={`local-transport-${destName}`}
-              checked={transport === opt.key}
-              onChange={() => onChange(opt.key)}
-              className="accent-[#C97552]" />
+            <input type="checkbox"
+              checked={transport.includes(opt.key)}
+              onChange={() => toggle(opt.key)}
+              className="accent-[#C97552] w-4 h-4 rounded" />
             <span className="text-sm text-white/65">{opt.label}</span>
           </label>
         ))}
@@ -1400,7 +1528,7 @@ function TransportConnectorSection({
   const mapsLink   = `https://www.google.com/maps/dir/${encodeURIComponent(from.name + ', ' + from.country)}/${encodeURIComponent(to.name + ', ' + to.country)}`
 
   // Auto-suggest driving if from-city has rental car and this leg is unselected
-  const fromHasRentalCar = from.local_transport === 'rental_car'
+  const fromHasRentalCar = from.local_transport.includes('rental_car')
   const showDriveSuggestion = fromHasRentalCar && !leg.mode
 
   return (
@@ -2089,8 +2217,12 @@ function PlanNewInner() {
   const [accessibility,   setAccessibility]   = useState<AccessibilityInfo>({ needs: [], max_walking_minutes: null })
   const [tripInterests,   setTripInterests]   = useState<string[]>([])
   const [tripPace,        setTripPace]        = useState<'packed'|'balanced'|'relaxed'>('balanced')
-  const [specialOccasion, setSpecialOccasion] = useState<string>('none')
-  const [occasionPerson,  setOccasionPerson]  = useState<string>('')
+  const [specialOccasion,    setSpecialOccasion]    = useState<string>('none')
+  const [occasionPerson,     setOccasionPerson]     = useState<string>('')
+  const [occasionDate,       setOccasionDate]       = useState<string>('')
+  const [occasionTime,       setOccasionTime]       = useState<string>('')
+  const [occasionVenue,      setOccasionVenue]      = useState<string>('')
+  const [occasionEventName,  setOccasionEventName]  = useState<string>('')
   const [tripContext,     setTripContext]      = useState<string>('')
 
   // Pre-open add form if dest pre-filled from discover
@@ -2118,6 +2250,23 @@ function PlanNewInner() {
           home_country:         data.home_country        ?? '',
         })
         if (data.group_type === 'solo') setGroup(g => ({ ...g, traveler_count: 1 }))
+
+        // Pre-fill group dietary from profile so user doesn't have to re-enter every trip
+        const prefs: string[] = data.dietary_preferences ?? []
+        const hasVeg      = prefs.includes('vegetarian') || prefs.includes('vegan')
+        const hasHalal    = prefs.includes('halal')
+        const hasGF       = prefs.includes('gluten-free')
+        const hasAnyDiet  = hasVeg || hasHalal || hasGF
+        if (hasAnyDiet) {
+          setGroup(g => ({
+            ...g,
+            dietary_some_veg:    hasVeg,
+            vegetarian_count:    hasVeg ? 1 : 0,
+            dietary_halal:       hasHalal,
+            dietary_gluten_free: hasGF,
+            dietary_none:        false,
+          }))
+        }
       }
     }
     load()
@@ -2392,7 +2541,9 @@ function PlanNewInner() {
             nice_to_do:      dest.nice_to_do   || undefined,
             things_to_avoid: dest.things_to_avoid.length > 0 ? dest.things_to_avoid : undefined,
             avoid_notes:     dest.avoid_notes  || undefined,
-            local_transport: dest.local_transport || undefined,
+            local_transport: dest.local_transport.length > 0 ? dest.local_transport : undefined,
+            searching_flights:   f.status === 'none',
+            searching_hotel:     dest.hotel.status === 'none',
             booked_activities: dest.booked_activities.filter(a => a.name && a.date).length > 0
               ? dest.booked_activities.filter(a => a.name && a.date)
               : undefined,
@@ -2401,6 +2552,10 @@ function PlanNewInner() {
             trip_pace:           tripPace,
             special_occasion:    specialOccasion !== 'none' ? specialOccasion : undefined,
             occasion_person:     occasionPerson || undefined,
+            occasion_date:       occasionDate   || undefined,
+            occasion_time:       occasionTime   || undefined,
+            occasion_venue:      occasionVenue  || undefined,
+            occasion_event_name: occasionEventName || undefined,
             accessibility_needs: accessibility.needs.length > 0 ? accessibility.needs : undefined,
             max_walking_minutes: accessibility.max_walking_minutes || undefined,
             trip_context:        tripContext || undefined,
@@ -2430,10 +2585,10 @@ function PlanNewInner() {
         ...day,
         loading_slot: null,
       }))
-      return { ...item, loading: false, days: mutableDays, error: '' }
+      return { ...item, loading: false, days: mutableDays, pre_trip: r.result!.pre_trip, error: '' }
     }))
     setGenerating(false)
-  }, [destinations, profile, group, tripInterests, tripPace, specialOccasion, occasionPerson, accessibility, tripContext, transportLegs])
+  }, [destinations, profile, group, tripInterests, tripPace, specialOccasion, occasionPerson, occasionDate, occasionTime, occasionVenue, occasionEventName, accessibility, tripContext, transportLegs])
 
   // ── Save ──────────────────────────────────────────────────────────────────────
   const saveTrip = useCallback(async () => {
@@ -2487,7 +2642,7 @@ function PlanNewInner() {
             nice_to_do:      dest.nice_to_do     || null,
             things_to_avoid: dest.things_to_avoid.length > 0 ? dest.things_to_avoid : null,
             avoid_notes:     dest.avoid_notes    || null,
-            local_transport: dest.local_transport|| null,
+            local_transport: dest.local_transport.length > 0 ? dest.local_transport : null,
           }) || null,
         }
       })
@@ -2544,7 +2699,12 @@ function PlanNewInner() {
         {/* Special occasion */}
         <SpecialOccasionSection
           occasion={specialOccasion} person={occasionPerson}
+          date={occasionDate} time={occasionTime}
+          venue={occasionVenue} eventName={occasionEventName}
           onOccasionChange={setSpecialOccasion} onPersonChange={setOccasionPerson}
+          onDateChange={setOccasionDate} onTimeChange={setOccasionTime}
+          onVenueChange={setOccasionVenue} onEventNameChange={setOccasionEventName}
+          tripStartDate={tripStart} tripEndDate={tripEnd}
         />
 
         {/* Destinations */}
@@ -2773,6 +2933,58 @@ function PlanNewInner() {
                   {!itin.loading && itin.error && (
                     <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">
                       {itin.error}
+                    </div>
+                  )}
+
+                  {!itin.loading && !itin.error && itin.pre_trip && (
+                    <div className="space-y-3 mb-4">
+                      {itin.pre_trip.flight_recommendation && (() => {
+                        const f = itin.pre_trip!.flight_recommendation!
+                        return (
+                          <div className="bg-white/4 border border-[#C97552]/25 rounded-xl p-4 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">✈️</span>
+                              <p className="text-[#C97552] text-xs font-semibold uppercase tracking-widest">Flight recommendation</p>
+                            </div>
+                            <p className="text-white text-sm font-medium">{f.best_arrival}</p>
+                            <p className="text-white/55 text-xs">{f.booking_advice}</p>
+                            {f.airport_to_hotel && (
+                              <p className="text-white/45 text-xs">🚕 {f.airport_to_hotel}</p>
+                            )}
+                            {f.skyscanner_url && (
+                              <a href={f.skyscanner_url} target="_blank" rel="noopener noreferrer"
+                                className="inline-block mt-1 text-xs text-[#C97552]/80 hover:text-[#C97552] underline underline-offset-2 transition-colors">
+                                Search on Skyscanner →
+                              </a>
+                            )}
+                          </div>
+                        )
+                      })()}
+                      {itin.pre_trip.hotel_recommendation && (() => {
+                        const h = itin.pre_trip!.hotel_recommendation!
+                        return (
+                          <div className="bg-white/4 border border-blue-400/20 rounded-xl p-4 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">🏨</span>
+                              <p className="text-blue-300/80 text-xs font-semibold uppercase tracking-widest">Best neighbourhood to stay</p>
+                            </div>
+                            <p className="text-white text-sm font-medium">{h.neighbourhood}</p>
+                            <p className="text-white/55 text-xs">{h.why}</p>
+                            {h.price_range && (
+                              <p className="text-white/40 text-xs">💰 {h.price_range}</p>
+                            )}
+                            {h.alternative && (
+                              <p className="text-white/40 text-xs">Alternative: {h.alternative}</p>
+                            )}
+                            {h.booking_url && (
+                              <a href={h.booking_url} target="_blank" rel="noopener noreferrer"
+                                className="inline-block mt-1 text-xs text-blue-300/70 hover:text-blue-300 underline underline-offset-2 transition-colors">
+                                Search hotels →
+                              </a>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
 

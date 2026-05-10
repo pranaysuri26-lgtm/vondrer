@@ -514,7 +514,11 @@ function DestinationCard({
                 {locked ? '██████████' : dest.name}
               </h2>
               <p className={`text-sm ${locked ? 'blur-[4px] text-white/20 select-none' : 'text-white/50'}`}>
-                {locked ? '████████' : dest.country}
+                {locked ? '████████' : (
+                  dest.state_province
+                    ? `${dest.state_province}, ${dest.country}`
+                    : dest.country
+                )}
               </p>
             </div>
           </div>
@@ -661,14 +665,24 @@ function DestinationCard({
               </button>
             </div>
 
-            {/* Full-width Plan CTA — primary action */}
-            <a
-              href={`/plan/new?dest=${encodeURIComponent(dest.name)}&country=${encodeURIComponent(dest.country)}`}
-              onClick={e => e.stopPropagation()}
-              className="block w-full text-center bg-[#C97552] text-white font-semibold text-sm py-3.5 rounded-full hover:bg-[#b86644] transition-colors"
-            >
-              Plan this trip →
-            </a>
+            {/* CTAs row */}
+            <div className="flex gap-2">
+              <a
+                href={`/plan/new?dest=${encodeURIComponent(dest.name)}&country=${encodeURIComponent(dest.country)}`}
+                onClick={e => e.stopPropagation()}
+                className="flex-1 text-center bg-[#C97552] text-white font-semibold text-sm py-3.5 rounded-full hover:bg-[#b86644] transition-colors"
+              >
+                Plan this trip →
+              </a>
+              <a
+                href={`/guide?q=${encodeURIComponent(dest.name)}&c=${encodeURIComponent(dest.country)}${dest.state_province ? `&s=${encodeURIComponent(dest.state_province)}` : ''}`}
+                onClick={e => e.stopPropagation()}
+                className="px-4 py-3.5 rounded-full border border-white/15 text-white/50 text-sm hover:border-white/30 hover:text-white/70 transition-all flex-shrink-0"
+                title="Local intel guide"
+              >
+                🗺
+              </a>
+            </div>
           </div>
 
           {/* Frosted overlay for locked expanded */}
@@ -857,27 +871,29 @@ export default function DiscoverPage() {
 
         let needsRefresh  = false
         let gotAny        = false
+        // Buffer destinations — only render once all have arrived so paywall
+        // boundaries are stable and cards never flash unblurred then re-blur.
+        const buffer: RecommendedDestination[] = []
+        let metaCurrency = ''
+        let metaCity     = ''
+        let metaDietary: string[] = []
 
         await readSSE(res, {
           onMeta: (event) => {
             if (cancelled) return
-            if (event.home_country)        setCurrency(detectCurrency(event.home_country as string))
-            if (event.home_city)           setHomeCity(event.home_city as string)
-            if (event.dietary_preferences) setDietaryPrefs((event.dietary_preferences as string[]).filter(p => p !== 'none'))
+            if (event.home_country)        metaCurrency = event.home_country as string
+            if (event.home_city)           metaCity     = event.home_city    as string
+            if (event.dietary_preferences) metaDietary  = (event.dietary_preferences as string[]).filter(p => p !== 'none')
             if (event.needs_refresh)       needsRefresh = true
           },
           onDestination: (dest) => {
             if (cancelled) return
             gotAny = true
-            setDestinations(prev => [...prev, dest])
-            // Show UI as soon as the first destination arrives
-            setState('ready')
-            clearTimeout(slowTimer)
-            clearTimeout(hardTimer)
+            buffer.push(dest)
           },
           onRetry: () => {
-            // Server is retrying — clear partial results so user doesn't see a flash
-            if (!cancelled) setDestinations([])
+            // Server is retrying — wipe buffer so we start fresh
+            buffer.length = 0
             gotAny = false
           },
           onError: (msg) => {
@@ -887,8 +903,17 @@ export default function DiscoverPage() {
             if (cancelled) return
             clearTimeout(slowTimer)
             clearTimeout(hardTimer)
-            if (!gotAny) { setErrorMsg('No destinations returned. Please try again.'); setState('error') }
-            else setState('ready')
+            if (!gotAny) {
+              setErrorMsg('No destinations returned. Please try again.')
+              setState('error')
+            } else {
+              // Commit everything at once — paywall boundaries are now stable
+              if (metaCurrency) setCurrency(detectCurrency(metaCurrency))
+              if (metaCity)     setHomeCity(metaCity)
+              if (metaDietary.length > 0) setDietaryPrefs(metaDietary)
+              setDestinations(buffer)
+              setState('ready')
+            }
           },
         })
 
@@ -957,10 +982,12 @@ export default function DiscoverPage() {
   // Sort descending by effective score (raw match_score − 20 if timing_warning)
   const sorted = [...destinations].sort((a, b) => effectiveScore(b) - effectiveScore(a))
 
-  // previewAll: show everything sorted best-first, no paywall
-  // normal:     free = bottom FREE_TIER_LIMIT (lowest scores), locked = top N (highest scores)
-  const freeCards      = previewAll ? sorted : sorted.slice(-FREE_TIER_LIMIT)
-  const lockedCards    = previewAll ? []     : sorted.slice(0, sorted.length - FREE_TIER_LIMIT)
+  // Use server-supplied locked field (set by applyPaywall) — authoritative paywall state.
+  // Server sorts by raw match_score; client sorts by effectiveScore. Both orderings agree on
+  // which cards are locked, but client timing-penalty adjustments could diverge. Trusting the
+  // server prevents the flash where a card briefly renders unlocked before the blur kicks in.
+  const freeCards   = previewAll ? sorted : sorted.filter(d => !d.locked)
+  const lockedCards = previewAll ? []     : sorted.filter(d =>  d.locked)
   const topLockedScore = lockedCards.length > 0 ? effectiveScore(lockedCards[0]) : 0
   const topFreeScore   = freeCards.length   > 0 ? effectiveScore(freeCards[0])   : 0
   // When scores are bunched (gap < 10pts), lead with gem score on locked cards

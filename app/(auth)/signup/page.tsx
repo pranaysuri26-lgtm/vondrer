@@ -394,7 +394,7 @@ export default function SignupPage() {
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { value: 'anywhere', icon: '🌍', label: 'Anywhere', sub: 'Global recommendations' },
-                  { value: 'closer',   icon: '🏠', label: 'Closer to home', sub: 'Regional & domestic' },
+                  { value: 'closer',   icon: '🏠', label: 'Domestic only', sub: 'Your country & neighbours' },
                 ].map(opt => (
                   <button key={opt.value} type="button"
                     onClick={() => set('travel_scope', opt.value as 'anywhere' | 'closer')}

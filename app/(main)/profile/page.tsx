@@ -347,7 +347,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 gap-2">
             {[
               { value: 'anywhere', icon: '🌍', label: 'Anywhere', sub: 'Global recommendations' },
-              { value: 'closer',   icon: '🏠', label: 'Closer to home', sub: 'Regional & domestic' },
+              { value: 'closer',   icon: '🏠', label: 'Domestic only', sub: 'Your country & neighbours' },
             ].map(opt => (
               <button key={opt.value} type="button" onClick={() => set('travel_scope', opt.value)}
                 className={`text-left px-4 py-4 rounded-xl border transition-all

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export const maxDuration = 30
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,19 +119,21 @@ Use only real, currently operating places. Be specific.`
   const userPrompt = `Suggest a ${body.time_of_day} activity for Day ${body.day} in ${body.destination}, ${body.country}. Request: "${body.replacement_request}". Return the JSON object only.`
 
   try {
-    const response = await anthropic.messages.create({
-      model:      'claude-haiku-4-5',
+    const response = await openai.chat.completions.create({
+      model:      'gpt-4o-mini',
       max_tokens: 400,
-      system:     systemPrompt,
-      messages:   [{ role: 'user', content: userPrompt }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
     })
 
-    const raw     = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+    const raw = response.choices[0]?.message?.content?.trim() ?? ''
 
     let block: { activity: string; description: string; insider_tip: string; estimated_cost: string }
     try {
-      block = JSON.parse(cleaned)
+      block = JSON.parse(raw)
       if (!block.activity) throw new Error('Missing activity field')
     } catch {
       console.error('[Replace] Parse error. Raw:', raw.slice(0, 300))
@@ -140,7 +142,7 @@ Use only real, currently operating places. Be specific.`
 
     return NextResponse.json(block)
   } catch (err) {
-    console.error('[Replace] Claude error:', err)
+    console.error('[Replace] GPT-4o-mini error:', err)
     return NextResponse.json({ error: 'Suggestion failed — please try again.' }, { status: 500 })
   }
 }

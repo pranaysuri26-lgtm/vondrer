@@ -26,12 +26,33 @@ export interface ItineraryDay {
   day_total_estimate:  string
 }
 
+export interface FlightRecommendation {
+  best_arrival:     string
+  booking_advice:   string
+  airport_to_hotel: string
+  skyscanner_url:   string
+}
+
+export interface HotelRecommendation {
+  neighbourhood: string
+  why:           string
+  price_range?:  string
+  alternative?:  string
+  booking_url:   string
+}
+
+export interface PreTripInfo {
+  flight_recommendation?: FlightRecommendation
+  hotel_recommendation?:  HotelRecommendation
+}
+
 export interface ItineraryResult {
   destination: string
   country:     string
   days:        number
   start_date:  string
   end_date:    string
+  pre_trip?:   PreTripInfo
   itinerary:   ItineraryDay[]
 }
 
@@ -85,16 +106,22 @@ interface ItineraryRequest {
   nice_to_do?:         string
   things_to_avoid?:    string[]
   avoid_notes?:        string
-  local_transport?:    string
-  booked_activities?:  BookedActivityReq[]
-  transport_mode?:     'fly' | 'drive' | 'bus' | 'train' | 'ferry'
-  trip_interests?:     string[]
-  trip_pace?:          'packed' | 'balanced' | 'relaxed'
-  special_occasion?:   string
-  occasion_person?:    string
-  accessibility_needs?: string[]
-  max_walking_minutes?: number
-  trip_context?:       string
+  local_transport?:      string[]   // multi-select array
+  searching_flights?:    boolean    // true when user hasn't booked yet
+  searching_hotel?:      boolean    // true when user hasn't booked yet
+  booked_activities?:    BookedActivityReq[]
+  transport_mode?:       'fly' | 'drive' | 'bus' | 'train' | 'ferry'
+  trip_interests?:       string[]
+  trip_pace?:            'packed' | 'balanced' | 'relaxed'
+  special_occasion?:     string
+  occasion_person?:      string
+  occasion_date?:        string   // ISO date e.g. '2026-07-20'
+  occasion_time?:        string   // 'HH:MM'
+  occasion_venue?:       string
+  occasion_event_name?:  string
+  accessibility_needs?:  string[]
+  max_walking_minutes?:  number
+  trip_context?:         string
   hotel?: {
     neighbourhood:  string
     checkin_date?:  string
@@ -131,6 +158,17 @@ function getAirportTransit(dest: string): string {
   return AIRPORT_TRANSIT[dest.toLowerCase().trim()] ?? `check Google Maps for transit from airport`
 }
 
+// ─── Day number helper ────────────────────────────────────────────────────────
+// Returns which day of the itinerary a calendar date falls on (1-indexed).
+// Returns null if outside trip window.
+
+function getItineraryDayNum(dateStr: string, startDate: string, totalDays: number): number | null {
+  const d   = new Date(dateStr   + 'T12:00:00')
+  const s   = new Date(startDate + 'T12:00:00')
+  const num = Math.round((d.getTime() - s.getTime()) / 86400000) + 1
+  return num >= 1 && num <= totalDays ? num : null
+}
+
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
 function buildPrompt(body: ItineraryRequest): { system: string; user: string } {
@@ -140,6 +178,7 @@ function buildPrompt(body: ItineraryRequest): { system: string; user: string } {
     must_do, nice_to_do, things_to_avoid, avoid_notes,
     local_transport, booked_activities,
     trip_interests, trip_pace, special_occasion, occasion_person,
+    occasion_date, occasion_time, occasion_venue, occasion_event_name,
     accessibility_needs, max_walking_minutes, trip_context,
   } = body
 
@@ -546,7 +585,7 @@ Never skip beach in a beach city.` : ''
   const destLower = destination.toLowerCase()
 
   if (destLower.includes('san francisco') || destLower === 'sf') {
-    const hasCarInPlans = local_transport === 'rental_car' ||
+    const hasCarInPlans = (Array.isArray(local_transport) && local_transport.includes('rental_car')) ||
                           user_plans?.toLowerCase().includes('rental car') ||
                           user_plans?.toLowerCase().includes('car') ||
                           user_plans?.toLowerCase().includes('drive')
@@ -598,27 +637,115 @@ Skew all recommendations toward these themes. When two options are equal quality
 
   // ── Special occasion ──────────────────────────────────────────────────────────
   const occasionSection = special_occasion && special_occasion !== 'none' ? (() => {
-    const name = occasion_person ? `${occasion_person}'s` : 'the'
+    const personLabel = occasion_person ? `${occasion_person}'s` : 'the'
+    const oDate  = occasion_date ?? null
+    const oTime  = occasion_time ?? null
+    const oVenue = occasion_venue ?? null
+    const oName  = occasion_event_name ?? null
+
+    // Helper: format time with 2-hour buffer for pre-show dinner
+    function subtractHours(timeStr: string, hrs: number): string {
+      const [h, m] = timeStr.split(':').map(Number)
+      const total  = h * 60 + m - hrs * 60
+      const hh     = Math.floor(((total % 1440) + 1440) % 1440 / 60)
+      const mm     = ((total % 60) + 60) % 60
+      return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`
+    }
+
     switch (special_occasion) {
       case 'anniversary':
-      case 'honeymoon':
+      case 'honeymoon': {
+        const dayNum = oDate ? getItineraryDayNum(oDate, start_date, days) : null
+        const dinnerDay = dayNum ?? days // default last night
         return `
 SPECIAL OCCASION: ${special_occasion.charAt(0).toUpperCase() + special_occasion.slice(1)}.
+${oDate ? `Anniversary/special date: ${oDate} — this is Day ${dayNum ?? '(outside trip dates)'}.` : ''}
 Include one genuinely romantic experience per trip (not generic).
-Include one splurge dinner — "the meal of this trip". Pre-ordering flowers or a message at the restaurant: note this is possible and include the instruction.
-Use couple-focused language throughout: "you and your partner", "the two of you", etc.`
-      case 'birthday':
+Special dinner on Day ${dinnerDay}: must be at a genuinely romantic restaurant — name it specifically, describe the vibe. Pre-order flowers or a personal note — include the instruction: "Call [restaurant] at least 24h ahead to arrange."
+Use couple-focused language throughout: "you and your partner", "the two of you".`
+      }
+
+      case 'birthday': {
+        const dayNum = oDate ? getItineraryDayNum(oDate, start_date, days) : null
+        if (oDate && dayNum) {
+          return `
+SPECIAL OCCASION: ${personLabel} birthday on ${oDate} — this is Day ${dayNum} of the itinerary.
+Day ${dayNum} MUST include:
+- Morning or afternoon: one memorable special experience (not just standard tourism)
+- Evening: birthday dinner at a restaurant that can arrange a celebration — include the note: "Call ahead to arrange a birthday surprise for ${occasion_person || 'the birthday person'}"
+- Day ${dayNum} title must reference the birthday celebration
+All other days: normal itinerary.`
+        } else if (oDate) {
+          // Date provided but outside trip window — pick best day
+          return `
+SPECIAL OCCASION: ${personLabel} birthday on ${oDate} — this is outside the trip dates.
+Celebrate on the best day (Day 2 or middle day). That day must include:
+- One special experience + birthday dinner with restaurant surprise arrangement
+- Day title must reference the birthday`
+        } else {
+          return `
+SPECIAL OCCASION: ${personLabel} birthday.
+Choose the best day (usually middle of trip) for the birthday treatment:
+- Special experience + birthday dinner where surprise can be arranged
+- Note: "Call [restaurant] ahead to arrange birthday surprise for ${occasion_person || 'birthday person'}"`
+        }
+      }
+
+      case 'concert': {
+        const dayNum  = oDate ? getItineraryDayNum(oDate, start_date, days) : null
+        const showAt  = oTime ?? '20:00'
+        const dinnerAt = oTime ? subtractHours(oTime, 2) : '18:00'
+        const venueStr = oVenue ? `at ${oVenue}` : 'at the venue'
+        const eventStr = oName  ? oName : 'Concert/Event'
         return `
-SPECIAL OCCASION: ${name} birthday.
-Include one special experience on or near the birthday date.
-Recommend one restaurant where a birthday surprise can be arranged — note: "[Restaurant] can arrange a birthday surprise/dessert if you call ahead."
-Birthday person's name: ${occasion_person || '(not specified)'}`
+SPECIAL OCCASION: ${eventStr} ${venueStr}${oDate ? ` on ${oDate}` : ''}${oTime ? ` at ${oTime}` : ''}.
+${dayNum ? `This is Day ${dayNum} of the itinerary.` : 'Find the matching day in the trip dates.'}
+
+${dayNum ? `Day ${dayNum}` : 'Concert day'} MUST follow this exact structure:
+- Morning: RELAXED ONLY — save energy. Coffee, light neighbourhood walk, nothing demanding.
+- Afternoon: explore the area near ${oVenue ?? 'the venue'}
+- Pre-show dinner at ${dinnerAt}: specific restaurant within WALKING DISTANCE of ${oVenue ?? 'the venue'} — name it and explain why it works for pre-show timing
+- Evening: ${eventStr} ${venueStr} at ${showAt}
+- Post-show: one late-night option within walking distance (bar, food, dessert)
+
+MANDATORY WARNINGS for this day:
+⚠️ "Traffic warning: post-${oName ?? 'show'} traffic is heavy around ${oVenue ?? 'the venue'} — allow 30+ extra minutes"
+⚠️ "Rideshare surge: Uber/Lyft prices spike post-show. Consider walking 10 min from venue before requesting, or pre-book a return."
+Do NOT schedule anything during the show window (${showAt} to approx ${oTime ? subtractHours(oTime, -3) : '23:00'}).`
+      }
+
+      case 'wedding': {
+        const dayNum   = oDate ? getItineraryDayNum(oDate, start_date, days) : null
+        const ceremonyAt = oTime ?? '14:00'
+        const departAt   = oTime ? subtractHours(oTime, 1.5) : '12:30'
+        return `
+SPECIAL OCCASION: Wedding attending${oVenue ? ` at ${oVenue}` : ''}${oDate ? ` on ${oDate}` : ''}.
+${dayNum ? `This is Day ${dayNum} of the itinerary.` : ''}
+
+${dayNum ? `Day ${dayNum}` : 'Wedding day'} schedule:
+- Morning: preparation — relaxed breakfast near hotel, getting ready
+- Depart for ${oVenue ?? 'wedding venue'} by ${departAt} (1.5h before ceremony)
+- Ceremony and reception at ${ceremonyAt}
+- NO other activities on the wedding day whatsoever
+Day before: relaxed and easy — nothing physically tiring.
+Day after: recovery + gentle exploration.`
+      }
+
+      case 'graduation': {
+        const dayNum = oDate ? getItineraryDayNum(oDate, start_date, days) : null
+        return `
+SPECIAL OCCASION: Graduation trip${oDate ? ` — graduation on ${oDate}${dayNum ? ` (Day ${dayNum})` : ' (outside trip dates)'}` : ''}.
+${dayNum ? `Day ${dayNum}: ceremony day — morning prep, attend ceremony${oTime ? ` at ${oTime}` : ''}, celebration dinner in the evening at a memorable restaurant.` : 'Include one genuinely celebratory dinner experience during the trip.'}
+All other days: celebratory tone throughout.`
+      }
+
       case 'bachelor':
         return `
 SPECIAL OCCASION: Bachelor/Bachelorette trip.
 Include nightlife options where appropriate.
-One group activity designed for shared memory (boat trip, cooking class, etc.).
+One group activity designed for shared memory (boat trip, cooking class, cocktail making, etc.).
 Livelier venue recommendations. Note: "Inform venues in advance for group bookings."`
+
       case 'family_reunion':
         return `
 SPECIAL OCCASION: Family reunion.
@@ -626,12 +753,7 @@ Activities must work for all ages present.
 Large-table-bookable restaurants only — note reservation lead time.
 Include one group photo location.
 Mix generations in all recommendations.`
-      case 'concert':
-        return `
-SPECIAL OCCASION: Concert or event.
-Schedule EVERYTHING around the event. Event date takes priority over all other planning.
-Pre-event dinner: near the venue, booked in advance, ends 60 min before doors open.
-Post-event: note late-night options. Warn about surge pricing for rideshare post-event. Parking/transport warnings.`
+
       default:
         return `SPECIAL OCCASION: ${special_occasion}. Reflect this theme throughout the itinerary where appropriate.`
     }
@@ -716,30 +838,47 @@ If an avoided thing is genuinely unavoidable for a key activity, flag it with a 
 "We know you prefer to avoid [thing] — [specific workaround] will minimise this."` : ''
 
   // ── Local transport ───────────────────────────────────────────────────────────
-  const localTransportSection = local_transport ? (() => {
-    switch (local_transport) {
-      case 'rental_car':
-        return `LOCAL TRANSPORT: Rental car.
-User has a car in ${destination}. Never suggest public transit for car-friendly activities.
-Include parking notes and estimated parking costs for major attractions.
-Drive-friendly activities (scenic routes, out-of-city day trips) are accessible.`
-      case 'transit':
-        return `LOCAL TRANSPORT: Public transit.
-Include specific transit lines/routes for each activity.
-Show transit cost per person AND group total.
-Flag areas where transit is limited.`
-      case 'rideshare':
-        return `LOCAL TRANSPORT: Rideshare only (Uber/Lyft).
-Estimate rideshare cost between activities. Group of 7+ = 2 vehicles (double the cost).
-Surge warnings: post-dinner 9–11pm, post-event departures, airport runs.
-Never suggest walking over 10 minutes.`
-      case 'walking':
-        return `LOCAL TRANSPORT: Walking + rideshare for longer distances.
-Group activities into walkable zones. Note walking time between each.
-Max walking 20 min between activities. Rideshare when zones change.`
-      default:
-        return `LOCAL TRANSPORT: Mix of options. Note the best transport mode for each activity.`
+  const localTransportSection = (local_transport && local_transport.length > 0) ? (() => {
+    const modes = local_transport
+    const LABELS: Record<string, string> = {
+      rental_car:   'Rental car',
+      transit:      'Public transit',
+      rideshare:    'Rideshare (Uber/Lyft)',
+      walking:      'Walking',
+      bike_scooter: 'Bike/scooter rental',
+      mix:          'Mix of options',
     }
+    const modeList = modes.map(m => LABELS[m] ?? m).join(', ')
+
+    const instructions: string[] = []
+    if (modes.includes('transit'))
+      instructions.push('- Public transit: specify the exact line/route name, cost per person, journey time for every applicable activity. e.g. "Take the Blue Line El from Clark/Lake to O\'Hare (45 min, $2.50)"')
+    if (modes.includes('rideshare'))
+      instructions.push('- Rideshare (Uber/Lyft): estimate $X–$Y per ride. Surge warning for post-dinner 9–11pm and post-event departures. Group of 7+ needs 2 vehicles — note double cost.')
+    if (modes.includes('rental_car'))
+      instructions.push('- Rental car: include parking availability and cost for major attractions. Day trips outside city are now accessible — include at least one.')
+    if (modes.includes('walking'))
+      instructions.push('- Walking: group activities into walkable zones. State walking time in minutes. Rideshare when zone changes or over 20 min.')
+    if (modes.includes('bike_scooter'))
+      instructions.push('- Bike/scooter: flag activities where cycling is ideal — waterfronts, flat neighbourhoods, parks. Note rental spots if known.')
+    if (modes.includes('mix') && instructions.length === 0)
+      instructions.push('- Mix: choose the most logical transport mode per activity and state it explicitly.')
+
+    return `LOCAL TRANSPORT — MULTI-MODE:
+Selected modes: ${modeList}
+
+${instructions.join('\n')}
+
+CRITICAL: For EVERY activity, state exactly how to get there using the selected modes:
+"Take the Red Line to Wrigleyville (20 min, $2.50 each)"
+"Uber recommended — $8–12, 10 min; transit would take 45 min with a transfer"
+"12-minute walk from River North hotels — flat, easy route"
+
+Rules by time of day:
+- Daytime sightseeing: public transit or walking when selected and practical
+- Late night (after 9pm): rideshare if selected — transit schedules thin out
+- Day trips outside city: rental car if selected, otherwise rideshare
+Never mention only one mode when the user has selected multiple.`
   })() : ''
 
   // ── Fixed bookings ────────────────────────────────────────────────────────────
@@ -763,6 +902,67 @@ ${booked_activities.map(a => {
   }).join('\n')}
 Never schedule ANYTHING during these time slots. Zero exceptions.` : ''
 
+  // ── Flight search recommendation ─────────────────────────────────────────────
+  const endDateStr = new Date(new Date(start_date + 'T12:00:00').getTime() + (days - 1) * 86400000).toISOString().split('T')[0]
+  const homeLabel  = homeCity ? `${homeCity}, ${homeCountry}` : homeCountry || 'your home city'
+  const skyOrigin   = (homeCity || homeCountry).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z-]/g, '')
+  const skyDest     = destination.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z-]/g, '')
+  const skyDate     = start_date.replace(/-/g, '').slice(2)
+  const skyscannerUrl = `https://www.skyscanner.com/transport/flights/${skyOrigin}/${skyDest}/${skyDate}/`
+
+  const flightSearchSection = body.searching_flights ? `
+FLIGHT RECOMMENDATION — USER HAS NOT BOOKED FLIGHTS YET:
+Trip: ${homeLabel} → ${destination}, ${start_date} to ${endDateStr}
+
+Include a "pre_trip.flight_recommendation" block in your JSON response with:
+{
+  "best_arrival": "Morning flight — arrive by noon. Reason: [honest specific reason e.g. 'Arriving before noon gives a full afternoon in ${destination}. Evening arrivals waste Day 1 entirely.']",
+  "booking_advice": "[Honest advice for these specific dates — e.g. 'Summer peak — book at least 6 weeks ahead. Prices spike within 3 weeks of travel.']",
+  "airport_to_hotel": "${getAirportTransit(destination)}",
+  "skyscanner_url": "${skyscannerUrl}"
+}
+
+CRITICAL FOR DAY 1: Assume the user arrives in the morning. Day 1 must start:
+- Morning: airport arrival, hotel area orientation, nearby lunch — NOT full tourism while jet-lagged
+- Afternoon: first real activity once settled
+- Never start Day 1 with a 9am museum visit if they're still in transit.` : ''
+
+  // ── Hotel search recommendation ───────────────────────────────────────────────
+  const bookingUrl    = `https://www.booking.com/search.html?ss=${encodeURIComponent(destination)}&checkin=${start_date}&checkout=${endDateStr}`
+  const transportNote = (local_transport && local_transport.length > 0) ? local_transport.join(', ') : 'general'
+  const budgetForHotel = user_profile?.budget_per_day ?? '50-150'
+
+  const hotelSearchSection = body.searching_hotel ? `
+HOTEL RECOMMENDATION — USER HAS NOT BOOKED YET:
+Trip: ${destination}, ${start_date} to ${endDateStr}
+Transport: ${transportNote} | Budget tier: ${budgetForHotel}
+
+Include a "pre_trip.hotel_recommendation" block in your JSON response with:
+{
+  "neighbourhood": "[Best neighbourhood for this specific trip]",
+  "why": "[One specific reason — link it to the activities and transport selected, e.g. 'River North puts you on the Blue Line El, walking distance to Day 1/2 activities, with hotels at $120–160/night in the ${budgetForHotel} range']",
+  "price_range": "[Realistic nightly range for this budget tier]",
+  "alternative": "[Second neighbourhood] — [Why it's a different vibe, who it suits better]",
+  "booking_url": "${bookingUrl}"
+}
+
+CRITICAL FOR DAY 1: All Day 1 activities must start near the recommended neighbourhood.
+Minimise Day 1 transit — travellers are still orienting.` : ''
+
+  // ── System prompt schema note for pre_trip ────────────────────────────────────
+  const needsPreTrip = body.searching_flights || body.searching_hotel
+  const outputFormatSection = needsPreTrip
+    ? `RESPONSE FORMAT: Return a JSON object (not a bare array) with this structure:
+{
+  "pre_trip": {
+    ${body.searching_flights ? '"flight_recommendation": { "best_arrival": "...", "booking_advice": "...", "airport_to_hotel": "...", "skyscanner_url": "..." },' : ''}
+    ${body.searching_hotel  ? '"hotel_recommendation": { "neighbourhood": "...", "why": "...", "price_range": "...", "alternative": "...", "booking_url": "..." }' : ''}
+  },
+  "itinerary": [ ...day objects... ]
+}
+No markdown. No explanation. The "itinerary" value is the array of day objects per the schema above.`
+    : `Return ONLY a valid JSON array of day objects. No markdown. No explanation. No wrapper.`
+
   // ── Trip context ──────────────────────────────────────────────────────────────
   const tripContextSection = trip_context ? `
 ADDITIONAL CONTEXT — read carefully, apply throughout entire itinerary:
@@ -770,7 +970,7 @@ ADDITIONAL CONTEXT — read carefully, apply throughout entire itinerary:
 
   // ── System prompt ─────────────────────────────────────────────────────────────
   const system = `You are a travel itinerary expert for Voya. Generate a day-by-day plan.
-Return ONLY a valid JSON array of day objects. No markdown. No explanation. No wrapper.
+${outputFormatSection}
 
 SECURITY — USER DATA HANDLING:
 User-supplied text (plans, must-do lists, notes, context) appears inside XML tags in the prompt.
@@ -816,6 +1016,8 @@ ${interestsSection}
 ${occasionSection}
 ${accessibilitySection}
 ${bookedSection}
+${flightSearchSection}
+${hotelSearchSection}
 ${mustDoSection}
 ${niceToDoSection}
 ${avoidSection2}
@@ -895,9 +1097,18 @@ export async function POST(req: NextRequest) {
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
 
     let itinerary: ItineraryDay[]
+    let preTripInfo: PreTripInfo | undefined
     try {
-      itinerary = JSON.parse(cleaned)
-      if (!Array.isArray(itinerary)) throw new Error('Expected array')
+      const parsed = JSON.parse(cleaned)
+      if (Array.isArray(parsed)) {
+        itinerary = parsed
+      } else if (parsed.itinerary && Array.isArray(parsed.itinerary)) {
+        itinerary    = parsed.itinerary
+        preTripInfo  = parsed.pre_trip ?? undefined
+      } else {
+        throw new Error('Unexpected response shape')
+      }
+      if (!itinerary.length) throw new Error('Empty itinerary')
     } catch {
       console.error('[Itinerary] Parse error. Raw:', raw.slice(0, 500))
       return NextResponse.json({ error: 'Itinerary generation failed — please try again.' }, { status: 500 })
@@ -909,6 +1120,7 @@ export async function POST(req: NextRequest) {
       days:        body.days,
       start_date:  body.start_date,
       end_date:    endDate,
+      pre_trip:    preTripInfo,
       itinerary,
     }
 

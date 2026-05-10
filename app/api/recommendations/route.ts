@@ -10,6 +10,7 @@ import {
   type PastTrip,
   type RecommendedDestination,
 } from '@/lib/recommendations'
+import { fetchTimingContext } from '@/lib/gemini-timing'
 
 // Route segment config — 60s max (streaming avoids hitting this on normal loads)
 export const maxDuration = 60
@@ -34,6 +35,7 @@ function applyPaywall(dests: RecommendedDestination[]): RecommendedDestination[]
     return {
       name:             '████████',
       country:          '████████',
+      state_province:   '',
       match_score:      d.match_score,
       hidden_gem_score: d.hidden_gem_score,
       locked:           true,
@@ -215,7 +217,23 @@ export async function POST(req: NextRequest) {
     hash_prefix:  hash.slice(0, 12),
   })
 
-  const { system, user: userPrompt } = buildRecommendationPrompt(onboarding, pastTrips)
+  // ── Gemini Flash: real-time timing intelligence ─────────────────────────────
+  // Fires in parallel with nothing else — 5s timeout, never blocks if it fails.
+  // Result injected into Claude's user prompt as <timing_intelligence> so
+  // festival detection and timing scores are grounded in current search data.
+  const timingContext = await fetchTimingContext({
+    homeCountry:   onboarding.home_country ?? '',
+    travelScope:   onboarding.travel_scope ?? 'anywhere',
+    tripTiming:    onboarding.trip_timing  ?? null,
+    tripStartDate: onboarding.trip_start_date ?? null,
+    tripEndDate:   onboarding.trip_end_date   ?? null,
+  }).catch(() => null)  // safety net — Gemini must never crash the recommendations flow
+
+  const { system, user: baseUserPrompt } = buildRecommendationPrompt(onboarding, pastTrips)
+
+  const userPrompt = timingContext
+    ? `${baseUserPrompt}\n\n<timing_intelligence>\nThe following is real-time travel timing data retrieved via Google Search. Use it to inform timing_score, timing_note, timing_warning, and upcoming_event fields. Treat as authoritative for current events and conditions:\n${timingContext}\n</timing_intelligence>`
+    : baseUserPrompt
 
   return makeSSEResponse(async (ctrl) => {
     ctrl.enqueue(sseChunk({ type: 'meta', ...meta }))

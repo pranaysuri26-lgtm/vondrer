@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -16,7 +16,7 @@ export interface Deal {
   action_url:       string
 }
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
 // In-process cache: key = "country::YYYY-MM-DD"
 const cache = new Map<string, Deal[]>()
@@ -59,7 +59,7 @@ export async function GET() {
       return NextResponse.json({ deals: cache.get(key), cached: true, country })
     }
 
-    // ── Generate with Claude ──────────────────────────────────────────────────
+    // ── Generate with GPT-4o ──────────────────────────────────────────────────
     const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
     const system = `You are a travel deals curator for Voya.
@@ -82,16 +82,18 @@ RULES:
 
     const userPrompt = `Generate today's travel deals for ${country} travellers. Today is ${today}.`
 
-    const response = await anthropic.messages.create({
-      model:      'claude-haiku-4-5',
-      max_tokens: 2500,
-      system,
-      messages:   [{ role: 'user', content: userPrompt }],
+    const response = await openai.chat.completions.create({
+      model:    'gpt-4o',
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user',   content: userPrompt },
+      ],
+      max_tokens:      2500,
+      response_format: { type: 'json_object' },
     })
 
-    const raw  = response.content[0].type === 'text' ? response.content[0].text : ''
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
-    const parsed = JSON.parse(cleaned)
+    const raw    = response.choices[0]?.message?.content ?? ''
+    const parsed = JSON.parse(raw)
 
     if (!parsed.deals || !Array.isArray(parsed.deals)) {
       throw new Error('Invalid response structure')

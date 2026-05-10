@@ -68,11 +68,11 @@ const DIETARY_OPTIONS = [
 ]
 
 const OFFBEAT_LABELS: Record<number, { label: string; sub: string; icon: string }> = {
-  1: { label: 'Tourist-friendly',  sub: 'Popular spots are fine',          icon: '🏖️' },
-  2: { label: 'Mostly mainstream', sub: 'Known places, local twist',       icon: '🗺️' },
-  3: { label: 'Off the path',      sub: 'Mix of known and genuinely local', icon: '🧭' },
-  4: { label: 'Hidden',            sub: 'Places most travellers skip',     icon: '🌲' },
-  5: { label: 'Truly unknown',     sub: 'Obscurity is the point',          icon: '🌑' },
+  1: { label: 'The icons',                       sub: 'Santorini, New York, Tokyo',        icon: '🏖️' },
+  2: { label: 'Popular done right',              sub: 'Lisbon, Bali, Queenstown',          icon: '🗺️' },
+  3: { label: 'Off the tourist trail',           sub: 'Porto, Chiang Rai, Medellín',       icon: '🧭' },
+  4: { label: 'Most people haven\'t heard of it', sub: 'Kotor, Oaxaca, Tbilisi',           icon: '🌲' },
+  5: { label: 'A village with no English signs', sub: 'You\'ll figure it out',             icon: '🌑' },
 }
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────

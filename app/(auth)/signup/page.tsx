@@ -78,11 +78,11 @@ const INTEREST_OPTIONS = [
 ]
 
 const OFFBEAT_LABELS: Record<number, { label: string; sub: string }> = {
-  1: { label: 'Tourist-friendly',  sub: 'I like popular spots with good infrastructure' },
-  2: { label: 'Mostly mainstream', sub: 'Known places, with a local twist'              },
-  3: { label: 'Off the path',      sub: 'Mix of known and genuinely local'              },
-  4: { label: 'Hidden',            sub: 'Places most travellers skip completely'        },
-  5: { label: 'Truly unknown',     sub: 'Obscurity is the whole point'                 },
+  1: { label: 'The icons',                      sub: 'Santorini, New York, Tokyo'        },
+  2: { label: 'Popular done right',             sub: 'Lisbon, Bali, Queenstown'          },
+  3: { label: 'Off the tourist trail',          sub: 'Porto, Chiang Rai, Medellín'       },
+  4: { label: 'Most people haven\'t heard of it', sub: 'Kotor, Oaxaca, Tbilisi'          },
+  5: { label: 'A village with no English signs', sub: 'You\'ll figure it out'            },
 }
 
 const POPULAR_COUNTRIES = [

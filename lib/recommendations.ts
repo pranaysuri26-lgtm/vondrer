@@ -100,7 +100,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 24
+const PROMPT_VERSION = 25
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -504,12 +504,32 @@ FORBIDDEN: Americas (USA, Canada, Mexico, South America, Central America, Caribb
   if (isIndia) {
     return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HARD GEOGRAPHIC CONSTRAINT — INDIA + CLOSER SCOPE
+HARD GEOGRAPHIC CONSTRAINT — INDIA + DOMESTIC SCOPE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PERMITTED: India (all states), Sri Lanka, Nepal, Bhutan, Maldives, Thailand,
-  Malaysia, Singapore, Indonesia/Bali, Vietnam, Cambodia, Myanmar.
-FORBIDDEN: Europe, Americas, East Asia beyond SE Asia (Japan, China, South Korea),
-  Africa, Australia, New Zealand.
+User is from India and selected "Closer to home". This means India + nearby region ONLY.
+
+PERMITTED destinations ONLY:
+  • All Indian states and union territories (Rajasthan, Kerala, Uttarakhand, Himachal Pradesh, etc.)
+  • Nepal, Bhutan, Sri Lanka (immediate neighbours)
+  • Maldives (short direct flight)
+  • SE Asia: Thailand, Malaysia, Singapore, Indonesia/Bali, Vietnam, Cambodia, Myanmar
+
+COMPLETELY FORBIDDEN — EVERY destination outside the permitted list above:
+  ✗ United States — ANY US city: New York, Los Angeles, Chicago, San Francisco, Boston, Miami, etc.
+  ✗ United Kingdom — London, Edinburgh, Manchester, etc.
+  ✗ ALL of Europe — France, Italy, Spain, Germany, Portugal, Greece, Netherlands, etc.
+  ✗ Japan — Tokyo, Kyoto, Osaka, or any Japanese city
+  ✗ South Korea — Seoul, Busan, or any Korean city
+  ✗ China — Beijing, Shanghai, or any Chinese city
+  ✗ Australia, New Zealand
+  ✗ ALL of the Americas — Canada, Mexico, Caribbean, South America, Central America
+  ✗ Middle East — Dubai, Abu Dhabi, Qatar, Saudi Arabia, Israel, Jordan, etc.
+  ✗ ALL of Africa — South Africa, Morocco, Kenya, Egypt, etc.
+  ✗ Central Asia, Eastern Europe, Russia
+
+Before writing EACH destination: ask "Is this in India, Nepal, Bhutan, Sri Lanka, Maldives, or SE Asia (Thailand/Malaysia/Singapore/Indonesia/Vietnam/Cambodia/Myanmar)?"
+If the answer is NO → do not include it. ZERO EXCEPTIONS. No "close enough" destinations.
+Replace any forbidden destination with a genuinely interesting Indian domestic or SE Asian option.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
   }
 
@@ -829,14 +849,13 @@ Be honest: never recommend a destination where this budget forces miserable comp
 - ALL results must be in the same state/province/region as their home city: ${onboarding.home_city ?? 'home city'}, ${onboarding.home_country}.
 - No other states, no other countries. See HARD GEOGRAPHIC CONSTRAINT block — it is absolute.`
       : `TRAVEL SCOPE: CLOSER TO HOME (DOMESTIC)
-- User explicitly chose "Closer to home" — recommend DOMESTIC destinations only.
-- No international flights. No passport-required destinations.
+- User explicitly chose "Closer to home" — recommend DOMESTIC + nearby regional destinations only.
 - For USA: US domestic only (all 50 states + US territories). Canada permitted.
 - For Canada: Canadian domestic only. United States permitted.
 - For Australia: domestic destinations + New Zealand only.
-- For India: domestic destinations + Sri Lanka, Nepal, Bhutan only.
+- For India: India (all states) + Nepal, Bhutan, Sri Lanka, Maldives, SE Asia only. NO Europe, NO USA, NO Japan, NO UK.
 - For UK/Europe: domestic + European Union / Schengen area only.
-- See HARD GEOGRAPHIC CONSTRAINT block below — those rules override everything.`)
+- See HARD GEOGRAPHIC CONSTRAINT block below — those rules are absolute and override everything.`)
     : `TRAVEL SCOPE: GLOBAL
 - Worldwide destinations are fine.
 - Vary regions — do not cluster all suggestions in one continent.

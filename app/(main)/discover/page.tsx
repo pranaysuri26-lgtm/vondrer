@@ -1106,6 +1106,15 @@ export default function DiscoverPage() {
             if (event.home_city)           metaCity     = event.home_city    as string
             if (event.dietary_preferences) metaDietary  = (event.dietary_preferences as string[]).filter(p => p !== 'none')
             if (event.needs_refresh)       needsRefresh = true
+            // Debug: log what scope the server is actually reading from the DB
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Recommendations meta]', {
+                travel_scope:   event.travel_scope,
+                domestic_scope: event.domestic_scope,
+                home_country:   event.home_country,
+                home_city:      event.home_city,
+              })
+            }
           },
           onDestination: (dest) => {
             if (cancelled) return

@@ -1113,12 +1113,9 @@ export default function DiscoverPage() {
             if (event.needs_refresh)       needsRefresh = true
             // Debug: log what scope the server is actually reading from the DB
             if (process.env.NODE_ENV === 'development') {
-              console.log('[Recommendations meta]', {
-                travel_scope:   event.travel_scope,
-                domestic_scope: event.domestic_scope,
-                home_country:   event.home_country,
-                home_city:      event.home_city,
-              })
+              console.log(
+                `[Recommendations meta] travel_scope="${event.travel_scope}" domestic_scope="${event.domestic_scope}" city="${event.home_city}" country="${event.home_country}"`
+              )
             }
           },
           onDestination: (dest) => {

@@ -259,15 +259,20 @@ export default function ProfilePage() {
 
     if (onboardingError) { setError(onboardingError.message); setSaving(false); return }
 
+    // Main profile saved — log so we can confirm travel_scope persisted
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Profile saved] travel_scope:', profile.travel_scope, '| home:', profile.home_city, profile.home_country)
+    }
+
     // Separate domestic_scope save — silently ignored if the column doesn't exist yet.
-    // To enable fully: run in Supabase SQL editor:
+    // The 400 shown in browser console for this call is harmless — main profile above succeeded.
+    // To eliminate the 400: run in Supabase SQL editor:
     //   ALTER TABLE onboarding_responses ADD COLUMN IF NOT EXISTS domestic_scope TEXT DEFAULT NULL;
-    try {
-      await supabase
-        .from('onboarding_responses')
-        .update({ domestic_scope: profile.travel_scope === 'closer' ? profile.domestic_scope : null })
-        .eq('user_id', user.id)
-    } catch { /* column may not exist yet — main profile saved successfully above */ }
+    supabase
+      .from('onboarding_responses')
+      .update({ domestic_scope: profile.travel_scope === 'closer' ? profile.domestic_scope : null })
+      .eq('user_id', user.id)
+      .then(() => { /* ignore — column may not exist */ })
 
     // Replace past trips: delete all then re-insert
     await supabase.from('past_trips').delete().eq('user_id', user.id)

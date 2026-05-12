@@ -259,6 +259,91 @@ function GuideContent() {
             </section>
           )}
 
+          {/* Accommodation */}
+          {guide.accommodation && (
+            <section>
+              <SectionLabel>Where to stay</SectionLabel>
+              {(() => {
+                const acc = guide.accommodation!
+                const rec = acc.primary_recommendation
+                const ICONS: Record<string, string> = { government_property:'🏛️', homestay:'🏡', guesthouse:'🏠', hotel:'🏨', hostel:'🛏️', resort:'🌴', camp:'⛺', airbnb:'🏠' }
+                const icon = ICONS[acc.primary_type] ?? '🏨'
+                return (
+                  <div className="space-y-3">
+                    {/* Primary card */}
+                    <div className="bg-white/4 border border-white/8 rounded-2xl p-5">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{icon}</span>
+                          <span className="text-white font-medium text-sm">{rec.type}</span>
+                        </div>
+                        {rec.name && <span className="text-xs text-white/40 text-right leading-tight max-w-[140px]">{rec.name}</span>}
+                      </div>
+                      <p className="text-white/70 font-medium text-sm mb-1">{rec.price_range}</p>
+                      <p className="text-white/50 text-xs leading-relaxed mb-2">{rec.why}</p>
+                      {rec.book_ahead && <p className="text-white/35 text-xs mb-3">📅 {rec.book_ahead}</p>}
+                      <a
+                        href={rec.booking_url ?? `https://www.google.com/travel/hotels/${encodeURIComponent(destination)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-[#C97552]/80 hover:text-[#C97552] text-xs transition-colors"
+                      >
+                        Book on {rec.book_via} ↗
+                      </a>
+                    </div>
+
+                    {/* Platform badges */}
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: 'Booking.com', status: acc.platforms.booking_com },
+                        { label: 'Airbnb',      status: acc.platforms.airbnb },
+                        { label: 'Book direct', status: acc.platforms.direct },
+                      ].map(({ label, status }) => {
+                        const isStrong  = status === 'strong' || status === 'recommended'
+                        const isWeak    = status === 'not_recommended' || status === 'not_available'
+                        return (
+                          <span key={label} className={`text-xs px-3 py-1 rounded-full border ${
+                            isStrong ? 'border-emerald-500/30 text-emerald-400/70 bg-emerald-500/5' :
+                            isWeak   ? 'border-white/8 text-white/20 line-through' :
+                                       'border-white/15 text-white/35'
+                          }`}>
+                            {label}{isStrong ? ' ✓' : ''}
+                          </span>
+                        )
+                      })}
+                    </div>
+
+                    {/* Alternative */}
+                    {acc.alternative && (
+                      <div className="bg-white/2 border border-white/6 rounded-xl px-4 py-3">
+                        <div className="flex items-baseline gap-2 mb-0.5">
+                          <span className="text-white/50 text-xs font-medium">Alt: {acc.alternative.type}</span>
+                          <span className="text-white/30 text-xs">{acc.alternative.price_range}</span>
+                        </div>
+                        <p className="text-white/35 text-xs leading-snug">{acc.alternative.note}</p>
+                        <span className="text-white/25 text-xs">via {acc.alternative.book_via}</span>
+                      </div>
+                    )}
+
+                    {/* Neighbourhood advice */}
+                    {acc.neighbourhood_advice && (
+                      <p className="text-white/40 text-xs leading-snug">
+                        <span className="text-white/25 uppercase tracking-wider text-[10px] mr-2">Best area</span>
+                        {acc.neighbourhood_advice}
+                      </p>
+                    )}
+
+                    {/* Avoid */}
+                    {acc.avoid && (
+                      <p className="text-amber-400/50 text-xs leading-snug">
+                        <span className="mr-1">⚠️</span>{acc.avoid}
+                      </p>
+                    )}
+                  </div>
+                )
+              })()}
+            </section>
+          )}
+
           {/* Footer CTA */}
           <div className="border-t border-white/8 pt-8 flex flex-col items-center gap-4">
             <p className="text-white/25 text-xs text-center">

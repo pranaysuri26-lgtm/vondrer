@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { detectCurrency, displayBudget, type CurrencyInfo } from '@/lib/currency'
-import type { RecommendedDestination, TransportMode } from '@/lib/recommendations'
+import type { RecommendedDestination, TransportMode, Accommodation } from '@/lib/recommendations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -405,6 +405,126 @@ function AlternateTransportCard({ m, homeCity, destName, country }: {
   )
 }
 
+// ─── Accommodation block ─────────────────────────────────────────────────────
+
+const ACCOMMODATION_ICONS: Record<string, string> = {
+  government_property: '🏛️',
+  homestay:            '🏡',
+  guesthouse:          '🏠',
+  airbnb:              '🏠',
+  hotel:               '🏨',
+  hostel:              '🛏️',
+  resort:              '🌴',
+  camp:                '⛺',
+}
+
+const PLATFORM_URLS: Record<string, (dest: string) => string> = {
+  'booking.com':   (d) => `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(d)}`,
+  'airbnb':        (d) => `https://www.airbnb.com/s/${encodeURIComponent(d)}/homes`,
+  'airbnb.com':    (d) => `https://www.airbnb.com/s/${encodeURIComponent(d)}/homes`,
+}
+
+function buildBookingUrl(bookVia: string, bookingUrl: string | null | undefined, destName: string): string {
+  if (bookingUrl) return bookingUrl
+  const key = bookVia.toLowerCase().replace(/\s+/g, '')
+  if (key.includes('booking.com') || key === 'bookingcom') return PLATFORM_URLS['booking.com'](destName)
+  if (key.includes('airbnb')) return PLATFORM_URLS['airbnb'](destName)
+  if (key.includes('agoda')) return `https://www.agoda.com/search?city=${encodeURIComponent(destName)}`
+  if (key.includes('google')) return `https://www.google.com/travel/hotels/${encodeURIComponent(destName)}`
+  return `https://www.google.com/travel/hotels/${encodeURIComponent(destName)}`
+}
+
+function PlatformBadge({ label, status }: { label: string; status: string }) {
+  const isStrong  = status === 'strong' || status === 'recommended'
+  const isLimited = status === 'limited' || status === 'optional'
+  const isWeak    = status === 'not_recommended' || status === 'not_available'
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${
+      isStrong  ? 'border-emerald-500/30 text-emerald-400/70 bg-emerald-500/5' :
+      isLimited ? 'border-white/15 text-white/35 bg-white/3' :
+                  'border-white/8 text-white/20 bg-white/2 line-through'
+    }`}>
+      {label}
+      {isStrong && <span className="text-emerald-400/60">✓</span>}
+    </span>
+  )
+}
+
+function AccommodationBlock({ acc, destName }: { acc: Accommodation; destName: string }) {
+  const icon = ACCOMMODATION_ICONS[acc.primary_type] ?? '🏨'
+  const rec  = acc.primary_recommendation
+  const bookUrl = buildBookingUrl(rec.book_via, rec.booking_url, destName)
+
+  return (
+    <div className="mt-4 mb-1">
+      <p className="text-[10px] text-white/25 uppercase tracking-widest mb-2.5 font-label">
+        Where to stay
+      </p>
+
+      {/* Primary recommendation */}
+      <div className="bg-white/4 border border-white/8 rounded-xl px-3 py-3">
+        <div className="flex items-start justify-between gap-2 mb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-base leading-none">{icon}</span>
+            <span className="text-xs font-semibold text-white/80">{rec.type}</span>
+          </div>
+          {rec.name && (
+            <span className="text-[10px] text-white/40 text-right leading-tight flex-shrink-0 max-w-[120px]">{rec.name}</span>
+          )}
+        </div>
+        <p className="text-sm text-white/70 font-medium mb-1">{rec.price_range}</p>
+        <p className="text-[11px] text-white/45 leading-snug mb-1.5">{rec.why}</p>
+        {rec.book_ahead && (
+          <p className="text-[11px] text-white/30 mb-2">📅 {rec.book_ahead}</p>
+        )}
+        <a
+          href={bookUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="text-[11px] text-[#C97552]/80 hover:text-[#C97552] transition-colors"
+        >
+          Book on {rec.book_via} ↗
+        </a>
+      </div>
+
+      {/* Platform availability badges */}
+      <div className="flex flex-wrap gap-1.5 mt-2">
+        <PlatformBadge label="Booking.com" status={acc.platforms.booking_com} />
+        <PlatformBadge label="Airbnb"      status={acc.platforms.airbnb} />
+        <PlatformBadge label="Book direct" status={acc.platforms.direct} />
+      </div>
+
+      {/* Alternative */}
+      {acc.alternative && (
+        <div className="mt-2 bg-white/2 border border-white/6 rounded-xl px-3 py-2.5">
+          <div className="flex items-baseline gap-2 flex-wrap mb-0.5">
+            <span className="text-xs text-white/50 font-medium">Alt: {acc.alternative.type}</span>
+            <span className="text-xs text-white/30">{acc.alternative.price_range}</span>
+          </div>
+          <p className="text-[11px] text-white/35 leading-snug">{acc.alternative.note}</p>
+          <span className="text-[10px] text-white/25">via {acc.alternative.book_via}</span>
+        </div>
+      )}
+
+      {/* Neighbourhood advice */}
+      {acc.neighbourhood_advice && (
+        <p className="text-[11px] text-white/35 mt-2 leading-snug">
+          <span className="text-white/20 uppercase tracking-wider text-[10px] font-label mr-1">Area</span>
+          {acc.neighbourhood_advice}
+        </p>
+      )}
+
+      {/* Avoid */}
+      {acc.avoid && (
+        <p className="text-[11px] text-amber-400/50 mt-1.5 leading-snug">
+          <span className="mr-1">⚠️</span>{acc.avoid}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ─── Timing helpers ──────────────────────────────────────────────────────────
 
 function crowdLabel(level: string): string {
@@ -728,6 +848,11 @@ function DestinationCard({
 
             {/* Transport block — HOW TO GET THERE */}
             {!locked && <TransportBlock dest={dest} homeCity={homeCity} />}
+
+            {/* Accommodation block — WHERE TO STAY */}
+            {!locked && dest.accommodation && (
+              <AccommodationBlock acc={dest.accommodation} destName={dest.name} />
+            )}
 
             {/* Meta row */}
             <div className="flex items-start justify-between border-t border-white/8 pt-4 mt-4 mb-4">

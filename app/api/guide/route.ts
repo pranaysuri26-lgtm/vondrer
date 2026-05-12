@@ -25,15 +25,39 @@ export interface GuideInsiderTip {
   detail:  string
 }
 
+export interface GuideAccommodationOption {
+  type:         string
+  name?:        string | null
+  price_range:  string
+  book_via:     string
+  booking_url?: string | null
+  why:          string
+  book_ahead?:  string
+}
+
+export interface GuideAccommodation {
+  primary_type:           string
+  primary_recommendation: GuideAccommodationOption
+  alternative?:           { type: string; price_range: string; book_via: string; note: string } | null
+  avoid?:                 string | null
+  neighbourhood_advice?:  string | null
+  platforms: {
+    booking_com: 'strong' | 'limited' | 'not_recommended'
+    airbnb:      'strong' | 'limited' | 'not_available'
+    direct:      'recommended' | 'required' | 'optional'
+  }
+}
+
 export interface LocalGuide {
-  destination:   string
-  country:       string
+  destination:    string
+  country:        string
   state_province?: string
-  intro:         string
+  intro:          string
   neighbourhoods: GuideNeighbourhood[]
-  food_spots:    GuideFoodSpot[]
-  insider_tips:  GuideInsiderTip[]
-  skip_these:    string[]
+  food_spots:     GuideFoodSpot[]
+  insider_tips:   GuideInsiderTip[]
+  skip_these:     string[]
+  accommodation?: GuideAccommodation
 }
 
 const SYSTEM = `You are a local guide writer for Voya — a travel app that shows the side of cities most visitors never see.
@@ -76,10 +100,38 @@ OUTPUT: Return a single valid JSON object matching this schema exactly:
       "detail": "one specific, actionable sentence"
     }
   ],
-  "skip_these": ["specific tourist trap — one line each including why locals avoid it"]
+  "skip_these": ["specific tourist trap — one line each including why locals avoid it"],
+  "accommodation": {
+    "primary_type": "government_property" | "homestay" | "guesthouse" | "hotel" | "hostel" | "resort" | "camp" | "airbnb",
+    "primary_recommendation": {
+      "type": "specific type e.g. 'KMVN Tourist Rest House', 'Beach hut guesthouse', 'Boutique riad'",
+      "name": "specific property name if you know one, else null",
+      "price_range": "in local currency e.g. '₹1,500–2,800/night', '$120–200/night', '€80–140/night'",
+      "book_via": "actual platform e.g. 'kmvn.gov.in', 'Booking.com', 'Airbnb', 'direct'",
+      "booking_url": "direct URL if applicable, else null",
+      "why": "one line — what makes this the right choice for this specific destination",
+      "book_ahead": "booking window advice e.g. 'Book 2 weeks ahead for weekends'"
+    },
+    "alternative": { "type": "...", "price_range": "...", "book_via": "...", "note": "one line" } or null,
+    "avoid": "one line on what to avoid and why" or null,
+    "neighbourhood_advice": "which area/neighbourhood to stay in and why" or null,
+    "platforms": {
+      "booking_com": "strong" | "limited" | "not_recommended",
+      "airbnb": "strong" | "limited" | "not_available",
+      "direct": "recommended" | "required" | "optional"
+    }
+  }
 }
 
-Return 4 neighbourhoods, 6 food spots, 5 insider tips, 3 skip_these items.
+ACCOMMODATION RULES:
+- Indian hill stations (Lansdowne, Chakrata, Dhanaulti, Kasauli, etc.): primary_type=government_property, book_via=state tourism board (kmvn.gov.in/gmvn.gov.in/hptdc.nic.in), platforms.airbnb=not_available, platforms.direct=required. Name the actual KMVN/GMVN/HPTDC property if it exists.
+- Remote Indian destinations (Spiti, Ziro, Tawang, Majuli): primary_type=homestay, book_via=local operators, platforms.booking_com=limited, platforms.airbnb=not_available, platforms.direct=required
+- Major Indian cities: primary_type=hotel, booking_com=strong, airbnb=strong
+- International cities: booking_com=strong, neighbourhood_advice required
+- Japan: mention ryokan if appropriate, book via jalan.net or japanican.com
+- Southeast Asia: Agoda.com strong, mention old-town guesthouse option
+
+Return 4 neighbourhoods, 6 food spots, 5 insider tips, 3 skip_these items, 1 accommodation object.
 No markdown. No explanation before or after. Just the JSON object.`
 
 export async function POST(req: NextRequest) {

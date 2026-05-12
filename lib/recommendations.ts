@@ -42,6 +42,38 @@ export interface TransportMode {
   recommended:    boolean  // true on the single best option for this traveller's budget tier
 }
 
+export interface AccommodationOption {
+  type:         string        // e.g. "KMVN Tourist Rest House", "Beach hut", "Boutique hotel"
+  name?:        string | null // specific property name if known
+  price_range:  string        // in local currency e.g. "₹1,500–2,800/night", "$120–200/night"
+  book_via:     string        // platform name e.g. "kmvn.gov.in", "Airbnb", "Booking.com"
+  booking_url?: string | null // direct URL if applicable
+  why:          string        // one line — why this is right for this destination
+  book_ahead?:  string        // booking window advice
+}
+
+export interface AccommodationAlternative {
+  type:        string
+  price_range: string
+  book_via:    string
+  note:        string
+}
+
+export interface AccommodationPlatforms {
+  booking_com: 'strong' | 'limited' | 'not_recommended'
+  airbnb:      'strong' | 'limited' | 'not_available'
+  direct:      'recommended' | 'required' | 'optional'
+}
+
+export interface Accommodation {
+  primary_type:           string   // 'government_property' | 'homestay' | 'guesthouse' | 'airbnb' | 'hotel' | 'hostel' | 'resort' | 'camp'
+  primary_recommendation: AccommodationOption
+  alternative?:           AccommodationAlternative | null
+  avoid?:                 string | null
+  neighbourhood_advice?:  string | null
+  platforms:              AccommodationPlatforms
+}
+
 export interface RecommendedDestination {
   name:               string
   country:            string
@@ -56,9 +88,10 @@ export interface RecommendedDestination {
   timing_note?:       string   // one honest line on timing quality e.g. "May is monsoon — consider October"
   timing_warning?:    string   // amber badge text — ONLY for genuine access restrictions e.g. "Road access closes May–Oct"
   upcoming_event?:    UpcomingEvent | null
-  transport?:           TransportMode[]  // HOW TO GET THERE — realistic modes from traveller's home
+  transport?:            TransportMode[]  // HOW TO GET THERE — realistic modes from traveller's home
+  accommodation?:        Accommodation    // WHERE TO STAY — destination-specific lodging intelligence
   personalization_note?: string          // one italic line connecting destination to this specific traveller
-  locked?:              boolean          // set server-side by applyPaywall — authoritative paywall state
+  locked?:               boolean         // set server-side by applyPaywall — authoritative paywall state
 }
 
 export interface RecommendationResponse {
@@ -67,7 +100,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 22
+const PROMPT_VERSION = 23
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -825,7 +858,7 @@ Example of correct output:
 {"name":"Nashville","country":"United States","state_province":"Tennessee","match_score":91,"reasons":["Printer's Alley has operated continuously since the 1800s — the neon still flickers the same way","Robert's Western World: free live music before 9pm, $6 Pabst, zero tourist markup"],"budget_per_day_usd":120,"best_time_to_visit":"Apr–Jun","hidden_gem_score":3,"dietary_tags":[],"timing_score":4,"timing_note":"","timing_warning":"","upcoming_event":null,"personalization_note":"Direct flights from your city keep the budget intact.","transport":[{"mode":"fly","service_name":"American / Southwest","duration":"~2h","cost":"$150–280","booking":"Google Flights","note":"Direct to BNA from most US hubs","booking_window":"Book 3–4 weeks ahead for sub-$200 fares","recommended":true}]}
 {"name":"Spiti Valley","country":"India","state_province":"Himachal Pradesh","match_score":89,"reasons":["No mobile signal past Kaza — the last place in India where you genuinely disappear","Key Monastery: monks have lived here since the 11th century. The butter lamps haven't changed."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":1,"timing_note":"Road access closed until mid-June","timing_warning":"⚠️ Road access closed in May — open Jun–Sep only","upcoming_event":null,"personalization_note":"Almost nobody from your city gets here. Road opens June — plan 8–10 days minimum.","transport":[{"mode":"fly","service_name":"IndiGo / Air India to Delhi, then drive","duration":"~10h total","cost":"₹3,000–8,000 (flight) + ₹2,500–4,000 (cab)","booking":"Goibibo","note":"Fly to Delhi (DEL), then 12–14h drive on NH505 — opens June","booking_window":"Book flight 3–4 weeks ahead; cab hire on arrival at Shimla or Manali","recommended":true},{"mode":"bus","service_name":"HRTC Volvo Delhi–Manali + local jeep","duration":"~18h total","cost":"₹800–1,500 + ₹500 jeep","booking":"HRTC app or RedBus","note":"Overnight bus to Manali, shared jeep onward — budget option","booking_window":"Book bus 1 week ahead for weekends","recommended":false}]}
 
-Per-line schema: {"name": string, "country": string, "state_province": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "timing_warning": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "personalization_note": string, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","service_name":string,"duration":string,"cost":string,"booking":string,"note":string,"booking_window":string,"recommended":boolean}]}
+Per-line schema: {"name": string, "country": string, "state_province": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "timing_warning": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "personalization_note": string, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","service_name":string,"duration":string,"cost":string,"booking":string,"note":string,"booking_window":string,"recommended":boolean}], "accommodation": {"primary_type":string,"primary_recommendation":{"type":string,"name":string|null,"price_range":string,"book_via":string,"booking_url":string|null,"why":string,"book_ahead":string},"alternative":{"type":string,"price_range":string,"book_via":string,"note":string}|null,"avoid":string|null,"neighbourhood_advice":string|null,"platforms":{"booking_com":"strong"|"limited"|"not_recommended","airbnb":"strong"|"limited"|"not_available","direct":"recommended"|"required"|"optional"}}}
 
 state_province rules:
 - US cities: always include the state (e.g. "California", "New York", "Texas")
@@ -1027,7 +1060,53 @@ ${dietarySection}
 ${dietaryReasonTagRule}
 ${budgetQualityRules}
 
-${buildTransportSection(onboarding.home_country, onboarding.budget_per_day)}`
+${buildTransportSection(onboarding.home_country, onboarding.budget_per_day)}
+
+ACCOMMODATION SECTION — WHERE TO STAY:
+For each destination, generate an "accommodation" object. Be destination-specific — not every place is on Booking.com.
+
+accommodation object fields:
+- primary_type: one of 'government_property' | 'homestay' | 'guesthouse' | 'hotel' | 'hostel' | 'resort' | 'camp' | 'airbnb'
+- primary_recommendation: { type, name (specific property if known, else null), price_range (local currency), book_via (platform), booking_url (if applicable, else null), why (one line), book_ahead (booking window advice) }
+- alternative: { type, price_range, book_via, note } or null
+- avoid: one line on what to avoid and why, or null
+- neighbourhood_advice: which area to stay in and why, or null
+- platforms: { booking_com: 'strong'|'limited'|'not_recommended', airbnb: 'strong'|'limited'|'not_available', direct: 'recommended'|'required'|'optional' }
+
+RULES BY DESTINATION TYPE:
+
+Indian hill stations (Lansdowne, Chakrata, Dhanaulti, Munsiyari, Chopta, Tirthan Valley, Kasauli, etc.):
+  primary_type: government_property or guesthouse
+  name: KMVN/GMVN/HPTDC/HP Tourism property name if it exists there
+  book_via: state tourism board website (kmvn.gov.in, gmvn.gov.in, hptdc.nic.in)
+  booking_com: limited  |  airbnb: not_available  |  direct: required
+  book_ahead: weekends fill 2–3 weeks ahead, peak season (May, Oct) 4–6 weeks
+
+Indian cities (Delhi, Mumbai, Bangalore, Chennai, Hyderabad, Jaipur, Kolkata):
+  primary_type: hotel  |  booking_com: strong  |  airbnb: strong  |  direct: optional
+
+Indian remote/adventure (Spiti, Ziro, Dzukou, Tawang, Majuli, Rann of Kutch):
+  primary_type: homestay or camp
+  booking_com: limited  |  airbnb: not_available  |  direct: required
+  book_via: local operators or district tourism board
+  note: no OTAs serve these areas reliably
+
+Indian beach (Goa beaches, Kerala backwaters, Andaman):
+  Goa: airbnb strong, booking_com strong — mention beach area (North Goa vs South Goa)
+  Kerala backwaters: houseboat stays, direct or booking_com
+  Andaman: limited OTA — book government/ANDTOURS properties direct
+
+International major cities: booking_com strong, airbnb strong, direct optional. Give neighbourhood advice.
+International hidden gems: check if OTAs are available; may need local operators or tourism boards.
+European cities: Booking.com strong. Hostel option for budget. Mention best neighbourhood to stay.
+Japan: Booking.com and Jalan.net for hotels; ryokan via jalan.net or japanican.com — mention if ryokan is the highlight.
+Southeast Asia: Agoda.com + Booking.com strong. Guesthouses in old town districts often better than OTA hotels.
+
+BUDGET TIER → PRICE CALIBRATION (this traveller's budget: ${BUDGET_LABELS[onboarding.budget_per_day] ?? onboarding.budget_per_day}):
+- Shoestring/Budget: lead with hostel, guesthouse, or homestay options. Price in local currency at low end.
+- Mid-range: boutique hotel or well-reviewed guesthouse. Balance comfort and value.
+- Comfortable: quality hotel in best neighbourhood. Walk-to-everything location matters.
+- Luxury: best property in town — named boutique, heritage hotel, or resort. Book via hotel direct or leading hotels.`
 
   const dietaryLine = dietaryPrefs.length > 0
     ? `\n- Dietary: ${dietaryPrefs.join(', ')}`

@@ -238,7 +238,45 @@ function buildTransportLink(
   homeCity: string,
   destName: string,
   country: string,
+  booking?: string,
 ): string {
+  // If booking looks like a URL (contains a dot and no spaces), use it directly
+  if (booking) {
+    const trimmed = booking.trim().toLowerCase()
+    // Canonicalise common named platforms to their URLs
+    const BOOKING_URLS: Record<string, string> = {
+      'eurostar.com':       'https://www.eurostar.com',
+      'irctc app':          'https://www.irctc.co.in',
+      'irctc':              'https://www.irctc.co.in',
+      'amtrak.com':         'https://www.amtrak.com',
+      'book.amtrak.com':    'https://www.amtrak.com',
+      'google flights':     `https://www.google.com/travel/flights`,
+      'skyscanner':         'https://www.skyscanner.com',
+      'rome2rio':           `https://www.rome2rio.com`,
+      '12go.asia':          'https://12go.asia',
+      'bahn.de':            'https://www.bahn.de/en',
+      'sncf-connect.com':   'https://www.sncf-connect.com',
+      'nationalrail.co.uk': 'https://www.nationalrail.co.uk',
+      'trainline.com':      'https://www.thetrainline.com',
+      'trenitalia.com':     'https://www.trenitalia.com',
+      'renfe.com':          'https://www.renfe.com',
+      'ns.nl':              'https://www.ns.nl/en',
+      'viarail.ca':         'https://www.viarail.ca',
+      'nswticketing.com.au':'https://transportnsw.info',
+      'smart ex app':       'https://smart-ex.jp/en',
+      'smart ex':           'https://smart-ex.jp/en',
+      'omio':               'https://www.omio.com',
+      'b-europe.com':       'https://www.b-europe.com',
+      'nightjet.com':       'https://www.nightjet.com',
+      'goibibo':            'https://www.goibibo.com/trains',
+    }
+    const matched = BOOKING_URLS[trimmed]
+    if (matched) return matched
+    // If it already looks like a URL
+    if (trimmed.includes('.') && !trimmed.includes(' '))
+      return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`
+  }
+
   const from = encodeURIComponent(homeCity || 'your city')
   const to   = encodeURIComponent(`${destName}, ${country}`)
   if (mode === 'fly')
@@ -252,68 +290,114 @@ function buildTransportLink(
 function TransportBlock({
   dest, homeCity,
 }: { dest: RecommendedDestination; homeCity: string }) {
+  const [expanded, setExpanded] = useState(false)
   const modes = dest.transport
   if (!modes || modes.length === 0) return null
 
-  // Recommended first, then others
-  const sorted = [...modes].sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0))
+  const primary    = modes.find(m => m.recommended) ?? modes[0]
+  const alternates = modes.filter(m => m !== primary)
 
   return (
     <div className="mt-4 mb-1">
       <p className="text-[10px] text-white/25 uppercase tracking-widest mb-2.5 font-label">
         How to get there
       </p>
-      <div className="space-y-2">
-        {sorted.map((m: TransportMode) => {
-          const link  = buildTransportLink(m.mode, homeCity, dest.name, dest.country)
-          const icon  = TRANSPORT_ICONS[m.mode]  ?? '🗺️'
-          const label = TRANSPORT_LABELS[m.mode] ?? 'Find options'
-          return (
-            <div
-              key={m.mode}
-              className={`flex items-start gap-3 rounded-xl px-3 py-2.5 border ${
-                m.recommended
-                  ? 'bg-[#C97552]/8 border-[#C97552]/20'
-                  : 'bg-white/3 border-white/8'
-              }`}
-            >
-              {/* Icon + duration */}
-              <div className="flex items-center gap-2 flex-shrink-0 pt-0.5">
-                <span className="text-base leading-none">{icon}</span>
-                <span className={`text-xs font-medium ${m.recommended ? 'text-[#C97552]' : 'text-white/50'}`}>
-                  {m.duration}
-                </span>
-              </div>
-              {/* Note + link */}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-white/55 leading-snug">{m.note}</p>
-                <a
-                  href={link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  className={`text-[11px] mt-1 inline-block transition-colors ${
-                    m.recommended
-                      ? 'text-[#C97552]/80 hover:text-[#C97552]'
-                      : 'text-white/30 hover:text-white/50'
-                  }`}
-                >
-                  {label} ↗
-                </a>
-              </div>
-              {/* Recommended pill */}
-              {m.recommended && (
-                <span className="flex-shrink-0 text-[9px] text-[#C97552]/70 border border-[#C97552]/25 rounded-full px-2 py-0.5 uppercase tracking-wider font-label">
-                  Best option
-                </span>
-              )}
+
+      {/* Primary — always visible */}
+      <PrimaryTransportCard m={primary} homeCity={homeCity} destName={dest.name} country={dest.country} />
+
+      {/* Alternates — collapsed by default */}
+      {alternates.length > 0 && (
+        <div className="mt-2">
+          <button
+            onClick={e => { e.stopPropagation(); setExpanded(v => !v) }}
+            className="text-[11px] text-white/30 hover:text-white/50 transition-colors flex items-center gap-1"
+          >
+            <span>{expanded ? '▾' : '▸'}</span>
+            <span>{expanded ? 'Hide' : `${alternates.length} other way${alternates.length > 1 ? 's' : ''} to get there`}</span>
+          </button>
+          {expanded && (
+            <div className="mt-2 space-y-2">
+              {alternates.map((m, i) => (
+                <AlternateTransportCard key={i} m={m} homeCity={homeCity} destName={dest.name} country={dest.country} />
+              ))}
             </div>
-          )
-        })}
-      </div>
+          )}
+        </div>
+      )}
+
       <p className="text-[10px] text-white/20 mt-2 leading-snug">
-        Times are approximate. Check providers for live schedules and prices.
+        Times are approximate. Prices in local currency. Check providers for live schedules.
       </p>
+    </div>
+  )
+}
+
+function PrimaryTransportCard({ m, homeCity, destName, country }: {
+  m: TransportMode; homeCity: string; destName: string; country: string
+}) {
+  const link  = buildTransportLink(m.mode, homeCity, destName, country, m.booking)
+  const icon  = TRANSPORT_ICONS[m.mode] ?? '🗺️'
+  const label = TRANSPORT_LABELS[m.mode] ?? 'Find options'
+  return (
+    <div className="bg-[#C97552]/8 border border-[#C97552]/20 rounded-xl px-3 py-3">
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-base leading-none">{icon}</span>
+          <span className="text-xs font-semibold text-[#C97552]">
+            {m.service_name || TRANSPORT_LABELS[m.mode]}
+          </span>
+        </div>
+        <span className="text-[9px] text-[#C97552]/70 border border-[#C97552]/25 rounded-full px-2 py-0.5 uppercase tracking-wider font-label flex-shrink-0">
+          ✓ Best for you
+        </span>
+      </div>
+      <div className="flex items-baseline gap-3 text-xs mb-1">
+        <span className="text-white/70 font-medium">{m.duration}</span>
+        {m.cost && <span className="text-white/45">{m.cost}</span>}
+      </div>
+      <p className="text-[11px] text-white/45 leading-snug mb-2">{m.note}</p>
+      <a
+        href={link}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={e => e.stopPropagation()}
+        className="text-[11px] text-[#C97552]/80 hover:text-[#C97552] transition-colors"
+      >
+        {m.booking ? `Book on ${m.booking}` : label} ↗
+      </a>
+    </div>
+  )
+}
+
+function AlternateTransportCard({ m, homeCity, destName, country }: {
+  m: TransportMode; homeCity: string; destName: string; country: string
+}) {
+  const link  = buildTransportLink(m.mode, homeCity, destName, country, m.booking)
+  const icon  = TRANSPORT_ICONS[m.mode] ?? '🗺️'
+  const label = TRANSPORT_LABELS[m.mode] ?? 'Find options'
+  return (
+    <div className="bg-white/3 border border-white/8 rounded-xl px-3 py-2.5 flex items-start gap-3">
+      <span className="text-sm leading-none pt-0.5 flex-shrink-0">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-xs text-white/55 font-medium">
+            {m.service_name || TRANSPORT_LABELS[m.mode]}
+          </span>
+          <span className="text-xs text-white/35">{m.duration}</span>
+          {m.cost && <span className="text-xs text-white/25">{m.cost}</span>}
+        </div>
+        <p className="text-[11px] text-white/35 leading-snug mt-0.5">{m.note}</p>
+        <a
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="text-[11px] text-white/30 hover:text-white/50 transition-colors"
+        >
+          {m.booking ? `${m.booking}` : label} ↗
+        </a>
+      </div>
     </div>
   )
 }

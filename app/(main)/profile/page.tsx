@@ -233,7 +233,9 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/signup'); return }
 
-    // Update onboarding_responses
+    // Update onboarding_responses — domestic_scope excluded to avoid failing if DB column doesn't exist.
+    // If the column is missing, including it would cause the entire upsert to fail and
+    // travel_scope would never save (root cause of the "AI showing wrong destinations" bug).
     const { error: onboardingError } = await supabase
       .from('onboarding_responses')
       .upsert({
@@ -241,7 +243,6 @@ export default function ProfilePage() {
         home_city:            profile.home_city.trim() || null,
         home_country:         profile.home_country,
         travel_scope:         profile.travel_scope,
-        domestic_scope:       profile.travel_scope === 'closer' ? profile.domestic_scope : null,
         budget_per_day:       profile.budget_per_day,
         trip_duration:        profile.trip_duration,
         group_type:           profile.group_type,
@@ -257,6 +258,16 @@ export default function ProfilePage() {
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setSaving(false); return }
+
+    // Separate domestic_scope save — silently ignored if the column doesn't exist yet.
+    // To enable fully: run in Supabase SQL editor:
+    //   ALTER TABLE onboarding_responses ADD COLUMN IF NOT EXISTS domestic_scope TEXT DEFAULT NULL;
+    try {
+      await supabase
+        .from('onboarding_responses')
+        .update({ domestic_scope: profile.travel_scope === 'closer' ? profile.domestic_scope : null })
+        .eq('user_id', user.id)
+    } catch { /* column may not exist yet — main profile saved successfully above */ }
 
     // Replace past trips: delete all then re-insert
     await supabase.from('past_trips').delete().eq('user_id', user.id)

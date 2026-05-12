@@ -100,7 +100,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 23
+const PROMPT_VERSION = 24
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -997,15 +997,22 @@ NEVER for major cities:
 ✗ "Explore Central Park and catch a Broadway show"
 ✗ Any attraction that appears in the first paragraph of the city's Wikipedia article
 
-ALWAYS for major cities — show the neighbourhood, subculture, or food scene most tourists never find:
-New York → "Flushing, Queens — the most concentrated and authentic Asian food destination in the Western hemisphere. Tourists never come. Locals eat here weekly."
-Los Angeles → "Boyle Heights — East LA's unfiltered cultural core: 40-year-old family birria spots, Chicano murals, zero Hollywood artifice. 20 min from downtown."
-Seattle → "Georgetown neighbourhood — artists, microbreweries, vintage shops. The city Seattleites actually live in vs. the Pike Place fish-toss tourists see."
-London → "Peckham — South London's creative explosion. Rye Lane market, roof terrace bars, West African restaurants that have no Yelp pages. Nothing in any guidebook."
-Tokyo → "Koenji — Tokyo's underground music and vintage scene. Kissaten coffee shops from 1970, jazz bars down alleyways, zero Shibuya energy."
-Paris → "Belleville — the Paris immigrants built. Vietnamese pho, Algerian pastries, street art, zero pretension. The opposite of the Marais."
+ALWAYS for major cities — show the neighbourhood, subculture, or food scene most tourists never find.
 
-Rule: the reason tags for any major city must make a first-time visitor think "I had no idea that existed." If the reason tag could appear on a TripAdvisor homepage, rewrite it.
+⚠️ CRITICAL — THE EXAMPLES BELOW ARE FORMAT/STYLE GUIDES ONLY. DO NOT OUTPUT THEM IN YOUR RESPONSE.
+These examples show the STYLE and SPECIFICITY required. You must generate your OWN original reason tags
+with different details, different neighbourhoods, and different descriptions. Copying any example below
+verbatim — even partially — is strictly forbidden. If you write any phrase that appears in these examples,
+rewrite it.
+
+STYLE EXAMPLES (do not copy — generate original content in this style):
+• New York: instead of tourist top-10s, write about a specific outer-borough food scene, a working waterfront neighbourhood, a decades-old institution nobody outside the city knows
+• Los Angeles: instead of Hollywood/Venice, write about a working-class neighbourhood with generational food culture, an industrial district with a real creative community
+• London: instead of Westminster/Shoreditch, write about a south or east neighbourhood with a market, a cultural community, bars with no tourist foot traffic
+• Tokyo: instead of Shibuya/Akihabara, write about a residential neighbourhood with old music cafes, specialist record shops, or a commuter ward with a Sunday food market
+• Paris: instead of Eiffel/Louvre/Le Marais, write about an immigrant neighbourhood with specific food culture, a canal-side area with local bars, a working arrondissement
+
+Rule: the reason tags for any major city must make a first-time visitor think "I had no idea that existed." If the reason tag could appear on a TripAdvisor homepage, rewrite it. If it matches any example above, it is forbidden — create something original.
 
 RESULT SET VARIETY — SIZE MIX BY OFFBEAT SCORE:
 Every result set should contain a deliberate mix of destination sizes. Do not cluster all results at one end of the familiarity spectrum.

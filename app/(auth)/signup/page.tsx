@@ -259,6 +259,8 @@ export default function SignupPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Session expired — please sign in again.'); setLoading(false); return }
 
+    // Main upsert — domestic_scope excluded to avoid failing if DB column doesn't exist yet.
+    // If the column is missing, the whole upsert would fail and travel_scope would never save.
     const { error: onboardingError } = await supabase
       .from('onboarding_responses')
       .upsert({
@@ -266,7 +268,6 @@ export default function SignupPage() {
         home_city:            form.home_city.trim() || null,
         home_country:         form.home_country,
         travel_scope:         form.travel_scope,
-        domestic_scope:       form.travel_scope === 'closer' ? form.domestic_scope : null,
         budget_per_day:       form.budget,
         trip_duration:        form.duration,
         group_type:           form.group_type,
@@ -282,6 +283,16 @@ export default function SignupPage() {
       }, { onConflict: 'user_id' })
 
     if (onboardingError) { setError(onboardingError.message); setLoading(false); return }
+
+    // Separate domestic_scope save — silently ignored if the column doesn't exist yet.
+    // To enable: run in Supabase SQL editor:
+    //   ALTER TABLE onboarding_responses ADD COLUMN IF NOT EXISTS domestic_scope TEXT DEFAULT NULL;
+    try {
+      await supabase
+        .from('onboarding_responses')
+        .update({ domestic_scope: form.travel_scope === 'closer' ? form.domestic_scope : null })
+        .eq('user_id', user.id)
+    } catch { /* column may not exist yet — main profile saved successfully above */ }
 
     if (form.past_trips.length > 0) {
       const rows = form.past_trips.map(name => ({ user_id: user.id, destination_name: name }))

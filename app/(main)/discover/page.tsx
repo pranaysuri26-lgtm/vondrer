@@ -1086,7 +1086,7 @@ export default function DiscoverPage() {
       try {
         const res = await fetch('/api/recommendations', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ force_refresh: false }),
+          body: JSON.stringify({ force_refresh: retryCount > 0 }),
         })
 
         if (res.status === 401) { router.push('/login'); return }

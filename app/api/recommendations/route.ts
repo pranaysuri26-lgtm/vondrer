@@ -185,29 +185,30 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Stale cache — return immediately, signal client to refresh in background.
-    // FIX 2: Also filter by home_country + travel_scope so we never serve
-    // India/Asia data to a US "closer" user whose profile changed.
-    // Requires migration: ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS home_country TEXT;
-    //                     ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS travel_scope TEXT;
-    // If columns don't exist, PostgREST returns an error → data=null → safe fallthrough to Claude.
-    const { data: stale } = await supabase
-      .from('recommendations')
-      .select('destinations')
-      .eq('user_id', user.id)
-      .eq('home_country', onboarding.home_country ?? '')
-      .eq('travel_scope', onboarding.travel_scope ?? 'anywhere')
-      .single()
+    // Stale cache — only check when scope is 'anywhere'.
+    // For 'closer' scope, a stale 'anywhere' result would show forbidden global
+    // destinations (NYC, Tokyo, etc.) to a user who explicitly chose domestic.
+    // Better to wait for a fresh live call than to show actively wrong results.
+    const currentScope = onboarding.travel_scope ?? 'anywhere'
+    if (currentScope !== 'closer') {
+      const { data: stale } = await supabase
+        .from('recommendations')
+        .select('destinations')
+        .eq('user_id', user.id)
+        .eq('home_country', onboarding.home_country ?? '')
+        .eq('travel_scope', currentScope)
+        .single()
 
-    if (stale?.destinations) {
-      return makeSSEResponse(async (ctrl) => {
-        const paywalled = applyPaywall(stale.destinations as RecommendedDestination[])
-        ctrl.enqueue(sseChunk({ type: 'meta', stale: true, needs_refresh: true, total_count: paywalled.length, ...meta }))
-        for (const dest of paywalled) {
-          ctrl.enqueue(sseChunk({ type: 'destination', ...dest }))
-        }
-        ctrl.enqueue(sseChunk({ type: 'done' }))
-      })
+      if (stale?.destinations) {
+        return makeSSEResponse(async (ctrl) => {
+          const paywalled = applyPaywall(stale.destinations as RecommendedDestination[])
+          ctrl.enqueue(sseChunk({ type: 'meta', stale: true, needs_refresh: true, total_count: paywalled.length, ...meta }))
+          for (const dest of paywalled) {
+            ctrl.enqueue(sseChunk({ type: 'destination', ...dest }))
+          }
+          ctrl.enqueue(sseChunk({ type: 'done' }))
+        })
+      }
     }
   }
 

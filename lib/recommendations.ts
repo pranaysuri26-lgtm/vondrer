@@ -1183,19 +1183,8 @@ Apply RESULT SET VARIETY as defined in the system prompt.`
 - Based in: <user_location>${homeLocation}</user_location>
 - Travel scope: ${travelScope === 'closer'
     ? (onboarding.domestic_scope === 'same_state'
-        ? `SAME STATE / REGION ONLY — every result must be in the same state/region as ${onboarding.home_city ?? ''}, ${onboarding.home_country}. Any destination outside this state is FORBIDDEN.`
-        : (() => {
-            const hc = (onboarding.home_country ?? '').toLowerCase()
-            if (hc.includes('india'))
-              return `DOMESTIC + NEARBY ONLY (India). Permitted: India (all states), Nepal, Bhutan, Sri Lanka, Maldives, SE Asia (Thailand/Malaysia/Singapore/Indonesia/Vietnam/Cambodia/Myanmar). FORBIDDEN: New York, United States, United Kingdom, Europe, Japan, South Korea, Australia, Americas, Africa, Middle East. Every result must pass: "Is this in India or SE Asia?" If NO → do not include.`
-            if (/united states|usa|\bus\b/.test(hc))
-              return `DOMESTIC ONLY (United States). Permitted: US states + Canada. FORBIDDEN: Mexico, Caribbean, Europe, Asia, South America, Africa, Australia. Every result must be in the USA or Canada.`
-            if (hc.includes('canada'))
-              return `DOMESTIC ONLY (Canada). Permitted: Canadian provinces + United States. FORBIDDEN: Mexico, Caribbean, Europe, Asia, South America, Africa, Australia.`
-            if (hc.includes('australia') || /new zealand|nz\b/.test(hc))
-              return `REGIONAL ONLY (Australia/NZ). Permitted: Australia, New Zealand, SE Asia, Pacific Islands, Japan. FORBIDDEN: Europe, Americas, Middle East, Africa, India.`
-            return `DOMESTIC ONLY (${onboarding.home_country}). No international destinations. Every result must be within ${onboarding.home_country} or immediate neighbouring countries reachable by short flight.`
-          })())
+        ? `Staying in my own state/region (home: ${onboarding.home_city ?? ''}, ${onboarding.home_country})`
+        : 'Domestic only (my country)')
     : 'Anywhere in the world'}
 - Daily budget (on-the-ground, excl. flights): ${BUDGET_LABELS[onboarding.budget_per_day] ?? onboarding.budget_per_day}
 - Trip duration: ${onboarding.trip_duration}

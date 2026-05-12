@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import {
@@ -15,7 +15,7 @@ import { fetchTimingContext } from '@/lib/gemini-timing'
 // Route segment config — 60s max (streaming avoids hitting this on normal loads)
 export const maxDuration = 60
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
 // ─── Paywall enforcement ──────────────────────────────────────────────────────
 // How many destinations are fully visible to free-tier users.
@@ -240,24 +240,23 @@ export async function POST(req: NextRequest) {
 
     const collected: RecommendedDestination[] = []
 
-    // ── Attempt 1: true NDJSON streaming ─────────────────────────────────────
+    // ── Attempt 1: streaming ─────────────────────────────────────────────────
     let streamSucceeded = false
     try {
-      // Use stream: true for async-iterable raw events
-      const claudeStream = await anthropic.messages.create({
-        model:      'claude-haiku-4-5',
-        max_tokens: 6000,
-        stream:     true,
-        system:     [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages:   [{ role: 'user', content: userPrompt }],
+      const gptStream = await openai.chat.completions.create({
+        model:       'gpt-4o-mini',
+        max_tokens:  6000,
+        temperature: 0.7,
+        stream:      true,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user',   content: userPrompt },
+        ],
       })
 
       let lineBuffer = ''
       let fullText   = ''
 
-      // Collect all lines — do NOT emit to client during streaming.
-      // Paywall is applied after we have the full sorted set, so locked data
-      // never reaches the client even partially.
       function tryParseLine(line: string) {
         const t = line.trim()
         if (!t) return
@@ -269,22 +268,21 @@ export async function POST(req: NextRequest) {
         } catch { /* partial or non-destination line */ }
       }
 
-      for await (const event of claudeStream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-          const chunk = event.delta.text
-          lineBuffer += chunk
-          fullText   += chunk
+      for await (const chunk of gptStream) {
+        const text = chunk.choices[0]?.delta?.content ?? ''
+        if (!text) continue
+        lineBuffer += text
+        fullText   += text
 
-          const lines = lineBuffer.split('\n')
-          lineBuffer  = lines.pop() ?? ''
-          for (const line of lines) tryParseLine(line)
-        }
+        const lines = lineBuffer.split('\n')
+        lineBuffer  = lines.pop() ?? ''
+        for (const line of lines) tryParseLine(line)
       }
 
       // Flush remaining buffer
       if (lineBuffer.trim()) tryParseLine(lineBuffer)
 
-      // Fallback: Claude may have returned a JSON array instead of NDJSON
+      // Fallback: model may have returned a JSON array instead of NDJSON
       if (collected.length === 0 && fullText.trim()) {
         try {
           const fallbackDests = validateResponse(fullText)
@@ -292,10 +290,6 @@ export async function POST(req: NextRequest) {
         } catch { /* fallback also failed — retry below */ }
       }
 
-      // Apply paywall and emit the full sorted+gated set at once.
-      // Accept >= 5 so a slightly short response still surfaces results —
-      // the new transport fields make each line longer, so 5-7 valid
-      // destinations is better than showing nothing.
       if (collected.length >= 5) {
         const paywalled = applyPaywall(collected)
         for (const d of paywalled) {
@@ -308,18 +302,21 @@ export async function POST(req: NextRequest) {
       console.warn('[Recommendations] Stream attempt 1 failed:', streamErr)
     }
 
-    // ── Attempt 2: regular call fallback (rare) ───────────────────────────────
+    // ── Attempt 2: non-streaming fallback (rare) ──────────────────────────────
     if (!streamSucceeded) {
       collected.length = 0
 
       try {
-        const response = await anthropic.messages.create({
-          model:      'claude-haiku-4-5',
-          max_tokens: 6000,
-          system:     [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-          messages:   [{ role: 'user', content: userPrompt }],
+        const response = await openai.chat.completions.create({
+          model:       'gpt-4o-mini',
+          max_tokens:  6000,
+          temperature: 0.7,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user',   content: userPrompt },
+          ],
         })
-        const raw = response.content[0].type === 'text' ? response.content[0].text : ''
+        const raw = response.choices[0]?.message?.content ?? ''
         const retryDests = validateResponse(raw)
         collected.push(...retryDests)
 

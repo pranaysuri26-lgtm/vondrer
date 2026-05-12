@@ -72,6 +72,7 @@ function makeSSEResponse(
       } catch (err) {
         console.error('[Recommendations] Unhandled stream error:', err)
         try { ctrl.enqueue(sseChunk({ type: 'error', message: 'Internal server error' })) } catch { /* ignore */ }
+        try { ctrl.enqueue(sseChunk({ type: 'done' })) } catch { /* ignore */ }
       } finally {
         try { ctrl.close() } catch { /* ignore */ }
       }

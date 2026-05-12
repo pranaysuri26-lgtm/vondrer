@@ -27,6 +27,7 @@ async function readSSE(res: Response, handlers: SSEHandlers): Promise<void> {
   const reader  = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer    = ''
+  let doneCalled = false
   try {
     while (true) {
       const { done, value } = await reader.read()
@@ -45,13 +46,17 @@ async function readSSE(res: Response, handlers: SSEHandlers): Promise<void> {
             case 'destination': handlers.onDestination(event as RecommendedDestination); break
             case 'retry':       handlers.onRetry(); break
             case 'error':       handlers.onError(event.message ?? 'Unknown error'); break
-            case 'done':        handlers.onDone(); break
+            case 'done':        doneCalled = true; handlers.onDone(); break
           }
         } catch { /* malformed event — ignore */ }
       }
     }
   } finally {
     reader.releaseLock()
+    // Safety net: if the stream closed without a 'done' event (server crash,
+    // unhandled exception, network drop), call onDone so the page never hangs
+    // forever waiting for an event that will never arrive.
+    if (!doneCalled) handlers.onDone()
   }
 }
 
@@ -88,7 +93,7 @@ function LoadingScreen({ slow }: { slow: boolean }) {
       </p>
       {slow && (
         <p className="text-white/25 text-xs mt-4 max-w-xs text-center">
-          Claude is working hard on your profile — first-time results take a little longer.
+          Building your personalised shortlist — first-time results take a little longer.
         </p>
       )}
       <style>{`

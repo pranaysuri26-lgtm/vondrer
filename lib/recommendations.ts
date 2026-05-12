@@ -65,7 +65,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 20
+const PROMPT_VERSION = 21
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -511,6 +511,122 @@ No transcontinental flights permitted under any circumstances.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
 }
 
+// ─── Transport section builder (region-aware) ─────────────────────────────────
+// Only injects rail/bus knowledge relevant to the user's home region.
+// Keeps the system prompt lean — a US user doesn't need Shinkansen tables.
+
+function buildTransportSection(homeCountry: string, budgetPerDay: string): string {
+  const c = (homeCountry ?? '').toLowerCase().trim()
+
+  const isUSA       = /united states|usa|\bus\b/.test(c)
+  const isCanada    = c.includes('canada')
+  const isUK        = /united kingdom|uk\b|england|britain|scotland|wales|ireland/.test(c)
+  const isEurope    = /france|germany|spain|italy|netherlands|belgium|sweden|norway|denmark|finland|austria|switzerland|portugal|poland|czech|romania|hungary|greece|turkey/.test(c)
+  const isAustralia = c.includes('australia')
+  const isNZ        = /new zealand|nz\b/.test(c)
+  const isIndia     = c.includes('india')
+  const isJapan     = c.includes('japan')
+  const isChina     = /china|mainland/.test(c)
+  const isSEAsia    = /singapore|malaysia|thailand|vietnam|indonesia|philippines|cambodia|myanmar/.test(c)
+  const isLatAm     = /mexico|brazil|argentina|colombia|peru|chile/.test(c)
+  const isMEAfrica  = /uae|dubai|saudi|qatar|morocco|south africa|kenya|egypt/.test(c)
+
+  const budget = budgetPerDay ?? ''
+
+  const budgetTierRule = `PRIMARY SELECTION — BUDGET TIER (this traveller is "${budget}"):
+- under-20 (Shoestring): cheapest viable option first — bus > slow train > budget airline
+- 20-50 (Budget): best value — budget airline or 2nd-class train
+- 50-150 (Mid-range): comfort + value — 1st-class train or full-service airline, direct preferred
+- 150-300 (Comfortable): speed + comfort — direct flight or business-class train
+- 300+ (Luxury): best experience — direct business/first, premium rail, private transfer`
+
+  const coreRules = `TRANSPORT — HOW TO GET THERE:
+Return a "transport" array (max 2–3 options) FROM the traveller's home city/country to each destination.
+- service_name: use REAL names — "Amtrak Acela" not "train", "Eurostar" not "rail", "IRCTC Rajdhani" not "overnight"
+- cost: local currency of destination (₹ India, ¥ Japan, £ UK, € Europe, A$ Australia, $ for US/international)
+- booking: actual platform name (IRCTC app, eurostar.com, Amtrak.com, Google Flights, Skyscanner, 12go.asia)
+- note: one specific actionable line — terminal, connection, seat class, booking tip
+- Mark exactly ONE as recommended: true based on budget tier above
+- Under 2h train → never recommend flying. 2–4h train → train preferred unless Comfortable/Luxury. Over 4h train → fly if under 2h flight.`
+
+  // Region-specific rail/bus knowledge
+  let regionalKnowledge = ''
+
+  if (isIndia) {
+    regionalKnowledge = `
+INDIA RAIL (IRCTC): Shatabdi (day fast), Rajdhani (AC overnight), Vande Bharat (HSR), Jan Shatabdi (budget), Garib Rath (budget AC)
+Classes: 1A ₹2,500–8,000 | 2A ₹1,500–4,000 | 3A ₹800–2,000 | SL ₹300–800 | 2S ₹100–400
+Key pairs: Delhi→Agra Gatimaan ~2h ₹800–1,500 | Delhi→Jaipur Shatabdi ~4.5h ₹600–1,400 | Delhi→Mumbai Rajdhani ~16h ₹1,800–4,000 | Mumbai→Goa Jan Shatabdi ~12h ₹400–1,500 | Chennai→Bangalore Shatabdi ~5h ₹700–1,400 | Delhi→Rishikesh: train to Haridwar then taxi
+Booking: IRCTC app — book 120 days ahead; Tatkal available 24h before
+Example: {"mode":"train","service_name":"Gatimaan Express","duration":"~2h","cost":"₹800–1,500","booking":"IRCTC app","note":"Departs Hazrat Nizamuddin, 2 daily — fastest Delhi→Agra option","recommended":true}`
+  } else if (isUSA) {
+    regionalKnowledge = `
+USA RAIL (Amtrak): Acela (BOS-NYP-WAS fast), Northeast Regional (BOS–WAS local), Empire Builder (CHI–SEA), California Zephyr (CHI–SFO), Coast Starlight (SEA–LAX), Pacific Surfliner (LAX–SAN)
+Key pairs: NYC→Boston Acela ~2.5h $50–180 | NYC→DC Acela ~2.5h $50–160 | Chicago→Milwaukee Hiawatha ~1.5h $27 | LAX→SFO fly 1h (train is 12h — fly wins)
+Booking: Amtrak.com — saver fares sell out fast. Bus: Greyhound/FlixBus for budget routes.
+Example: {"mode":"train","service_name":"Amtrak Acela","duration":"~2.5h","cost":"$50–180","booking":"Amtrak.com","note":"Penn Station → South Station — beats flying door-to-door on this corridor","recommended":true}`
+  } else if (isCanada) {
+    regionalKnowledge = `
+CANADA RAIL (VIA Rail): The Corridor (Toronto–Ottawa–Montreal), The Canadian (Toronto–Vancouver, 3-day scenic not practical)
+Key pairs: Toronto→Montreal ~5h CA$50–150 | Toronto→Ottawa ~4.5h CA$40–120 | Vancouver→anywhere: fly
+Booking: viarail.ca — Escape fares cheapest but non-refundable
+Example: {"mode":"train","service_name":"VIA Rail The Corridor","duration":"~5h","cost":"CA$50–150","booking":"viarail.ca","note":"Toronto Union → Montréal Central — comfortable, scenic, no airport time","recommended":true}`
+  } else if (isUK) {
+    regionalKnowledge = `
+UK RAIL (National Rail): LNER (London→Edinburgh ~4.5h £30–130), Avanti (London→Manchester ~2h £15–80, London→Glasgow ~4.5h), GWR (London→Bristol ~1.5h £12–55, London→Cornwall ~5h)
+Cross-channel: Eurostar London→Paris ~2h20m £50–130 (St Pancras), London→Amsterdam ~4h £50+
+Booking: nationalrail.co.uk or trainline.com — advance tickets 30–50% cheaper. Eurostar: eurostar.com
+Example: {"mode":"train","service_name":"Eurostar","duration":"2h20m","cost":"£50–130","booking":"eurostar.com","note":"Direct from St Pancras — no airport faff, city centre to city centre","recommended":true}`
+  } else if (isEurope) {
+    regionalKnowledge = `
+EUROPE HIGH-SPEED RAIL: France SNCF TGV (Paris→Lyon ~2h €25–100, Paris→Marseille ~3h, Paris→Nice ~5.5h) | Germany DB ICE (Berlin→Munich ~4h €30–130, Berlin→Hamburg ~1.5h) | Spain Renfe AVE (Madrid→Barcelona ~2.5h €30–120) | Italy Trenitalia Frecciarossa (Milan→Rome ~3h €30–120, Rome→Florence ~1.5h) | Cross-border: Eurostar/Thalys Paris→Amsterdam ~3.5h, Paris→Brussels ~1.5h
+Night trains: Nightjet Vienna→Paris/Berlin/Amsterdam. Book: nightjet.com
+Booking: sncf-connect.com, bahn.de, renfe.com, trenitalia.com, trainline.com, omio.com
+Example: {"mode":"train","service_name":"TGV Inouï","duration":"~2h","cost":"€25–100","booking":"sncf-connect.com","note":"Paris Gare de Lyon → Lyon Part-Dieu — advance fares from €25","recommended":true}`
+  } else if (isJapan) {
+    regionalKnowledge = `
+JAPAN SHINKANSEN (JR): Nozomi (fastest, no JR Pass), Hikari (JR Pass OK), Hayabusa (Tohoku)
+Key pairs: Tokyo→Osaka Nozomi ~2.5h ¥13,870 | Tokyo→Kyoto ~2h15m ¥13,320 | Tokyo→Hiroshima ~4h | Tokyo→Sendai Hayabusa ~1.5h
+Booking: Smart EX app for reserved seats; JR Pass (buy before arrival) covers Hikari/Hayabusa. IC card (Suica/Pasmo) for local transit.
+Example: {"mode":"train","service_name":"Shinkansen Nozomi","duration":"~2h30m","cost":"¥13,870","booking":"Smart EX app","note":"Tokyo → Shin-Osaka; Hikari ~3h covered by JR Pass if you have one","recommended":true}`
+  } else if (isAustralia || isNZ) {
+    regionalKnowledge = `
+AUSTRALIA: Sydney→Melbourne fly 1.5h wins (train is 11h overnight); Sydney→Brisbane fly; Perth→anywhere fly only. NSW TrainLink overnight for budget: A$55–130 nswticketing.com.au
+Domestic airlines: Jetstar, Virgin Australia, Qantas — book via Google Flights or direct.
+Example: {"mode":"fly","service_name":"Jetstar / Virgin Australia","duration":"~1h30m","cost":"A$80–200","booking":"Google Flights","note":"MEL Tullamarine — fly wins on time; book 4–6 weeks ahead for best fares","recommended":true}`
+  } else if (isChina) {
+    regionalKnowledge = `
+CHINA HIGH-SPEED (CRH): G-train 350km/h (fastest), D-train 250km/h, K-train conventional overnight
+Key pairs: Beijing→Shanghai G ~4.5h ¥553–935 | Beijing→Xi'an G ~5.5h ¥415–700 | Shanghai→Hangzhou G ~1h ¥73 | Guangzhou→Shenzhen G ~35m ¥75
+Booking: 12306.cn (official) or Trip.com (English-friendly) — book with passport number
+Example: {"mode":"train","service_name":"CRH G-train","duration":"~4.5h","cost":"¥553–935","booking":"Trip.com","note":"Beijing South → Shanghai Hongqiao — second-class seats comfortable, frequent departures","recommended":true}`
+  } else if (isSEAsia) {
+    regionalKnowledge = `
+SE ASIA TRANSIT: Thailand: BKK→Chiang Mai Thai Railways ~12h ฿200–1,500 or AirAsia 1h. Vietnam: Reunification Express Hanoi→HCMC ~30h (sleeper ₫400K–900K). Malaysia: KL→Penang ETS ~4h MYR60–120. Singapore→KL: bus ~5h S$35–45.
+Booking: 12go.asia (region-wide), baolau.vn (Vietnam), easybook.com (Malaysia/Singapore)
+Example: {"mode":"bus","service_name":"Aeroline / CatchandGo","duration":"~5h","cost":"S$35–45","booking":"12go.asia","note":"Multiple daily coaches Singapore→KL TBS; comfortable with onboard service","recommended":true}`
+  } else if (isLatAm) {
+    regionalKnowledge = `
+LATIN AMERICA: Rail minimal — bus and air dominate. Mexico: ADO buses (CDMX→Oaxaca ~6h MXN$500–800, CDMX→Tulum via Cancún). Argentina: long-distance buses Buenos Aires→Mendoza ~12h. Colombia/Brazil: fly for distances over 5h.
+Booking: ADO.com.mx (Mexico), redbus.com.co (Colombia), clickbus.com.br (Brazil), Google Flights for domestic air
+Example: {"mode":"bus","service_name":"ADO Premium","duration":"~6h","cost":"MXN$500–800","booking":"ado.com.mx","note":"TAPO or Norte terminal → Oaxaca; overnight option saves hotel","recommended":true}`
+  } else if (isMEAfrica) {
+    regionalKnowledge = `
+MIDDLE EAST & AFRICA: UAE: Etihad Express bus Dubai→Abu Dhabi ~2h AED50. Morocco: ONCF Al Boraq Casablanca→Marrakech ~2.5h MAD250–350. South Africa: Cape Town→JHB fly 2h (rail impractical). Most routes: fly.
+Booking: Google Flights, flysafair.co.za (SA budget), flynas.com (Saudi), Air Arabia
+Example: {"mode":"fly","service_name":"flydubai / Emirates","duration":"~2h","cost":"AED300–800","booking":"Google Flights","note":"Dubai International (DXB) — multiple daily flights, book 2–3 weeks ahead for best fares","recommended":true}`
+  } else {
+    // Generic fallback
+    regionalKnowledge = `
+Use your knowledge of rail, bus, and air options for the traveller's home region. Always name real services, give costs in local currency, and name the booking platform. Prefer trains under 4h over flying.
+Example: {"mode":"fly","service_name":"[Airline name]","duration":"[Xh]","cost":"[local currency range]","booking":"Google Flights","note":"[Specific terminal or tip]","recommended":true}`
+  }
+
+  return `${coreRules}
+${budgetTierRule}
+${regionalKnowledge}`
+}
+
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
 export function buildRecommendationPrompt(
@@ -880,112 +996,7 @@ ${dietarySection}
 ${dietaryReasonTagRule}
 ${budgetQualityRules}
 
-TRANSPORT — HOW TO GET THERE (GLOBAL INTELLIGENCE):
-Return a "transport" array of realistic options FROM the traveller's home city/country to each destination.
-
-CORE RULES:
-- Maximum 2–3 options per destination. Never pad.
-- Every option MUST have a real service_name (not "train" — say "Amtrak Acela", "Eurostar", "IRCTC Rajdhani Express").
-- cost: use LOCAL CURRENCY for the destination region (₹ for India, ¥ for Japan, £ for UK, € for Europe, A$ for Australia, etc.). Use $ only for US-domestic or international fares.
-- booking: name the actual platform (IRCTC app, eurostar.com, book.amtrak.com, Google Flights, Skyscanner, 12go.asia, Omio, Rome2rio, etc.)
-- note: one specific actionable line — terminal name, connection city, overnight option, seat class, booking tip.
-
-PRIMARY SELECTION — BUDGET TIER:
-Mark exactly ONE option recommended: true. Choose primary based on traveller's budget:
-- Shoestring (under $20/day): cheapest option that is viable (bus > slow train > budget airline)
-- Budget ($20–50/day): best value for money (often a budget airline or 2nd-class train)
-- Mid-range ($50–150/day): comfort + value (first-class train or full-service airline, direct if possible)
-- Comfortable ($150–300/day): speed + comfort (direct flight, business class train, fast rail)
-- Luxury ($300+/day): best experience (direct business/first, premium rail, private transfers)
-
-HONEST ROUTE RULES:
-- Under 2h by train: NEVER suggest flying as primary. Train is always recommended.
-- 2–4h by train: flying is marginal — train recommended unless flyer is at Comfortable/Luxury tier.
-- Over 4h by train (but flight under 2h): flying is genuinely faster — include both, fly as primary.
-- Night trains: always mention if they exist (saves accommodation + time). Flag as "overnight" in duration.
-- Budget travellers: always show the cheapest viable option as primary, even if slower.
-
-GLOBAL RAIL NETWORK KNOWLEDGE:
-INDIA (IRCTC system — use specific train names and classes):
-  Named trains: Shatabdi (day, fast), Rajdhani (overnight, AC), Duronto (non-stop overnight), Vande Bharat (modern HSR), Jan Shatabdi (budget), Garib Rath (budget AC)
-  Classes: 1A (₹2,500–8,000), 2A (₹1,500–4,000), 3A (₹800–2,000), SL (₹300–800), 2S (₹100–400)
-  Key pairs: Delhi→Agra: Gatimaan/Shatabdi ~2h ₹800–1,500 | Delhi→Jaipur: Shatabdi ~4.5h ₹600–1,400 | Delhi→Mumbai: Rajdhani ~16h ₹1,800–4,000 | Mumbai→Goa: Jan Shatabdi/Mandovi ~12h ₹400–1,500 | Chennai→Bangalore: Shatabdi ~5h ₹700–1,400 | Delhi→Rishikesh: Shatabdi to Haridwar then taxi | Kolkata→Darjeeling: NJP then toy train
-  Booking: IRCTC app or irctc.co.in — book 120 days ahead for Tatkal, confirm seat class
-
-USA (Amtrak):
-  Named routes: Acela (BOS-NYP-WAS, ~2.5–6.5h), Northeast Regional (BOS–WAS stops), Empire Builder (CHI–SEA, 46h), California Zephyr (CHI–SFO, 51h), Coast Starlight (SEA–LAX, 35h), Silver Star/Meteor (NYP–MIA), Crescent (NYP–NOL), Heartland Flyer (OKC–FTW), San Joaquin (OAK–BKF), Pacific Surfliner (LAX–SAN)
-  Key pairs: NYC→Boston: Acela ~2.5h $50–180 | NYC→DC: Acela ~2.5h $50–160 | NYC→Chicago: Lake Shore Ltd overnight ~19h $80–200 | Chicago→Milwaukee: Hiawatha ~1.5h $27 | LAX→SFO: Coast Starlight ~12h (slow) or fly 1h
-  Booking: Amtrak.com or Amtrak app — saver fares sell out fast
-
-UK & IRELAND (National Rail / Eurostar):
-  Named operators: LNER (London→Edinburgh, ~4.5h), Avanti West Coast (London→Manchester ~2h, London→Glasgow ~4.5h), GWR (London→Bristol ~1.5h, London→Cornwall ~4.5h), CrossCountry (Manchester→Bristol), Chiltern Railways (London Marylebone→Birmingham ~2h), Elizabeth line (Heathrow→central London 30m, £13)
-  Key pairs: London→Edinburgh: LNER ~4.5h £30–130 book.nationalrail.co.uk | London→Manchester: Avanti ~2h £15–80 | London→Bristol: GWR ~1.5h £12–55 | London→Cornwall: GWR ~5h £25–90
-  London→Paris: Eurostar ~2h20m from £50 eurostar.com | London→Amsterdam: Eurostar ~4h from £50
-  Booking: nationalrail.co.uk, trainline.com, or operator sites — advance tickets cheapest
-
-EUROPE (high-speed rail continent):
-  France (SNCF): TGV/Inouï Paris→Lyon ~2h €25–100, Paris→Marseille ~3h €30–120, Paris→Nice ~5.5h €40–150, Paris→Bordeaux ~2h €25–90. Book: sncf-connect.com or Rail Europe
-  Germany (DB): ICE Berlin→Munich ~4h €30–130, Berlin→Hamburg ~1.5h €20–80, Frankfurt→Cologne ~1.5h €20–70. Book: bahn.de or DB app
-  Spain (Renfe/Iryo/Ouigo): AVE Madrid→Barcelona ~2.5h €30–120, Madrid→Seville ~2.5h €30–100. Book: renfe.com or Iryo
-  Italy (Trenitalia/Italo): Frecciarossa Milan→Rome ~3h €30–120, Rome→Florence ~1.5h €20–80, Rome→Naples ~1h €15–60, Milan→Venice ~2.5h €25–90. Book: trenitalia.com or italotreno.it
-  Netherlands: Intercity Amsterdam→Utrecht ~0.5h €7, Amsterdam→Rotterdam ~0.75h €18. Book: ns.nl
-  Eurostar/Thalys/TGV cross-border: Paris→Amsterdam ~3.5h, Paris→Brussels ~1.5h, London→Paris 2h20m. Book: eurostar.com, b-europe.com
-  Night trains: Nightjet (Vienna→Paris, Vienna→Berlin, Vienna→Amsterdam), Caledonian Sleeper (London→Edinburgh/Inverness), EN (Rome→Paris, Milan→Barcelona). Book: nightjet.com, Caledonian Sleeper
-
-JAPAN (JR Shinkansen and limited express):
-  Shinkansen types: Nozomi (fastest, no JR Pass), Hikari (JR Pass OK), Kodama (all stops, slow), Hayabusa (Tohoku/Hokkaido), Komachi (Akita)
-  Key pairs: Tokyo→Osaka: Nozomi ~2.5h ¥13,870 (one-way) or Hikari ~3h JR Pass | Tokyo→Kyoto: Nozomi ~2h15m ¥13,320 | Tokyo→Hiroshima: Nozomi ~4h | Tokyo→Sendai: Hayabusa ~1.5h | Osaka→Hiroshima: Nozomi ~1h | Sapporo→Tokyo: Hokkaido Shinkansen ~5h (opens 2030, fly for now)
-  Booking: Smart EX app (Nozomi reserved seating), JR Pass for visitors (buy before arrival), Hyperdia for schedules
-  IC Cards (Suica/Pasmo): use for local trains, buses, convenience stores everywhere
-
-AUSTRALIA:
-  Key pairs: Sydney→Melbourne: NSW TrainLink/V/Line ~11h overnight or fly 1.5h (fly wins for Comfortable+) | Sydney→Brisbane: ~14h (fly preferred) | Perth→everywhere: fly only | Melbourne→Adelaide: The Overland ~10h (scenic, twice weekly)
-  Booking: nswticketing.com.au, 13go.com.au, Google Flights for Jetstar/Virgin/Qantas
-
-CANADA (VIA Rail):
-  Key pairs: Toronto→Montreal: The Corridor ~5h CA$50–150 | Toronto→Ottawa: ~4.5h CA$40–120 | Vancouver→everywhere else: fly (The Canadian is 3-day scenic, not practical transport)
-  Booking: viarail.ca — Escape fares cheapest but non-refundable
-
-CHINA (CRH high-speed):
-  Train classes: G-train (350 km/h, fastest), D-train (250 km/h), K-train (slow conventional overnight)
-  Key pairs: Beijing→Shanghai: G-train ~4.5h ¥553–935 | Beijing→Xi'an: G-train ~5.5h ¥415–700 | Shanghai→Hangzhou: G-train ~1h ¥73 | Shanghai→Suzhou: G ~25m ¥30 | Guangzhou→Shenzhen: G ~35m ¥75 | Kunming→Lijiang: G ~3h ¥200
-  Booking: 12306.cn or Trip.com (English-friendly), book with passport number
-
-SOUTHEAST ASIA:
-  Thailand: BKK→ChiangMai: Thai Railways overnight (~12h ฿200–1,500) or AirAsia fly ~1h | BKK→Hua Hin: SRT ~3.5h ฿100–500
-  Vietnam: Reunification Express Hanoi→HCMC ~30h (sleeper ₫400K–900K), Hanoi→Hue ~13h, Hanoi→DaNang ~16h. Book: baolau.vn or 12go.asia
-  Malaysia: KL→Penang: ETS train ~4h MYR60–120 | KL→Singapore: KTM ~5h or bus MYR30–60
-  Singapore→Kuala Lumpur: Aeroline bus ~5h S$35–45 or Causeway Link | Booking: 12go.asia, easybook.com
-
-LATIN AMERICA:
-  Brazil: mostly fly (rail minimal) | Argentina: Buenos Aires→Mendoza fly ~2h AR$15K–50K or overnight bus ~12h | Colombia: bus widely used, fly for long distances
-  Mexico: CDMX→Guadalajara: bus ~6h MXN$600–900 (Primera Plus) or fly 1h | CDMX→Oaxaca: ADO bus ~6h MXN$500–800 | CDMX→Tulum: fly to Cancún then bus
-
-MIDDLE EAST & AFRICA:
-  UAE→Saudi Arabia: fly (Riyadh, Jeddah) | Dubai→Abu Dhabi: Etihad Express bus 2h AED50 or drive 1.5h
-  Morocco: Marrakech→Casablanca: ONCF high-speed Al Boraq ~2.5h MAD250–350 | Marrakech→Fes: overnight train or bus ~8h
-  South Africa: Cape Town→Johannesburg: fly 2h (Kulula/FlySafair) — rail impractical for tourists
-
-SOUTHEAST ASIA BUS (major long-distance routes):
-  Giant Ibis (Cambodia), Nakhon Chai Air (Thailand overnight), Sindhudurg/Kadamba (Goa), KSRTC Karnataka (Mysore→Coorg), Volvo Sleeper Bus (India), FlixBus/BlaBlaBus (Europe), Greyhound (US), Bolt Bus (UK)
-
-EXAMPLES (updated format):
-  Home: London → Paris:
-    [{"mode":"train","service_name":"Eurostar","duration":"2h20m","cost":"£50–130","booking":"eurostar.com","note":"Direct from St Pancras International — no airport faff","recommended":true},
-     {"mode":"fly","service_name":"British Airways / easyJet","duration":"~1h15m","cost":"£40–120 + airport time","booking":"Google Flights","note":"City airports (CDG/Orly) add 1.5h each end — Eurostar wins on door-to-door","recommended":false}]
-  Home: Delhi → Agra:
-    [{"mode":"train","service_name":"Gatimaan Express / Shatabdi","duration":"~2h","cost":"₹800–1,500 (CC class)","booking":"IRCTC app","note":"Departs Hazrat Nizamuddin — fastest option, 2 trains daily","recommended":true},
-     {"mode":"drive","service_name":"Self-drive / hired car","duration":"~3–4h","cost":"₹2,000–3,500 (cab)","booking":"Ola or local cab","note":"Yamuna Expressway — book return as day trip, avoid Friday evenings","recommended":false}]
-  Home: New York → Boston:
-    [{"mode":"train","service_name":"Amtrak Acela","duration":"~2.5h","cost":"$50–180","booking":"Amtrak.com","note":"Penn Station → South Station, business class available — beats flying door-to-door","recommended":true},
-     {"mode":"fly","service_name":"JetBlue / American","duration":"~1h15m + airport","cost":"$80–200 + airport time","booking":"Google Flights","note":"Logan airport adds 1.5h each end — only worth it if fares are very cheap","recommended":false}]
-  Home: Tokyo → Osaka:
-    [{"mode":"train","service_name":"Shinkansen Nozomi / Hikari","duration":"2h30m–3h","cost":"¥13,870 (reserved)","booking":"Smart EX app","note":"Nozomi fastest but not JR Pass — Hikari covered by 7-day JR Pass (¥50,000)","recommended":true}]
-  Home: Sydney → Melbourne:
-    [{"mode":"fly","service_name":"Jetstar / Virgin Australia","duration":"~1h30m","cost":"A$80–200","booking":"Google Flights","note":"Tullamarine (MEL) — fly wins on time; overnight train scenic but 11h","recommended":true},
-     {"mode":"train","service_name":"NSW TrainLink + V/Line","duration":"~11h overnight","cost":"A$55–130","booking":"nswticketing.com.au","note":"Overnight option — saves a night's accommodation for budget travellers","recommended":false}]
-  Home: Singapore → Bali:
-    [{"mode":"fly","service_name":"Lion Air / Scoot / Singapore Airlines","duration":"~2h30m","cost":"S$80–300","booking":"Skyscanner","note":"Multiple daily flights to Ngurah Rai (DPS) — no other viable option","recommended":true}]`
+${buildTransportSection(onboarding.home_country, onboarding.budget_per_day)}`
 
   const dietaryLine = dietaryPrefs.length > 0
     ? `\n- Dietary: ${dietaryPrefs.join(', ')}`

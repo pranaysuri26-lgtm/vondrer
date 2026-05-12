@@ -16,6 +16,7 @@ interface FormData {
   home_city:            string
   home_country:         string
   travel_scope:         'anywhere' | 'closer'
+  domestic_scope:       'same_state' | 'any_state'
   budget:               string
   duration:             string
   group_type:           string
@@ -151,6 +152,7 @@ export default function SignupPage() {
     home_city:            '',
     home_country:         '',
     travel_scope:         'anywhere',
+    domestic_scope:       'any_state',
     budget:               '',
     duration:             '',
     group_type:           '',
@@ -264,6 +266,7 @@ export default function SignupPage() {
         home_city:            form.home_city.trim() || null,
         home_country:         form.home_country,
         travel_scope:         form.travel_scope,
+        domestic_scope:       form.travel_scope === 'closer' ? form.domestic_scope : null,
         budget_per_day:       form.budget,
         trip_duration:        form.duration,
         group_type:           form.group_type,
@@ -387,14 +390,14 @@ export default function SignupPage() {
             </div>
 
             {/* Travel scope toggle */}
-            <div className="pt-1">
-              <label className="block text-xs text-white/45 uppercase tracking-widest mb-3">
+            <div className="pt-1 space-y-3">
+              <label className="block text-xs text-white/45 uppercase tracking-widest">
                 How far do you want to go?
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { value: 'anywhere', icon: '🌍', label: 'Anywhere', sub: 'Global recommendations' },
-                  { value: 'closer',   icon: '🏠', label: 'Domestic only', sub: 'Your country & neighbours' },
+                  { value: 'closer',   icon: '🏠', label: 'Domestic only', sub: 'Stay within your country' },
                 ].map(opt => (
                   <button key={opt.value} type="button"
                     onClick={() => set('travel_scope', opt.value as 'anywhere' | 'closer')}
@@ -410,6 +413,47 @@ export default function SignupPage() {
                   </button>
                 ))}
               </div>
+
+              {/* Domestic sub-selector — only when 'closer' is chosen */}
+              {form.travel_scope === 'closer' && (
+                <div className="border border-white/10 bg-white/3 rounded-xl p-4 space-y-2">
+                  <p className="text-xs text-white/40 uppercase tracking-widest mb-3">How far within your country?</p>
+                  {[
+                    {
+                      value: 'any_state',
+                      icon:  '🗺️',
+                      label: 'Any state / region',
+                      sub:   'Explore your whole country',
+                    },
+                    {
+                      value: 'same_state',
+                      icon:  '📍',
+                      label: 'My state / region only',
+                      sub:   `Stay close to ${form.home_city || 'home'}`,
+                    },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => set('domestic_scope', opt.value as 'any_state' | 'same_state')}
+                      className={`w-full text-left px-4 py-3 rounded-lg border transition-all flex items-center gap-3
+                        ${form.domestic_scope === opt.value
+                          ? 'border-[#C97552]/60 bg-[#C97552]/8 text-white'
+                          : 'border-white/8 bg-white/3 text-white/60 hover:border-white/20 hover:text-white/80'
+                        }`}
+                    >
+                      <span className="text-lg leading-none flex-shrink-0">{opt.icon}</span>
+                      <div>
+                        <div className="font-medium text-sm">{opt.label}</div>
+                        <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
+                      </div>
+                      {form.domestic_scope === opt.value && (
+                        <span className="ml-auto text-[#C97552] text-sm">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button onClick={nextStep} disabled={!canAdvance()}

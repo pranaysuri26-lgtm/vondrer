@@ -11,6 +11,7 @@ interface Profile {
   home_city:            string
   home_country:         string
   travel_scope:         string
+  domestic_scope:       string   // 'same_state' | 'any_state'
   budget_per_day:       string
   trip_duration:        string
   group_type:           string
@@ -119,6 +120,7 @@ export default function ProfilePage() {
     home_city:            '',
     home_country:         '',
     travel_scope:         'anywhere',
+    domestic_scope:       'any_state',
     budget_per_day:       '',
     trip_duration:        '',
     group_type:           '',
@@ -157,6 +159,7 @@ export default function ProfilePage() {
           home_city:            d.home_city            ?? '',
           home_country:         d.home_country         ?? '',
           travel_scope:         d.travel_scope         ?? 'anywhere',
+          domestic_scope:       d.domestic_scope       ?? 'any_state',
           budget_per_day:       d.budget_per_day       ?? '',
           trip_duration:        d.trip_duration        ?? '',
           group_type:           d.group_type           ?? '',
@@ -238,6 +241,7 @@ export default function ProfilePage() {
         home_city:            profile.home_city.trim() || null,
         home_country:         profile.home_country,
         travel_scope:         profile.travel_scope,
+        domestic_scope:       profile.travel_scope === 'closer' ? profile.domestic_scope : null,
         budget_per_day:       profile.budget_per_day,
         trip_duration:        profile.trip_duration,
         group_type:           profile.group_type,
@@ -344,23 +348,56 @@ export default function ProfilePage() {
 
         {/* ── Travel scope ──────────────────────────────────────────────── */}
         <Section title="How far do you want to go?">
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { value: 'anywhere', icon: '🌍', label: 'Anywhere', sub: 'Global recommendations' },
-              { value: 'closer',   icon: '🏠', label: 'Domestic only', sub: 'Your country & neighbours' },
-            ].map(opt => (
-              <button key={opt.value} type="button" onClick={() => set('travel_scope', opt.value)}
-                className={`text-left px-4 py-4 rounded-xl border transition-all
-                  ${profile.travel_scope === opt.value
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
-                  }`}
-              >
-                <div className="text-xl mb-1">{opt.icon}</div>
-                <div className="font-medium text-sm">{opt.label}</div>
-                <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
-              </button>
-            ))}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'anywhere', icon: '🌍', label: 'Anywhere', sub: 'Global recommendations' },
+                { value: 'closer',   icon: '🏠', label: 'Domestic only', sub: 'Stay within your country' },
+              ].map(opt => (
+                <button key={opt.value} type="button" onClick={() => set('travel_scope', opt.value)}
+                  className={`text-left px-4 py-4 rounded-xl border transition-all
+                    ${profile.travel_scope === opt.value
+                      ? 'border-[#C97552] bg-[#C97552]/10 text-white'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                    }`}
+                >
+                  <div className="text-xl mb-1">{opt.icon}</div>
+                  <div className="font-medium text-sm">{opt.label}</div>
+                  <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Domestic sub-selector */}
+            {profile.travel_scope === 'closer' && (
+              <div className="border border-white/10 bg-white/3 rounded-xl p-4 space-y-2">
+                <p className="text-xs text-white/40 uppercase tracking-widest mb-3">How far within your country?</p>
+                {[
+                  { value: 'any_state',  icon: '🗺️', label: 'Any state / region',   sub: 'Explore your whole country' },
+                  { value: 'same_state', icon: '📍', label: 'My state / region only', sub: `Stay close to ${profile.home_city || 'home'}` },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => set('domestic_scope', opt.value)}
+                    className={`w-full text-left px-4 py-3 rounded-lg border transition-all flex items-center gap-3
+                      ${profile.domestic_scope === opt.value
+                        ? 'border-[#C97552]/60 bg-[#C97552]/8 text-white'
+                        : 'border-white/8 bg-white/3 text-white/60 hover:border-white/20 hover:text-white/80'
+                      }`}
+                  >
+                    <span className="text-lg leading-none flex-shrink-0">{opt.icon}</span>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{opt.label}</div>
+                      <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
+                    </div>
+                    {profile.domestic_scope === opt.value && (
+                      <span className="text-[#C97552] text-sm">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </Section>
 

@@ -7,6 +7,7 @@ export interface OnboardingData {
   home_country:         string    // e.g. 'United States', 'India', 'Australia'
   home_city?:           string    // e.g. 'Sydney', 'Delhi', 'London'
   travel_scope?:        string    // 'anywhere' | 'closer'
+  domestic_scope?:      string    // 'same_state' | 'any_state' — only when travel_scope='closer'
   budget_per_day:       string    // 'under-20' | '20-50' | '50-150' | '150-300' | '300+'
   trip_duration:        string    // 'weekend' | '1-week' | '2-weeks' | 'month+'
   group_type:           string    // 'solo' | 'couple' | 'small-group'
@@ -64,7 +65,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 19
+const PROMPT_VERSION = 20
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -88,6 +89,7 @@ export function buildProfileHash(
     home_country:         norm(onboarding.home_country),
     home_city:            norm(onboarding.home_city),
     travel_scope:         norm(onboarding.travel_scope) || 'anywhere',
+    domestic_scope:       norm(onboarding.domestic_scope) || 'any_state',
     budget_per_day:       norm(onboarding.budget_per_day),
     trip_duration:        norm(String(onboarding.trip_duration ?? '')),
     group_type:           norm(onboarding.group_type),
@@ -368,10 +370,33 @@ Rule: "Is this an obvious 3-hour-or-less weekend escape that every ${homeCity} l
 // Prevents the model from including transcontinental destinations regardless of
 // how the soft scopeRules section is interpreted.
 
-function buildGeographicEnforcement(homeCountry: string, travelScope: string): string {
+function buildGeographicEnforcement(homeCountry: string, travelScope: string, domesticScope?: string, homeCity?: string): string {
   if (travelScope !== 'closer') return ''
 
   const c = homeCountry.toLowerCase().trim()
+
+  // Same-state / same-region constraint — overrides all country-level rules
+  if (domesticScope === 'same_state' && homeCity) {
+    return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HARD GEOGRAPHIC CONSTRAINT — SAME STATE / REGION ONLY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+User wants to stay within their own state or region. Home city: ${homeCity}, ${homeCountry}.
+
+PERMITTED ONLY: Destinations within the SAME STATE, PROVINCE, or REGION as ${homeCity}.
+  • If home is in a US state (e.g. Tennessee): only recommend cities and towns within that exact state.
+  • If home is in an Indian state (e.g. Maharashtra): only recommend within Maharashtra.
+  • If home is in a Canadian province (e.g. British Columbia): only within BC.
+  • If home is in a UK region (e.g. Scotland): only within Scotland. England-wide is OK for English cities.
+  • For any country: infer the home state/province/region from the home city and restrict to it.
+
+COMPLETELY FORBIDDEN: Any destination in a DIFFERENT state, province, or region — even if nearby.
+COMPLETELY FORBIDDEN: Any international destination.
+
+All 8 results must be from within the same state/region as ${homeCity}. No exceptions.
+If the state has fewer than 8 interesting destinations, include smaller towns, scenic areas, national parks, and day-trip distances (up to ~3h drive).
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+  }
 
   const isUSA      = /united states|usa|\bus\b/.test(c)
   const isCanada   = c.includes('canada')
@@ -531,7 +556,7 @@ export function buildRecommendationPrompt(
     ? `budget_per_day_usd MUST be between $${cap.min} and $${cap.max}. Target ~$${cap.target}. This is ON-THE-GROUND cost only (accommodation + food + local transport), EXCLUDING flights. Reject any destination where realistic ground costs exceed $${cap.max}/day.`
     : 'budget_per_day_usd: realistic daily on-the-ground cost in USD (excl. flights).'
 
-  const geoEnforcement = buildGeographicEnforcement(onboarding.home_country, travelScope)
+  const geoEnforcement = buildGeographicEnforcement(onboarding.home_country, travelScope, onboarding.domestic_scope, onboarding.home_city)
 
   // ── FIX 1: Dietary reason tag rule ──────────────────────────────────────────
   const dietaryReasonTagRule = dietaryPrefs.length > 0 ? `
@@ -644,7 +669,12 @@ Be honest: never recommend a destination where this budget forces miserable comp
   })()
 
   const scopeRules = travelScope === 'closer'
-    ? `TRAVEL SCOPE: CLOSER TO HOME (DOMESTIC)
+    ? (onboarding.domestic_scope === 'same_state'
+      ? `TRAVEL SCOPE: SAME STATE / REGION ONLY
+- User explicitly chose to stay within their own state or region.
+- ALL results must be in the same state/province/region as their home city: ${onboarding.home_city ?? 'home city'}, ${onboarding.home_country}.
+- No other states, no other countries. See HARD GEOGRAPHIC CONSTRAINT block — it is absolute.`
+      : `TRAVEL SCOPE: CLOSER TO HOME (DOMESTIC)
 - User explicitly chose "Closer to home" — recommend DOMESTIC destinations only.
 - No international flights. No passport-required destinations.
 - For USA: US domestic only (all 50 states + US territories). Canada permitted.
@@ -652,7 +682,7 @@ Be honest: never recommend a destination where this budget forces miserable comp
 - For Australia: domestic destinations + New Zealand only.
 - For India: domestic destinations + Sri Lanka, Nepal, Bhutan only.
 - For UK/Europe: domestic + European Union / Schengen area only.
-- See HARD GEOGRAPHIC CONSTRAINT block below — those rules override everything.`
+- See HARD GEOGRAPHIC CONSTRAINT block below — those rules override everything.`)
     : `TRAVEL SCOPE: GLOBAL
 - Worldwide destinations are fine.
 - Vary regions — do not cluster all suggestions in one continent.
@@ -1004,7 +1034,11 @@ Apply RESULT SET VARIETY as defined in the system prompt.`
 
   const user = `Traveller profile:
 - Based in: <user_location>${homeLocation}</user_location>
-- Travel scope: ${travelScope === 'closer' ? 'Closer to home (regional only)' : 'Anywhere in the world'}
+- Travel scope: ${travelScope === 'closer'
+    ? (onboarding.domestic_scope === 'same_state'
+        ? `Staying in my own state/region (home: ${onboarding.home_city ?? ''}, ${onboarding.home_country})`
+        : 'Domestic only (my country)')
+    : 'Anywhere in the world'}
 - Daily budget (on-the-ground, excl. flights): ${BUDGET_LABELS[onboarding.budget_per_day] ?? onboarding.budget_per_day}
 - Trip duration: ${onboarding.trip_duration}
 - Travelling with: ${onboarding.group_type}

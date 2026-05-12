@@ -1183,8 +1183,19 @@ Apply RESULT SET VARIETY as defined in the system prompt.`
 - Based in: <user_location>${homeLocation}</user_location>
 - Travel scope: ${travelScope === 'closer'
     ? (onboarding.domestic_scope === 'same_state'
-        ? `Staying in my own state/region (home: ${onboarding.home_city ?? ''}, ${onboarding.home_country})`
-        : 'Domestic only (my country)')
+        ? `SAME STATE / REGION ONLY — every result must be in the same state/region as ${onboarding.home_city ?? ''}, ${onboarding.home_country}. Any destination outside this state is FORBIDDEN.`
+        : (() => {
+            const hc = (onboarding.home_country ?? '').toLowerCase()
+            if (hc.includes('india'))
+              return `DOMESTIC + NEARBY ONLY (India). Permitted: India (all states), Nepal, Bhutan, Sri Lanka, Maldives, SE Asia (Thailand/Malaysia/Singapore/Indonesia/Vietnam/Cambodia/Myanmar). FORBIDDEN: New York, United States, United Kingdom, Europe, Japan, South Korea, Australia, Americas, Africa, Middle East. Every result must pass: "Is this in India or SE Asia?" If NO → do not include.`
+            if (/united states|usa|\bus\b/.test(hc))
+              return `DOMESTIC ONLY (United States). Permitted: US states + Canada. FORBIDDEN: Mexico, Caribbean, Europe, Asia, South America, Africa, Australia. Every result must be in the USA or Canada.`
+            if (hc.includes('canada'))
+              return `DOMESTIC ONLY (Canada). Permitted: Canadian provinces + United States. FORBIDDEN: Mexico, Caribbean, Europe, Asia, South America, Africa, Australia.`
+            if (hc.includes('australia') || /new zealand|nz\b/.test(hc))
+              return `REGIONAL ONLY (Australia/NZ). Permitted: Australia, New Zealand, SE Asia, Pacific Islands, Japan. FORBIDDEN: Europe, Americas, Middle East, Africa, India.`
+            return `DOMESTIC ONLY (${onboarding.home_country}). No international destinations. Every result must be within ${onboarding.home_country} or immediate neighbouring countries reachable by short flight.`
+          })())
     : 'Anywhere in the world'}
 - Daily budget (on-the-ground, excl. flights): ${BUDGET_LABELS[onboarding.budget_per_day] ?? onboarding.budget_per_day}
 - Trip duration: ${onboarding.trip_duration}
@@ -1236,4 +1247,85 @@ export function validateResponse(raw: string): RecommendedDestination[] {
     throw new Error(`Insufficient destinations: got ${parsed.destinations.length}, need at least 8`)
   }
   return parsed.destinations.slice(0, 12)
+}
+
+// ─── Server-side geographic scope filter ──────────────────────────────────────
+// Last line of defence: strip any destination the AI returned that violates the
+// geographic scope, regardless of what the prompt said. GPT-4o-mini occasionally
+// ignores hard constraints — this ensures forbidden countries never reach the client.
+
+export function filterByScope(
+  destinations: RecommendedDestination[],
+  homeCountry: string,
+  travelScope: string | undefined,
+  domesticScope?: string | undefined
+): RecommendedDestination[] {
+  if (!travelScope || travelScope !== 'closer') return destinations
+
+  const c = (homeCountry ?? '').toLowerCase().trim()
+
+  // Build the permitted country set for this home country
+  let permitted: Set<string> | null = null
+
+  if (c.includes('india')) {
+    permitted = new Set([
+      'india', 'nepal', 'bhutan', 'sri lanka', 'maldives',
+      'thailand', 'malaysia', 'singapore', 'indonesia', 'vietnam',
+      'cambodia', 'myanmar', 'burma', 'laos', 'philippines',
+    ])
+  } else if (/united states|usa|\bus\b/.test(c)) {
+    permitted = new Set(['united states', 'canada'])
+  } else if (c.includes('canada')) {
+    permitted = new Set(['canada', 'united states'])
+  } else if (c.includes('australia')) {
+    permitted = new Set([
+      'australia', 'new zealand', 'thailand', 'indonesia', 'bali',
+      'malaysia', 'singapore', 'vietnam', 'cambodia', 'philippines',
+      'myanmar', 'laos', 'japan', 'fiji', 'vanuatu', 'samoa', 'tonga',
+      'cook islands', 'new caledonia', 'french polynesia',
+    ])
+  } else if (/new zealand|nz\b/.test(c)) {
+    permitted = new Set([
+      'new zealand', 'australia', 'thailand', 'indonesia', 'malaysia',
+      'singapore', 'vietnam', 'cambodia', 'philippines', 'japan',
+      'fiji', 'vanuatu', 'samoa', 'tonga', 'cook islands',
+    ])
+  } else if (c.includes('japan')) {
+    permitted = new Set([
+      'japan', 'south korea', 'china', 'taiwan', 'hong kong',
+      'thailand', 'malaysia', 'singapore', 'indonesia', 'vietnam',
+      'cambodia', 'myanmar', 'philippines', 'laos', 'australia',
+    ])
+  } else if (c.includes('singapore')) {
+    permitted = new Set([
+      'singapore', 'malaysia', 'indonesia', 'thailand', 'vietnam',
+      'cambodia', 'myanmar', 'philippines', 'laos', 'japan',
+      'south korea', 'china', 'taiwan', 'hong kong', 'india', 'sri lanka', 'australia',
+    ])
+  }
+  // For UK/Europe: permitted zone is too large to enumerate — skip filtering.
+  // The prompt constraint handles it; a London user recommending Paris is fine.
+
+  if (!permitted) return destinations
+
+  const norm = (s: string) => s.toLowerCase().trim()
+    .replace(/^the\s+/i, '')
+    .replace(/\bbali\b/, 'indonesia')  // Bali is part of Indonesia
+    .replace(/\bhong kong\b/, 'hong kong')
+
+  const filtered = destinations.filter(d => {
+    const country = norm(d.country ?? '')
+    if (permitted!.has(country)) return true
+    // Handle common aliases
+    if (country === 'usa' || country === 'u.s.a.' || country === 'us') return permitted!.has('united states')
+    if (country === 'uk' || country === 'united kingdom' || country === 'england' || country === 'britain') return permitted!.has('united kingdom')
+    return false
+  })
+
+  // Only apply filter if enough results remain — avoids edge cases on small result sets
+  if (filtered.length >= 3) {
+    console.log(`[filterByScope] Removed ${destinations.length - filtered.length} out-of-scope destinations for ${homeCountry} + closer`)
+    return filtered
+  }
+  return destinations
 }

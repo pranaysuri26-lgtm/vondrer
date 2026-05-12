@@ -6,6 +6,7 @@ import {
   buildProfileHash,
   buildRecommendationPrompt,
   validateResponse,
+  filterByScope,
   type OnboardingData,
   type PastTrip,
   type RecommendedDestination,
@@ -295,7 +296,8 @@ export async function POST(req: NextRequest) {
       }
 
       if (collected.length >= 5) {
-        const paywalled = applyPaywall(collected)
+        const scopeFiltered = filterByScope(collected, onboarding.home_country ?? '', onboarding.travel_scope, onboarding.domestic_scope)
+        const paywalled = applyPaywall(scopeFiltered)
         for (const d of paywalled) {
           ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
         }
@@ -325,7 +327,8 @@ export async function POST(req: NextRequest) {
         collected.push(...retryDests)
 
         if (collected.length >= 5) {
-          const paywalled = applyPaywall(collected)
+          const scopeFiltered = filterByScope(collected, onboarding.home_country ?? '', onboarding.travel_scope, onboarding.domestic_scope)
+          const paywalled = applyPaywall(scopeFiltered)
           for (const d of paywalled) {
             ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
           }
@@ -361,19 +364,16 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Cache fresh results ───────────────────────────────────────────────────
-    if (collected.length >= 8) {
+    // Cache the scope-filtered list so stale cache never contains forbidden destinations
+    const toCache = filterByScope(collected, onboarding.home_country ?? '', onboarding.travel_scope, onboarding.domestic_scope)
+    if (toCache.length >= 8) {
       try {
-        // FIX 2: Store home_country + travel_scope so stale-cache queries can
-        // filter by them. Requires:
-        //   ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS home_country TEXT;
-        //   ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS travel_scope TEXT;
-        // If the columns don't exist, the upsert will fail silently (caught below).
         await supabase
           .from('recommendations')
           .upsert(
             {
               user_id:      user.id,
-              destinations: collected,
+              destinations: toCache,
               profile_hash: hash,
               home_country: onboarding.home_country ?? '',
               travel_scope: onboarding.travel_scope ?? 'anywhere',

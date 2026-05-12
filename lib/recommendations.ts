@@ -32,13 +32,14 @@ export interface UpcomingEvent {
 }
 
 export interface TransportMode {
-  mode:         'fly' | 'train' | 'bus' | 'drive' | 'ferry'
-  service_name: string   // e.g. "Amtrak Acela", "Eurostar", "IRCTC Shatabdi Express"
-  duration:     string   // e.g. "~2h", "~11h", "4h overnight"
-  cost:         string   // e.g. "₹800–1,200", "$45–90", "€35", "~$200–400"
-  booking:      string   // e.g. "book.amtrak.com", "eurostar.com", "IRCTC app", "Google Flights"
-  note:         string   // e.g. "Direct from St Pancras", "Via Delhi — road opens Jun–Sep"
-  recommended:  boolean  // true on the single best option for this traveller's budget tier
+  mode:           'fly' | 'train' | 'bus' | 'drive' | 'ferry'
+  service_name:   string   // e.g. "Amtrak Acela", "Eurostar", "IRCTC Shatabdi Express"
+  duration:       string   // e.g. "~2h", "~11h", "4h overnight"
+  cost:           string   // e.g. "₹800–1,200", "$45–90", "€35", "~$200–400"
+  booking:        string   // e.g. "book.amtrak.com", "eurostar.com", "IRCTC app", "Google Flights"
+  note:           string   // e.g. "Direct from St Pancras", "Via Delhi — road opens Jun–Sep"
+  booking_window?: string  // e.g. "Book 2–3 days ahead — weekends fill fast", "Walk-up fine"
+  recommended:    boolean  // true on the single best option for this traveller's budget tier
 }
 
 export interface RecommendedDestination {
@@ -55,8 +56,9 @@ export interface RecommendedDestination {
   timing_note?:       string   // one honest line on timing quality e.g. "May is monsoon — consider October"
   timing_warning?:    string   // amber badge text — ONLY for genuine access restrictions e.g. "Road access closes May–Oct"
   upcoming_event?:    UpcomingEvent | null
-  transport?:         TransportMode[]  // HOW TO GET THERE — realistic modes from traveller's home
-  locked?:            boolean  // set server-side by applyPaywall — authoritative paywall state
+  transport?:           TransportMode[]  // HOW TO GET THERE — realistic modes from traveller's home
+  personalization_note?: string          // one italic line connecting destination to this specific traveller
+  locked?:              boolean          // set server-side by applyPaywall — authoritative paywall state
 }
 
 export interface RecommendationResponse {
@@ -65,7 +67,7 @@ export interface RecommendationResponse {
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
 // Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 21
+const PROMPT_VERSION = 22
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -541,11 +543,14 @@ function buildTransportSection(homeCountry: string, budgetPerDay: string): strin
 - 300+ (Luxury): best experience — direct business/first, premium rail, private transfer`
 
   const coreRules = `TRANSPORT — HOW TO GET THERE:
-Return a "transport" array (max 2–3 options) FROM the traveller's home city/country to each destination.
+Return a "transport" array of 2–3 options FROM the traveller's home city/country to each destination.
+ALWAYS include at least 2 options when multiple modes exist (fly+train, fly+bus, drive+train are common pairs).
+Only return 1 option if there is genuinely only one viable way to reach the destination (e.g. remote island, fly only).
 - service_name: use REAL names — "Amtrak Acela" not "train", "Eurostar" not "rail", "IRCTC Rajdhani" not "overnight"
 - cost: local currency of destination (₹ India, ¥ Japan, £ UK, € Europe, A$ Australia, $ for US/international)
 - booking: actual platform name (IRCTC app, eurostar.com, Amtrak.com, Google Flights, Skyscanner, 12go.asia)
 - note: one specific actionable line — terminal, connection, seat class, booking tip
+- booking_window: when to book for best availability/price — e.g. "Book 3–4 weeks ahead", "Walk-up fine on weekdays", "Tatkal available 24h before departure". Empty string "" if not applicable.
 - Mark exactly ONE as recommended: true based on budget tier above
 - Under 2h train → never recommend flying. 2–4h train → train preferred unless Comfortable/Luxury. Over 4h train → fly if under 2h flight.`
 
@@ -817,10 +822,10 @@ Output each destination as a separate, complete JSON object on its own line.
 One destination per line. No outer array. No "destinations" wrapper key. No markdown. No explanation.
 Every line must be a complete, valid, parseable JSON object.
 Example of correct output:
-{"name":"Nashville","country":"United States","state_province":"Tennessee","match_score":91,"reasons":["...","..."],"budget_per_day_usd":120,"best_time_to_visit":"Apr–Jun","hidden_gem_score":3,"dietary_tags":[],"timing_score":4,"timing_note":"","timing_warning":"","upcoming_event":null,"transport":[{"mode":"fly","service_name":"American / Southwest","duration":"~2h","cost":"$150–280","booking":"Google Flights","note":"Direct from most US hubs to BNA Nashville","recommended":true}]}
-{"name":"Spiti Valley","country":"India","state_province":"Himachal Pradesh","match_score":89,"reasons":["..."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":1,"timing_note":"Road access closed until mid-June","timing_warning":"⚠️ Road access closed in May — open Jun–Sep only","upcoming_event":null,"transport":[{"mode":"fly","service_name":"IndiGo / Air India to Delhi, then drive","duration":"~10h total","cost":"₹3,000–8,000 (flight) + ₹2,500–4,000 (cab to Spiti)","booking":"IRCTC / Goibibo","note":"Fly to Delhi Indira Gandhi (DEL), then 12–14h drive on NH505 when road opens in June","recommended":true}]}
+{"name":"Nashville","country":"United States","state_province":"Tennessee","match_score":91,"reasons":["Printer's Alley has operated continuously since the 1800s — the neon still flickers the same way","Robert's Western World: free live music before 9pm, $6 Pabst, zero tourist markup"],"budget_per_day_usd":120,"best_time_to_visit":"Apr–Jun","hidden_gem_score":3,"dietary_tags":[],"timing_score":4,"timing_note":"","timing_warning":"","upcoming_event":null,"personalization_note":"Direct flights from your city keep the budget intact.","transport":[{"mode":"fly","service_name":"American / Southwest","duration":"~2h","cost":"$150–280","booking":"Google Flights","note":"Direct to BNA from most US hubs","booking_window":"Book 3–4 weeks ahead for sub-$200 fares","recommended":true}]}
+{"name":"Spiti Valley","country":"India","state_province":"Himachal Pradesh","match_score":89,"reasons":["No mobile signal past Kaza — the last place in India where you genuinely disappear","Key Monastery: monks have lived here since the 11th century. The butter lamps haven't changed."],"budget_per_day_usd":30,"best_time_to_visit":"Jun–Sep","hidden_gem_score":9,"dietary_tags":[],"timing_score":1,"timing_note":"Road access closed until mid-June","timing_warning":"⚠️ Road access closed in May — open Jun–Sep only","upcoming_event":null,"personalization_note":"Almost nobody from your city gets here. Road opens June — plan 8–10 days minimum.","transport":[{"mode":"fly","service_name":"IndiGo / Air India to Delhi, then drive","duration":"~10h total","cost":"₹3,000–8,000 (flight) + ₹2,500–4,000 (cab)","booking":"Goibibo","note":"Fly to Delhi (DEL), then 12–14h drive on NH505 — opens June","booking_window":"Book flight 3–4 weeks ahead; cab hire on arrival at Shimla or Manali","recommended":true},{"mode":"bus","service_name":"HRTC Volvo Delhi–Manali + local jeep","duration":"~18h total","cost":"₹800–1,500 + ₹500 jeep","booking":"HRTC app or RedBus","note":"Overnight bus to Manali, shared jeep onward — budget option","booking_window":"Book bus 1 week ahead for weekends","recommended":false}]}
 
-Per-line schema: {"name": string, "country": string, "state_province": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "timing_warning": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","service_name":string,"duration":string,"cost":string,"booking":string,"note":string,"recommended":boolean}]}
+Per-line schema: {"name": string, "country": string, "state_province": string, "match_score": number, "reasons": string[], "budget_per_day_usd": number, "best_time_to_visit": string, "hidden_gem_score": number, "dietary_tags": string[], "timing_score": number, "timing_note": string, "timing_warning": string, "upcoming_event": {"name":string,"when":string,"what":string,"crowd_level":"local"|"mixed"|"tourist"}|null, "personalization_note": string, "transport": [{"mode":"fly"|"train"|"bus"|"drive"|"ferry","service_name":string,"duration":string,"cost":string,"booking":string,"note":string,"booking_window":string,"recommended":boolean}]}
 
 state_province rules:
 - US cities: always include the state (e.g. "California", "New York", "Texas")
@@ -885,11 +890,37 @@ ${offbeatVerificationBlock}
 - upcoming_event: festival or event within the traveller's travel window. null if none relevant.
 - Return MINIMUM 8, MAXIMUM 12 destinations. Never fewer than 8.
 - Never suggest a destination the traveller has already visited.
+- personalization_note: ONE short italic line connecting this specific destination to THIS specific traveller's profile. Not generic praise — a direct connection to their home city, budget, group type, or interests.
+  Examples:
+  • Home: Dehradun, budget: shoestring → "3 hours from Dehradun — your closest genuinely quiet hill station."
+  • Home: Delhi, budget: budget → "Same distance as Mussoorie from Delhi. A quarter of the crowd."
+  • Group: couple, interests: slow-travel → "No party scene, no crowds — exactly the quiet couple trip you described."
+  • Home: Mumbai, duration: weekend → "4-hour drive from Mumbai — packs a full weekend without a flight."
+  • Group: solo, offbeat: 4 → "Almost nobody from your city goes here. That's the point."
+  Keep it under 15 words. Conversational, not promotional. Empty string "" if nothing genuinely personal to say.
 
 TONE RULES — reason tags:
 NEVER USE: weird, strange, odd, bizarre, unusual, peculiar, quirky, underrated, overlooked, forgotten, hidden away, tucked away
 ALWAYS USE: authentic, raw, one-of-a-kind, remarkable, genuinely local, unscripted, untouched, undiscovered, unlike anywhere else
 Never frame a destination as a lesser alternative ("the poor man's X"). Every destination IS the destination.
+
+REASON TAG SPECIFICITY RULE — MANDATORY:
+Every reason tag must reference something unique to THIS destination that cannot be copy-pasted to any other destination.
+Test each tag: could this exact sentence describe a different destination? If yes — rewrite it with a specific detail.
+BAD (generic): "Breathe in fresh mountain air while exploring serene trails" → could be any hill station anywhere
+GOOD (specific): "Garhwal Rifles cantonment — army restrictions kept developers out for 70 years. The bazaar looks like 1960." → only true for Lansdowne
+BAD: "A blend of old and new architecture" → every city on earth
+GOOD: "Ottoman hans and Byzantine cisterns in the same backstreet — Beyoğlu, not the postcard Istanbul" → specific street-level detail
+BAD: "Known for its vibrant food scene and friendly locals" → generic filler
+GOOD: "Izmir's kordon fish market at 6am — locals buy directly off the boats before restaurants get first pick" → irreplaceable scene
+The reason tag should make the reader feel they've been given insider knowledge, not a brochure excerpt.
+
+SHOULDER SEASON TIMING RULE:
+If a destination's best_time_to_visit includes the traveller's travel month but it is the LAST month of the season:
+- Set timing_score to 3 (not 4 or 5)
+- Set timing_note to: "⚠️ [Month] is the tail end of best season — [one specific honest consequence e.g. 'early monsoon arrives mid-June in Uttarakhand — aim before the 15th']"
+- Do NOT set timing_warning unless there is a genuine hard restriction (road closure, monsoon flooding, etc.)
+Example: best_time Mar–Jun, traveller timing = June → timing_note = "⚠️ June is the tail end of the dry season — first monsoon rains arrive mid-month in this region"
 
 GEOGRAPHIC RULES:
 - Always include 2–3 destinations within the traveller's home country first (unless they've visited them all).

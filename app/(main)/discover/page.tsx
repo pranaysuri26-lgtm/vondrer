@@ -311,10 +311,10 @@ function TransportBlock({
         <div className="mt-2">
           <button
             onClick={e => { e.stopPropagation(); setExpanded(v => !v) }}
-            className="text-[11px] text-white/30 hover:text-white/50 transition-colors flex items-center gap-1"
+            className="text-[11px] text-white/45 hover:text-white/70 transition-colors flex items-center gap-1.5 py-1"
           >
-            <span>{expanded ? '▾' : '▸'}</span>
-            <span>{expanded ? 'Hide' : `${alternates.length} other way${alternates.length > 1 ? 's' : ''} to get there`}</span>
+            <span className="text-[10px]">{expanded ? '▾' : '▸'}</span>
+            <span>{expanded ? 'Hide alternatives' : `${alternates.length} other way${alternates.length > 1 ? 's' : ''} to get there`}</span>
           </button>
           {expanded && (
             <div className="mt-2 space-y-2">
@@ -356,7 +356,10 @@ function PrimaryTransportCard({ m, homeCity, destName, country }: {
         <span className="text-white/70 font-medium">{m.duration}</span>
         {m.cost && <span className="text-white/45">{m.cost}</span>}
       </div>
-      <p className="text-[11px] text-white/45 leading-snug mb-2">{m.note}</p>
+      <p className="text-[11px] text-white/45 leading-snug mb-1.5">{m.note}</p>
+      {m.booking_window && (
+        <p className="text-[11px] text-white/30 mb-2">📅 {m.booking_window}</p>
+      )}
       <a
         href={link}
         target="_blank"
@@ -681,7 +684,7 @@ function DestinationCard({
 
           <div className={`px-5 pb-5 pt-4 ${locked ? 'blur-sm select-none pointer-events-none' : ''}`}>
             {/* All reason tags */}
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-3">
               {dest.reasons.map((r, i) => (
                 <span key={i} className="text-xs text-white/60 bg-white/6 border border-white/10 px-2.5 py-1 rounded-full">
                   {r}
@@ -689,13 +692,22 @@ function DestinationCard({
               ))}
             </div>
 
+            {/* FIX 2 — Personalization note */}
+            {!locked && dest.personalization_note && (
+              <p className="text-xs text-white/35 italic mt-2 mb-3 leading-snug">
+                {dest.personalization_note}
+              </p>
+            )}
+
             {/* Dietary badges — only unlocked, only if destination genuinely supports the preference */}
             {!locked && <DietaryBadges dest={dest} userPrefs={dietaryPrefs} />}
 
-            {/* Timing context — expanded detail */}
+            {/* FIX 5 — Timing note: amber when it's a shoulder season or starts with ⚠️ */}
             {!locked && dest.timing_note && (
-              <div className="flex items-start gap-2 mt-3 text-xs text-white/40 leading-relaxed">
-                <span className="flex-shrink-0">📅</span>
+              <div className={`flex items-start gap-2 mt-3 text-xs leading-relaxed ${
+                dest.timing_note.startsWith('⚠️') ? 'text-amber-400/80' : 'text-white/40'
+              }`}>
+                <span className="flex-shrink-0">{dest.timing_note.startsWith('⚠️') ? '' : '📅'}</span>
                 <span>{dest.timing_note}</span>
               </div>
             )}
@@ -750,21 +762,21 @@ function DestinationCard({
             </div>
 
             {/* CTAs row */}
-            <div className="flex gap-2">
+            <div className="space-y-2">
               <a
                 href={`/plan/new?dest=${encodeURIComponent(dest.name)}&country=${encodeURIComponent(dest.country)}`}
                 onClick={e => e.stopPropagation()}
-                className="flex-1 text-center bg-[#C97552] text-white font-semibold text-sm py-3.5 rounded-full hover:bg-[#b86644] transition-colors"
+                className="block w-full text-center bg-[#C97552] text-white font-semibold text-sm py-3.5 rounded-full hover:bg-[#b86644] transition-colors"
               >
                 Plan this trip →
               </a>
               <a
                 href={`/guide?q=${encodeURIComponent(dest.name)}&c=${encodeURIComponent(dest.country)}${dest.state_province ? `&s=${encodeURIComponent(dest.state_province)}` : ''}`}
                 onClick={e => e.stopPropagation()}
-                className="px-4 py-3.5 rounded-full border border-white/15 text-white/50 text-sm hover:border-white/30 hover:text-white/70 transition-all flex-shrink-0"
-                title="Local intel guide"
+                className="flex items-center justify-center gap-1.5 w-full py-3 rounded-full border border-white/15 text-white/55 text-sm hover:border-white/30 hover:text-white/80 transition-all"
               >
-                🗺
+                <span>🗺</span>
+                <span>Local guide</span>
               </a>
             </div>
           </div>

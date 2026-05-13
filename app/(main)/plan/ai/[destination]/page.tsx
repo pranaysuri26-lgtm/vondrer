@@ -413,6 +413,81 @@ function BuildModal({
   )
 }
 
+// ─── Animated round group ─────────────────────────────────────────────────────
+// Handles:
+//   • Flex grid with justify-center so the last (incomplete) row is always centred
+//   • Slide-out-left when isExiting = true
+//   • Slide-in-from-right on first mount (entrance animation)
+
+function RoundGroup({
+  group, gi, destination, picked, onToggle, budget, isExiting, onEntered,
+}: {
+  group:       RoundGroup
+  gi:          number
+  destination: string
+  picked:      PlanActivityCard[]
+  onToggle:    (c: PlanActivityCard) => void
+  budget?:     string
+  isExiting:   boolean
+  onEntered:   () => void
+}) {
+  const [entered, setEntered] = useState(false)
+
+  useEffect(() => {
+    // Double-RAF ensures initial hidden state is painted before we start the transition
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        setEntered(true)
+        onEntered()
+      })
+    )
+    return () => cancelAnimationFrame(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <div
+      className={`transition-all duration-300 ease-in-out ${
+        isExiting
+          ? 'opacity-0 -translate-x-12 pointer-events-none'
+          : entered
+          ? 'opacity-100 translate-x-0'
+          : 'opacity-0 translate-x-12'
+      }`}
+    >
+      {/* Section label */}
+      <div className="flex items-center gap-3 mb-4">
+        <p className="text-white/30 text-xs uppercase tracking-widest font-medium shrink-0">
+          {gi === 0 ? `Suggestions for ${destination}` : 'More picks'}
+        </p>
+        <div className="h-px flex-1 bg-white/8"/>
+        <p className="text-white/20 text-xs shrink-0">{group.cards.length} activities</p>
+      </div>
+
+      {/* Flex grid — justify-center centres the last incomplete row */}
+      <div className="flex flex-wrap justify-center gap-3">
+        {group.cards.map(card => (
+          <div
+            key={card.id}
+            className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]"
+          >
+            <ActivityCard
+              card={card}
+              picked={!!picked.find(p => p.id === card.id)}
+              onToggle={onToggle}
+            />
+          </div>
+        ))}
+        {group.accommodation && (
+          <div className="w-full">
+            <AccommodationCard acc={group.accommodation} budget={budget}/>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AIPlanPage() {
@@ -430,6 +505,10 @@ export default function AIPlanPage() {
   const [buildOpen,    setBuildOpen]   = useState(false)
   const [onboarding,   setOnboarding]  = useState<OnboardingProfile | null>(null)
   const [latestAccomm, setLatestAccomm]= useState<PlanAccommodation | undefined>()
+  // Animation: tracks which round is currently sliding out to the left
+  const [exitingRound, setExitingRound]= useState<number | null>(null)
+  // Animation: tracks which rounds have fully entered (for slide-in-from-right)
+  const [enteredRounds,setEnteredRounds]= useState<Set<number>>(new Set())
 
   const roundsRef    = useRef<RoundGroup[]>([])
   const pickedRef    = useRef<PlanActivityCard[]>([])
@@ -491,6 +570,21 @@ export default function AIPlanPage() {
     roundFired.current = true
     fetchRound(1)
   }, [destination, country, fetchRound])
+
+  // Trigger exit animation then fetch — called when user taps "Suggest more"
+  function handleSuggestMore() {
+    const lastRound = roundsRef.current[roundsRef.current.length - 1]?.round
+    if (lastRound !== undefined) {
+      setExitingRound(lastRound)
+      // After exit animation completes, hide that round and fetch next
+      setTimeout(() => {
+        setExitingRound(null)
+        fetchRound(roundsRef.current.length + 1)
+      }, 320)
+    } else {
+      fetchRound(1)
+    }
+  }
 
   function togglePick(card: PlanActivityCard) {
     setPicked(prev => {
@@ -564,43 +658,38 @@ export default function AIPlanPage() {
           </div>
         )}
 
-        {rounds.map((group, gi) => (
-          <div key={group.round}>
-            {/* Section label */}
-            <div className="flex items-center gap-3 mb-4">
-              <p className="text-white/30 text-xs uppercase tracking-widest font-medium shrink-0">
-                {gi === 0 ? `Suggestions for ${destination}` : 'More picks'}
-              </p>
-              <div className="h-px flex-1 bg-white/8"/>
-              <p className="text-white/20 text-xs shrink-0">{group.cards.length} activities</p>
-            </div>
+        {rounds.map((group, gi) => {
+          const isExiting = exitingRound === group.round
+          const isEntered = enteredRounds.has(group.round)
 
-            {/* Card grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {group.cards.map(card => (
-                <ActivityCard
-                  key={card.id}
-                  card={card}
-                  picked={!!picked.find(p => p.id === card.id)}
-                  onToggle={togglePick}
-                />
-              ))}
-              {group.accommodation && (
-                <AccommodationCard acc={group.accommodation} budget={onboarding?.budget_per_day}/>
-              )}
-            </div>
-          </div>
-        ))}
+          return (
+            <RoundGroup
+              key={group.round}
+              group={group}
+              gi={gi}
+              destination={destination}
+              picked={picked}
+              onToggle={togglePick}
+              budget={onboarding?.budget_per_day}
+              isExiting={isExiting}
+              onEntered={() => setEnteredRounds(prev => new Set(prev).add(group.round))}
+            />
+          )
+        })}
 
         {/* Loading skeleton */}
         {loading && (
-          <div>
+          <div className="animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <p className="text-white/20 text-xs uppercase tracking-widest font-medium shrink-0 animate-pulse">Finding more…</p>
               <div className="h-px flex-1 bg-white/8"/>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i}/>)}
+            <div className="flex flex-wrap justify-center gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]">
+                  <SkeletonCard/>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -625,7 +714,7 @@ export default function AIPlanPage() {
 
               <div className="flex gap-3 flex-1 sm:flex-none sm:ml-auto">
                 <button
-                  onClick={() => !loading && fetchRound(nextRound)}
+                  onClick={() => !loading && handleSuggestMore()}
                   disabled={loading}
                   className="flex-1 sm:flex-none sm:px-6 py-3 rounded-full border border-white/15 text-white/55 text-sm font-medium hover:border-white/30 hover:text-white/80 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                 >

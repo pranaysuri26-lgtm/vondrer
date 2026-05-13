@@ -34,35 +34,47 @@ export interface SuggestResponse {
 
 // ─── System prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM = `You are Voya's AI trip planner. Suggest specific, real activities for a traveler building a personalised trip.
+const SYSTEM = `You are Voya's AI trip planner. Suggest specific, real experiences for a traveler building a personalised trip.
 
-Every suggestion MUST be:
-- A real, named place or experience — never generic like "visit a museum" or "explore the waterfront"
-- Something locals and curious travelers genuinely enjoy — not the top TripAdvisor result
-- Specific enough to Google immediately and find
+WHAT TO SUGGEST — vary across these types every round:
+• Named streets and pedestrian strips with specific stretches:
+  e.g. "Española Way (Washington Ave to Pennsylvania Ave)", "Calle Ocho / SW 8th Street between 12th–17th Ave", "Lincoln Road Mall pedestrian strip"
+• Walking districts and cultural zones:
+  e.g. "Wynwood Arts District mural walk", "Art Deco Historic District self-guided walk", "Little Havana's Domino Park area"
+• Landmark experiences done the LOCAL way — not just the name, but HOW to experience it:
+  e.g. "Guitar Hotel at the Seminole Hard Rock at night — free to view from the strip", "Vizcaya Museum & Gardens at golden hour"
+• Specific food spots — one named restaurant or market, not a cuisine type
+• Parks, beaches, waterfronts — named section, not just "Miami Beach"
+• Live music venues, markets, events — exact names
 
-CATEGORIES (pick the most accurate one per card):
-🏖️ Beach  🎨 Art & Culture  🍽️ Food & Drink  🌿 Nature  🌙 Nightlife  🏛️ History  🛍️ Shopping  🎭 Experience  🏃 Active  ☕ Cafe & Chill
+NEVER suggest:
+- Generic "explore [neighbourhood]" without a named street or specific spot
+- Anything phrased as "visit the area" — always name the exact place
+- A single unnamed "local restaurant" — always use a real name
+- Mall names without a specific reason to go (e.g. Bal Harbour is fine if it's for a specific reason)
+
+CATEGORIES (pick the most accurate):
+🏖️ Beach  🎨 Art & Culture  🍽️ Food & Drink  🌿 Nature  🌙 Nightlife  🏛️ History  🛍️ Shopping  🎭 Experience  🏃 Active  ☕ Cafe & Chill  🚶 Street & Walk
 
 Return ONLY a JSON object — no markdown, no explanation:
 {
   "cards": [
     {
       "id": "unique-kebab-slug",
-      "name": "Exact real place name",
+      "name": "Exact real name — street stretch, place, or experience",
       "tagline": "3-6 words capturing the vibe",
-      "why": "One sentence: why this is worth it — be specific, not generic",
-      "category": "emoji + label e.g. '🎨 Art & Culture'",
+      "why": "One sentence: why this is worth it — specific to this destination and traveler, never generic",
+      "category": "emoji + label e.g. '🚶 Street & Walk'",
       "duration": "e.g. '1–2 hours' or 'Half day' or 'Full evening'",
       "price": "Free or $ or $$ or $$$",
       "neighbourhood": "exact neighbourhood name",
-      "related_to": "ONLY if directly near or pairs with a picked activity — e.g. 'Near Wynwood Walls' — otherwise OMIT this field"
+      "related_to": "ONLY if directly near or pairs with a picked activity — e.g. 'Near Wynwood Walls' — otherwise OMIT this field entirely"
     }
   ],
   "accommodation": {
-    "neighbourhood": "best neighbourhood given the cluster of picked activities",
-    "why": "specific one-sentence reason connecting to their actual picks",
-    "price_range": "realistic nightly range e.g. '$120–200/night'"
+    "neighbourhood": "best neighbourhood balancing activity cluster + budget tier + group type",
+    "why": "one specific sentence: reference their activity areas AND why it fits their budget and travel style",
+    "price_range": "realistic nightly range matching their budget tier"
   }
 }
 
@@ -70,7 +82,7 @@ Rules:
 - Return exactly 6 cards
 - Omit the accommodation block entirely when the user has fewer than 3 picks
 - Never repeat any place from the already-shown list
-- "why" must be specific to THIS destination and THIS traveler — never a generic travel cliché`
+- "why" must never be a generic travel cliché — always name something specific about this destination`
 
 // ─── POST /api/plan/suggest ────────────────────────────────────────────────────
 
@@ -141,7 +153,14 @@ Traveler context:
 - Group: ${onboarding?.group_type ?? 'couple'}
 ${onboarding?.interests?.length ? `- Interests: ${onboarding.interests.join(', ')}` : ''}
 
-This is Round 1. Suggest 6 diverse activities covering different neighbourhoods, times of day, and categories. Mix real-local experiences with must-do moments done the non-tourist way. Do NOT include the accommodation block in this round.`
+This is Round 1. Suggest 6 diverse experiences covering:
+- At least 1 named street or pedestrian strip worth walking
+- At least 1 cultural district or art/history experience
+- At least 1 local food spot (specific named place)
+- At least 1 beach/park/nature spot (specific section)
+- Mix of morning, afternoon, and evening options across different neighbourhoods
+
+Do the famous things the non-tourist way — specific, real, local. Do NOT include the accommodation block in this round.`
   } else {
     const pickedSummary   = picked.map(p => `"${p.name}" (${p.neighbourhood})`).join(', ')
     const clusterAreas    = [...new Set(picked.map(p => p.neighbourhood))].join(', ')
@@ -163,9 +182,14 @@ Already SHOWN — do NOT repeat any of these: ${seenList || 'none yet'}
 Round ${round}. Suggest 6 MORE activities that:
 1. Complement their picks — geographically nearby OR thematically related
 2. Cover categories and neighbourhoods not yet well-represented
-3. Never repeat anything from the "already shown" list
+3. Include a mix of streets/walks, food spots, and experiences — not just standalone buildings
+4. Never repeat anything from the "already shown" list
 ${picked.length >= 3
-  ? '\nUser has 3+ picks — include the accommodation block with the neighbourhood that best serves their pick cluster.'
+  ? `\nUser has 3+ picks — include the accommodation block. The neighbourhood should:
+  - Be central to their pick cluster (${clusterAreas})
+  - Match their ${budgetLabel} budget tier
+  - Suit their group type: ${onboarding?.group_type ?? 'couple'}
+  Explain all three factors in the "why" field.`
   : '\nDo NOT include the accommodation block yet.'}`
   }
 

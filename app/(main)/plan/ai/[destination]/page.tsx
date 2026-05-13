@@ -9,31 +9,46 @@ import type { ItineraryResult } from '@/app/api/itinerary/route'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RoundGroup {
-  round:         number
-  cards:         PlanActivityCard[]
+  round:          number
+  cards:          PlanActivityCard[]
   accommodation?: PlanAccommodation
 }
 
 interface OnboardingProfile {
-  home_city?:      string
-  home_country?:   string
-  budget_per_day?: string
-  group_type?:     string
-  interests?:      string[]
+  home_city?:            string
+  home_country?:         string
+  budget_per_day?:       string
+  group_type?:           string
+  interests?:            string[]
+  dietary_preferences?:  string[]
 }
+
+// ─── Dietary options ──────────────────────────────────────────────────────────
+
+const DIETARY_OPTIONS = [
+  { id: 'none',         label: '🍽️ No restrictions' },
+  { id: 'vegetarian',   label: '🌿 Vegetarian'       },
+  { id: 'vegan',        label: '🌱 Vegan'            },
+  { id: 'halal',        label: '🌙 Halal'            },
+  { id: 'no_pork',      label: '🚫 No pork'          },
+  { id: 'no_beef',      label: '🐄 No beef'          },
+  { id: 'gluten_free',  label: '🌾 Gluten-free'      },
+]
 
 // ─── Category colour map ──────────────────────────────────────────────────────
 
 function categoryColour(category: string): string {
-  if (category.includes('Beach'))   return 'text-sky-400'
-  if (category.includes('Art'))     return 'text-purple-400'
-  if (category.includes('Food'))    return 'text-orange-400'
-  if (category.includes('Nature'))  return 'text-green-400'
-  if (category.includes('Night'))   return 'text-indigo-400'
-  if (category.includes('History')) return 'text-yellow-500'
-  if (category.includes('Shop'))    return 'text-pink-400'
-  if (category.includes('Active'))  return 'text-lime-400'
-  if (category.includes('Cafe'))    return 'text-amber-400'
+  if (category.includes('Beach'))    return 'text-sky-400'
+  if (category.includes('Art'))      return 'text-purple-400'
+  if (category.includes('Food'))     return 'text-orange-400'
+  if (category.includes('Nature'))   return 'text-green-400'
+  if (category.includes('Night'))    return 'text-indigo-400'
+  if (category.includes('History'))  return 'text-yellow-500'
+  if (category.includes('Shop'))     return 'text-pink-400'
+  if (category.includes('Active'))   return 'text-lime-400'
+  if (category.includes('Cafe'))     return 'text-amber-400'
+  if (category.includes('Walk'))     return 'text-teal-400'
+  if (category.includes('Street'))   return 'text-teal-400'
   return 'text-white/60'
 }
 
@@ -92,7 +107,7 @@ function ActivityCard({
       <div className="text-white/50 text-xs mb-2.5">{card.tagline}</div>
 
       {/* Why */}
-      <p className="text-white/70 text-xs leading-relaxed mb-3">{card.why}</p>
+      <p className="text-white/70 text-xs leading-relaxed mb-3 line-clamp-3">{card.why}</p>
 
       {/* Meta row */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -121,15 +136,26 @@ function ActivityCard({
 
 // ─── Accommodation suggestion card ────────────────────────────────────────────
 
-function AccommodationCard({ acc }: { acc: PlanAccommodation }) {
+function AccommodationCard({ acc, budget }: { acc: PlanAccommodation; budget?: string }) {
+  const BUDGET_LABELS: Record<string, string> = {
+    'under-20': 'budget',
+    '20-50':    'budget-friendly',
+    '50-150':   'mid-range',
+    '150-300':  'comfortable',
+    '300+':     'luxury',
+  }
+  const budgetLabel = BUDGET_LABELS[budget ?? ''] ?? 'mid-range'
+
   return (
-    <div className="col-span-2 rounded-2xl p-4 bg-[#1a2744] border border-blue-500/20">
+    <div className="col-span-full rounded-2xl p-4 bg-[#1a2744] border border-blue-500/20">
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0 mt-0.5">
-          <span className="text-lg">🏨</span>
+        <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0 mt-0.5">
+          <span className="text-xl">🏨</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs text-blue-400 font-medium mb-0.5">Where to stay — AI pick</div>
+          <div className="text-xs text-blue-400 font-medium mb-0.5">
+            Best area to stay — based on your picks & {budgetLabel} budget
+          </div>
           <div className="text-white font-semibold text-sm mb-1">{acc.neighbourhood}</div>
           <p className="text-white/60 text-xs leading-relaxed">{acc.why}</p>
           <div className="mt-2 text-white/50 text-xs">{acc.price_range} / night</div>
@@ -168,20 +194,35 @@ function BuildModal({
   onClose,
   onDone,
 }: {
-  destination:   string
-  country:       string
-  picked:        PlanActivityCard[]
+  destination:    string
+  country:        string
+  picked:         PlanActivityCard[]
   accommodation?: PlanAccommodation
-  onboarding:    OnboardingProfile | null
-  onClose:       () => void
-  onDone:        (tripId: string) => void
+  onboarding:     OnboardingProfile | null
+  onClose:        () => void
+  onDone:         (tripId: string) => void
 }) {
-  const today = new Date().toISOString().split('T')[0]
-  const [startDate, setStartDate] = useState(today)
-  const [days,      setDays]      = useState(5)
-  const [pace,      setPace]      = useState<'relaxed'|'balanced'|'packed'>('balanced')
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState('')
+  const today    = new Date().toISOString().split('T')[0]
+  const [startDate, setStartDate]   = useState(today)
+  const [days,      setDays]        = useState(5)
+  const [pace,      setPace]        = useState<'relaxed'|'balanced'|'packed'>('balanced')
+  const [dietary,   setDietary]     = useState<string[]>(() => {
+    // Pre-fill from onboarding profile
+    return onboarding?.dietary_preferences ?? []
+  })
+  const [loading,   setLoading]     = useState(false)
+  const [error,     setError]       = useState('')
+
+  function toggleDietary(id: string) {
+    if (id === 'none') {
+      setDietary(['none'])
+      return
+    }
+    setDietary(prev => {
+      const without = prev.filter(d => d !== 'none')
+      return without.includes(id) ? without.filter(d => d !== id) : [...without, id]
+    })
+  }
 
   async function handleBuild() {
     if (!startDate) { setError('Please pick a start date'); return }
@@ -189,8 +230,14 @@ function BuildModal({
     setError('')
 
     try {
-      const pickedNames = picked.map(p => p.name).join(', ')
+      const pickedNames  = picked.map(p => p.name).join(', ')
       const clusterAreas = [...new Set(picked.map(p => p.neighbourhood))].join(', ')
+      const dietaryStr   = dietary.filter(d => d !== 'none').join(', ')
+
+      // Build dietary instructions for itinerary
+      const dietaryNote = dietaryStr
+        ? `Dietary requirements: ${dietaryStr}. Every restaurant suggestion MUST satisfy these requirements — no exceptions.`
+        : ''
 
       const itinBody = {
         destination,
@@ -198,19 +245,31 @@ function BuildModal({
         days,
         start_date: startDate,
         user_profile: {
-          budget_per_day:      onboarding?.budget_per_day ?? '50-150',
-          group_type:          onboarding?.group_type      ?? 'couple',
-          interests:           onboarding?.interests       ?? [],
-          home_city:           onboarding?.home_city       ?? '',
-          home_country:        onboarding?.home_country    ?? '',
+          budget_per_day:      onboarding?.budget_per_day      ?? '50-150',
+          group_type:          onboarding?.group_type           ?? 'couple',
+          interests:           onboarding?.interests            ?? [],
+          dietary_preferences: dietary.filter(d => d !== 'none'),
+          home_city:           onboarding?.home_city            ?? '',
+          home_country:        onboarding?.home_country         ?? '',
         },
         must_do:      pickedNames,
-        trip_context: `The traveler selected these specific activities through an AI planning session: ${pickedNames}. Build the entire itinerary around these selections. Fill remaining time slots with complementary activities in ${clusterAreas}. ${accommodation ? `Accommodation is in ${accommodation.neighbourhood} — keep activities reachable from there.` : ''}`,
-        trip_pace:    pace,
+        trip_context: [
+          `The traveler selected these activities through an AI planning session: ${pickedNames}.`,
+          `Build the itinerary around these selections — they are non-negotiable.`,
+          `Fill remaining time slots with complementary activities near ${clusterAreas}.`,
+          accommodation
+            ? `Accommodation is in ${accommodation.neighbourhood} — keep activities reachable from there.`
+            : '',
+          dietaryNote,
+          onboarding?.home_country
+            ? `The traveler is from ${onboarding.home_country}${onboarding.home_city ? ` (${onboarding.home_city})` : ''} — factor this into cuisine and restaurant choices. Do not suggest food they would find unfamiliar or uncomfortable.`
+            : '',
+        ].filter(Boolean).join(' '),
+        trip_pace:       pace,
         searching_hotel: !accommodation,
       }
 
-      const itinRes  = await fetch('/api/itinerary', {
+      const itinRes = await fetch('/api/itinerary', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(itinBody),
@@ -223,8 +282,6 @@ function BuildModal({
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const endDate = result.end_date
-
       const { data: trip, error: tripErr } = await supabase
         .from('trips')
         .insert({
@@ -233,7 +290,7 @@ function BuildModal({
           status:     'planning',
           total_days: days,
           start_date: startDate,
-          end_date:   endDate,
+          end_date:   result.end_date,
           trip_pace:  pace,
         })
         .select()
@@ -253,11 +310,11 @@ function BuildModal({
         position:         1,
         days,
         start_date:       startDate,
-        end_date:         endDate,
+        end_date:         result.end_date,
         itinerary_json,
         notes: JSON.stringify({
-          must_do:  pickedNames,
-          ai_picks: picked.map(p => ({ name: p.name, neighbourhood: p.neighbourhood })),
+          must_do:       pickedNames,
+          ai_picks:      picked.map(p => ({ name: p.name, neighbourhood: p.neighbourhood })),
           accommodation: accommodation ?? null,
         }),
       })
@@ -271,20 +328,18 @@ function BuildModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-0">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-0 sm:pb-0">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose}/>
 
       {/* Sheet */}
-      <div className="relative w-full max-w-md bg-[#1C1C1E] rounded-3xl border border-white/10 p-6 shadow-2xl">
+      <div className="relative w-full max-w-md bg-[#1C1C1E] rounded-t-3xl sm:rounded-3xl border border-white/10 p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-white font-bold text-lg">Build itinerary</h2>
-            <p className="text-white/50 text-sm mt-0.5">{picked.length} activities selected</p>
+            <h2 className="text-white font-bold text-lg">Build your itinerary</h2>
+            <p className="text-white/50 text-sm mt-0.5">{picked.length} activities · {destination}</p>
           </div>
           <button
             onClick={onClose}
@@ -297,7 +352,7 @@ function BuildModal({
         </div>
 
         {/* Picks summary */}
-        <div className="flex flex-wrap gap-1.5 mb-6">
+        <div className="flex flex-wrap gap-1.5 mb-5">
           {picked.slice(0, 5).map(p => (
             <span key={p.id} className="text-xs px-2.5 py-1 rounded-full bg-[#C97552]/20 text-[#C97552] border border-[#C97552]/30">
               {p.name}
@@ -312,7 +367,7 @@ function BuildModal({
 
         {/* Date */}
         <div className="mb-4">
-          <label className="block text-white/60 text-sm mb-2">When are you going?</label>
+          <label className="block text-white/60 text-xs font-medium mb-2 uppercase tracking-wide">When are you going?</label>
           <input
             type="date"
             value={startDate}
@@ -324,36 +379,67 @@ function BuildModal({
 
         {/* Days */}
         <div className="mb-4">
-          <label className="block text-white/60 text-sm mb-2">How many nights?</label>
-          <div className="flex items-center gap-4">
+          <label className="block text-white/60 text-xs font-medium mb-2 uppercase tracking-wide">How many nights?</label>
+          <div className="flex items-center gap-4 bg-white/5 rounded-xl px-4 py-3 border border-white/10">
             <button
               onClick={() => setDays(d => Math.max(1, d - 1))}
-              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-lg hover:bg-white/20 transition-colors"
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-base hover:bg-white/20 transition-colors"
             >−</button>
-            <span className="text-white font-bold text-xl w-8 text-center">{days}</span>
+            <span className="text-white font-bold text-lg flex-1 text-center">{days} night{days !== 1 ? 's' : ''}</span>
             <button
               onClick={() => setDays(d => Math.min(14, d + 1))}
-              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-lg hover:bg-white/20 transition-colors"
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-base hover:bg-white/20 transition-colors"
             >+</button>
-            <span className="text-white/40 text-sm ml-1">nights</span>
+          </div>
+        </div>
+
+        {/* Food preferences — key differentiator */}
+        <div className="mb-4">
+          <label className="block text-white/60 text-xs font-medium mb-1 uppercase tracking-wide">
+            Food preferences
+          </label>
+          <p className="text-white/35 text-xs mb-2.5">
+            We'll only suggest restaurants that work for you
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {DIETARY_OPTIONS.map(opt => {
+              const active = dietary.includes(opt.id) || (opt.id === 'none' && dietary.length === 0)
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => toggleDietary(opt.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                    active
+                      ? 'bg-[#C97552]/20 border-[#C97552]/60 text-[#C97552]'
+                      : 'bg-white/5 border-white/15 text-white/50 hover:border-white/30'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
         {/* Pace */}
-        <div className="mb-6">
-          <label className="block text-white/60 text-sm mb-2">Pace</label>
+        <div className="mb-5">
+          <label className="block text-white/60 text-xs font-medium mb-2 uppercase tracking-wide">Trip pace</label>
           <div className="flex gap-2">
-            {(['relaxed','balanced','packed'] as const).map(p => (
+            {([
+              { id: 'relaxed',  label: '😌 Relaxed' },
+              { id: 'balanced', label: '⚖️ Balanced' },
+              { id: 'packed',   label: '⚡ Packed' },
+            ] as const).map(({ id, label }) => (
               <button
-                key={p}
-                onClick={() => setPace(p)}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors capitalize ${
-                  pace === p
+                key={id}
+                onClick={() => setPace(id)}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                  pace === id
                     ? 'bg-[#C97552] text-white'
                     : 'bg-white/5 text-white/50 hover:bg-white/10'
                 }`}
               >
-                {p}
+                {label}
               </button>
             ))}
           </div>
@@ -382,7 +468,7 @@ function BuildModal({
         </button>
 
         <p className="text-white/30 text-xs text-center mt-3">
-          Takes ~15 seconds · Saved to your trips
+          Takes ~15 seconds · Saved to your trips automatically
         </p>
       </div>
     </div>
@@ -392,29 +478,34 @@ function BuildModal({
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AIPlanPage() {
-  const router      = useRouter()
-  const params      = useParams()
+  const router       = useRouter()
+  const params       = useParams()
   const searchParams = useSearchParams()
 
-  const destination    = decodeURIComponent(params.destination as string)
-  const country        = searchParams.get('country')   ?? ''
-  const stateProvince  = searchParams.get('state')     ?? undefined
-  const fromDiscover   = searchParams.get('from') === 'discover'
+  const destination   = decodeURIComponent(params.destination as string)
+  const country       = searchParams.get('country')  ?? ''
+  const stateProvince = searchParams.get('state')    ?? undefined
 
-  const [rounds,        setRounds]       = useState<RoundGroup[]>([])
-  const [picked,        setPicked]       = useState<PlanActivityCard[]>([])
-  const [loading,       setLoading]      = useState(false)
-  const [buildOpen,     setBuildOpen]    = useState(false)
-  const [onboarding,    setOnboarding]   = useState<OnboardingProfile | null>(null)
-  const [latestAccomm,  setLatestAccomm] = useState<PlanAccommodation | undefined>()
-  const [doneMsg,       setDoneMsg]      = useState('')
+  const [rounds,       setRounds]      = useState<RoundGroup[]>([])
+  const [picked,       setPicked]      = useState<PlanActivityCard[]>([])
+  const [loading,      setLoading]     = useState(false)
+  const [buildOpen,    setBuildOpen]   = useState(false)
+  const [onboarding,   setOnboarding]  = useState<OnboardingProfile | null>(null)
+  const [latestAccomm, setLatestAccomm]= useState<PlanAccommodation | undefined>()
+  const [doneMsg,      setDoneMsg]     = useState('')
 
-  const bottomRef = useRef<HTMLDivElement>(null)
+  // Use refs so fetchRound never has stale closure over rounds/picked/onboarding
+  const roundsRef    = useRef<RoundGroup[]>([])
+  const pickedRef    = useRef<PlanActivityCard[]>([])
+  const onboardingRef= useRef<OnboardingProfile | null>(null)
+  const bottomRef    = useRef<HTMLDivElement>(null)
 
-  // All card names ever shown (for deduplication)
-  const seenNames = rounds.flatMap(r => r.cards.map(c => c.name))
+  // Keep refs in sync
+  useEffect(() => { roundsRef.current  = rounds  }, [rounds])
+  useEffect(() => { pickedRef.current  = picked  }, [picked])
+  useEffect(() => { onboardingRef.current = onboarding }, [onboarding])
 
-  // ── Load onboarding profile ────────────────────────────────────────────────
+  // ── Load onboarding profile ──────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       const supabase = getSupabaseClient()
@@ -422,7 +513,7 @@ export default function AIPlanPage() {
       if (!user) return
       const { data } = await supabase
         .from('onboarding_responses')
-        .select('home_city, home_country, budget_per_day, group_type, interests')
+        .select('home_city, home_country, budget_per_day, group_type, interests, dietary_preferences')
         .eq('user_id', user.id)
         .single()
       if (data) setOnboarding(data)
@@ -430,20 +521,15 @@ export default function AIPlanPage() {
     load()
   }, [])
 
-  // ── Fire first round once onboarding loaded ────────────────────────────────
-  const roundFired = useRef(false)
-  useEffect(() => {
-    if (roundFired.current) return
-    if (!destination || !country) return
-    roundFired.current = true
-    fetchRound(1)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination, country])
-
-  // ── Fetch a round of suggestions ───────────────────────────────────────────
-  const fetchRound = useCallback(async (round: number) => {
+  // ── Fetch round — reads from refs to avoid stale closures ───────────────────
+  const fetchRound = useCallback(async (roundNum: number) => {
     setLoading(true)
     try {
+      const currentRounds   = roundsRef.current
+      const currentPicked   = pickedRef.current
+      const currentOnboarding = onboardingRef.current
+      const seenNames       = currentRounds.flatMap(r => r.cards.map(c => c.name))
+
       const res = await fetch('/api/plan/suggest', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -451,45 +537,52 @@ export default function AIPlanPage() {
           destination,
           country,
           state_province: stateProvince,
-          picked,
-          seen_names: seenNames,
-          round,
-          onboarding,
+          picked:         currentPicked,
+          seen_names:     seenNames,
+          round:          roundNum,
+          onboarding:     currentOnboarding,
         }),
       })
       if (!res.ok) throw new Error('Suggest failed')
       const data = await res.json()
 
-      setRounds(prev => [...prev, { round, cards: data.cards ?? [], accommodation: data.accommodation }])
+      setRounds(prev => {
+        const updated = [...prev, { round: roundNum, cards: data.cards ?? [], accommodation: data.accommodation }]
+        roundsRef.current = updated
+        return updated
+      })
       if (data.accommodation) setLatestAccomm(data.accommodation)
 
-      // Smooth scroll to new cards after render
       setTimeout(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-      }, 100)
+      }, 150)
     } catch (err) {
       console.error('[AIPlan fetch]', err)
     } finally {
       setLoading(false)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination, country, stateProvince, picked, onboarding])
+  }, [destination, country, stateProvince])
 
-  // ── Toggle pick ────────────────────────────────────────────────────────────
+  // ── Fire first round on mount ────────────────────────────────────────────────
+  const roundFired = useRef(false)
+  useEffect(() => {
+    if (roundFired.current || !destination || !country) return
+    roundFired.current = true
+    fetchRound(1)
+  }, [destination, country, fetchRound])
+
+  // ── Toggle pick ──────────────────────────────────────────────────────────────
   function togglePick(card: PlanActivityCard) {
-    setPicked(prev =>
-      prev.find(p => p.id === card.id)
+    setPicked(prev => {
+      const updated = prev.find(p => p.id === card.id)
         ? prev.filter(p => p.id !== card.id)
         : [...prev, card]
-    )
+      pickedRef.current = updated
+      return updated
+    })
   }
 
-  // ── Suggest more ───────────────────────────────────────────────────────────
-  function handleSuggestMore() {
-    fetchRound(rounds.length + 1)
-  }
-
-  // ── After trip built ───────────────────────────────────────────────────────
+  // ── After trip built ─────────────────────────────────────────────────────────
   function handleTripDone(_tripId: string) {
     setBuildOpen(false)
     setDoneMsg('Trip saved!')
@@ -499,11 +592,11 @@ export default function AIPlanPage() {
   const nextRound = rounds.length + 1
 
   return (
-    <div className="min-h-screen bg-[#111111] pb-40">
+    <div className="min-h-screen bg-[#111111] pb-36">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 bg-[#111111]/90 backdrop-blur border-b border-white/8">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="px-4 sm:px-6 py-4 flex items-center gap-3">
           <button
             onClick={() => router.back()}
             className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors shrink-0"
@@ -513,16 +606,16 @@ export default function AIPlanPage() {
             </svg>
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-bold text-base leading-tight truncate">
+            <h1 className="text-white font-bold text-base leading-tight">
               Planning {destination}
             </h1>
             <p className="text-white/40 text-xs mt-0.5">
               {picked.length > 0
-                ? `${picked.length} activit${picked.length === 1 ? 'y' : 'ies'} selected`
+                ? `${picked.length} activit${picked.length === 1 ? 'y' : 'ies'} selected — tap Build when ready`
                 : 'Tap cards to build your trip'}
             </p>
           </div>
-          {picked.length > 0 && (
+          {picked.length >= 2 && (
             <button
               onClick={() => setBuildOpen(true)}
               className="shrink-0 px-4 py-2 bg-[#C97552] text-white text-sm font-semibold rounded-full hover:bg-[#b86644] transition-colors"
@@ -533,11 +626,11 @@ export default function AIPlanPage() {
         </div>
       </div>
 
-      {/* ── Picked chips bar ───────────────────────────────────────────────── */}
+      {/* ── Picked chips bar ────────────────────────────────────────────────── */}
       {picked.length > 0 && (
         <div className="border-b border-white/8 bg-[#111111]">
-          <div className="max-w-lg mx-auto px-4 py-3">
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="px-4 sm:px-6 py-3">
+            <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
               {picked.map(p => (
                 <button
                   key={p.id}
@@ -555,22 +648,22 @@ export default function AIPlanPage() {
         </div>
       )}
 
-      {/* ── Cards area ─────────────────────────────────────────────────────── */}
-      <div className="max-w-lg mx-auto px-4 pt-5 space-y-8">
+      {/* ── Cards area — full width responsive grid ──────────────────────────── */}
+      <div className="px-4 sm:px-6 lg:px-8 pt-5 space-y-8">
 
         {rounds.map((group, gi) => (
           <div key={group.round}>
-            {/* Round label */}
+            {/* Round divider */}
             {gi > 0 && (
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-px flex-1 bg-white/10"/>
-                <span className="text-white/30 text-xs">Round {group.round}</span>
+                <span className="text-white/30 text-xs">More suggestions</span>
                 <div className="h-px flex-1 bg-white/10"/>
               </div>
             )}
 
-            {/* Cards grid */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Responsive card grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {group.cards.map(card => (
                 <ActivityCard
                   key={card.id}
@@ -580,9 +673,12 @@ export default function AIPlanPage() {
                 />
               ))}
 
-              {/* Accommodation card (after 3+ picks) */}
+              {/* Accommodation card — spans full row */}
               {group.accommodation && (
-                <AccommodationCard acc={group.accommodation} />
+                <AccommodationCard
+                  acc={group.accommodation}
+                  budget={onboarding?.budget_per_day}
+                />
               )}
             </div>
           </div>
@@ -594,41 +690,50 @@ export default function AIPlanPage() {
             {rounds.length > 0 && (
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-px flex-1 bg-white/10"/>
-                <span className="text-white/30 text-xs">Finding more…</span>
+                <span className="text-white/30 text-xs animate-pulse">Finding more…</span>
                 <div className="h-px flex-1 bg-white/10"/>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i}/>)}
             </div>
           </div>
         )}
 
-        {/* Empty first load */}
+        {/* First load empty */}
         {rounds.length === 0 && !loading && (
-          <div className="text-center py-16 text-white/30">
-            <div className="text-4xl mb-3">✈️</div>
-            <p className="text-sm">Loading activity suggestions…</p>
+          <div className="text-center py-24 text-white/30">
+            <div className="text-5xl mb-4">✈️</div>
+            <p className="text-sm">Loading suggestions for {destination}…</p>
           </div>
         )}
 
         <div ref={bottomRef}/>
       </div>
 
-      {/* ── Bottom CTA bar ──────────────────────────────────────────────────── */}
-      {rounds.length > 0 && !loading && (
+      {/* ── Bottom CTA bar ───────────────────────────────────────────────────── */}
+      {(rounds.length > 0 || loading) && (
         <div className="fixed bottom-0 inset-x-0 z-20">
           <div className="bg-[#111111]/95 backdrop-blur border-t border-white/10">
-            <div className="max-w-lg mx-auto px-4 py-4 flex gap-3">
+            <div className="px-4 sm:px-6 py-4 flex gap-3 max-w-lg mx-auto">
               {/* Suggest more */}
               <button
-                onClick={handleSuggestMore}
-                className="flex-1 py-3.5 rounded-full border border-white/20 text-white/70 text-sm font-medium hover:border-white/40 hover:text-white transition-all"
+                onClick={() => !loading && fetchRound(nextRound)}
+                disabled={loading}
+                className="flex-1 py-3.5 rounded-full border border-white/20 text-white/70 text-sm font-medium hover:border-white/40 hover:text-white transition-all disabled:opacity-40"
               >
-                Suggest more ↺
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                    </svg>
+                    Finding picks…
+                  </span>
+                ) : 'Suggest more ↺'}
               </button>
 
-              {/* Build itinerary — only when 2+ picked */}
+              {/* Build itinerary — unlocks at 2 picks */}
               {picked.length >= 2 && (
                 <button
                   onClick={() => setBuildOpen(true)}
@@ -642,28 +747,7 @@ export default function AIPlanPage() {
         </div>
       )}
 
-      {/* Loading bar — suggest more in progress */}
-      {loading && rounds.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-20">
-          <div className="bg-[#111111]/95 backdrop-blur border-t border-white/10">
-            <div className="max-w-lg mx-auto px-4 py-4 flex gap-3">
-              <div className="flex-1 py-3.5 rounded-full border border-white/10 text-white/30 text-sm text-center">
-                Finding great picks…
-              </div>
-              {picked.length >= 2 && (
-                <button
-                  onClick={() => setBuildOpen(true)}
-                  className="flex-1 py-3.5 rounded-full bg-[#C97552] text-white text-sm font-bold hover:bg-[#b86644] transition-colors"
-                >
-                  Build itinerary →
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Build modal ─────────────────────────────────────────────────────── */}
+      {/* ── Build modal ──────────────────────────────────────────────────────── */}
       {buildOpen && (
         <BuildModal
           destination={destination}
@@ -676,11 +760,11 @@ export default function AIPlanPage() {
         />
       )}
 
-      {/* ── Success toast ───────────────────────────────────────────────────── */}
+      {/* ── Success toast ────────────────────────────────────────────────────── */}
       {doneMsg && (
         <div className="fixed top-20 inset-x-0 z-50 flex justify-center pointer-events-none">
-          <div className="bg-green-500 text-white text-sm font-semibold px-6 py-3 rounded-full shadow-lg">
-            {doneMsg} · Redirecting to your trips…
+          <div className="bg-green-500 text-white text-sm font-semibold px-6 py-3 rounded-full shadow-xl">
+            ✓ {doneMsg} — Redirecting to your trips…
           </div>
         </div>
       )}

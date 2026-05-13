@@ -138,7 +138,8 @@ export async function POST(req: NextRequest) {
 
   // Admin accounts bypass the paywall entirely — all destinations sent fully unlocked.
   const ADMIN_EMAILS = [
-    'pranaysuri26@gmail.com',   // owner — hardcoded as fallback
+    'pranaysuri26@gmail.com',      // owner — hardcoded as fallback
+    'sehgalnavina09@gmail.com',    // VP
     ...(process.env.ADMIN_EMAILS ?? '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean),
   ]
   const isAdmin = ADMIN_EMAILS.includes((user.email ?? '').toLowerCase())

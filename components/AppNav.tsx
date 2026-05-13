@@ -35,6 +35,7 @@ function TierBadge({ tier, daysLeft }: TierInfo) {
 const TABS = [
   { key: 'discover',  href: '/discover',  icon: '🧭', label: 'Discover'  },
   { key: 'deals',     href: '/deals',     icon: '🔥', label: 'Deals'     },
+  { key: 'trips',     href: '/trips',     icon: '🗺️', label: 'Trips'     },
   { key: 'search',    href: null,         icon: '🔍', label: 'Search'    },
   { key: 'passport',  href: '/passport',  icon: '📔', label: 'Passport'  },
   { key: 'profile',   href: '/profile',   icon: '👤', label: 'Profile'   },

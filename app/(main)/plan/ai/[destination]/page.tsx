@@ -144,7 +144,7 @@ function CardDetailSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/55 backdrop-blur-sm"
@@ -152,12 +152,12 @@ function CardDetailSheet({
         onClick={() => !animating && close()}
       />
 
-      {/* Sheet */}
+      {/* Sheet — bottom sheet on mobile, centered card on desktop */}
       <div
-        className="relative w-full max-w-lg rounded-t-[28px] border-t border-x border-white/[0.11] shadow-2xl overflow-hidden"
+        className="relative w-full max-w-lg rounded-t-[28px] sm:rounded-3xl border-t sm:border border-x border-white/[0.11] shadow-2xl overflow-hidden sm:max-h-[85vh] sm:overflow-y-auto"
         style={{
           background: 'linear-gradient(160deg, #0f2035 0%, #0a1624 100%)',
-          transform:  visible ? 'translateY(0)' : 'translateY(100%)',
+          transform:  visible ? 'translateY(0) scale(1)' : 'translateY(100%) scale(0.97)',
           transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
         }}
       >
@@ -256,6 +256,41 @@ function CardDetailSheet({
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── New card entrance wrapper ────────────────────────────────────────────────
+// New cards slide in from the right with a staggered delay.
+// Existing cards (isNew=false) render immediately with no animation.
+
+function NewCardWrapper({
+  children, isNew, staggerMs,
+}: {
+  children:  React.ReactNode
+  isNew:     boolean
+  staggerMs: number
+}) {
+  const [entered, setEntered] = useState(!isNew)
+
+  useEffect(() => {
+    if (!isNew) return
+    const t = setTimeout(() => {
+      requestAnimationFrame(() => requestAnimationFrame(() => setEntered(true)))
+    }, staggerMs)
+    return () => clearTimeout(t)
+  }, [isNew, staggerMs])
+
+  return (
+    <div
+      className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]"
+      style={{
+        opacity:    entered ? 1 : 0,
+        transform:  entered ? 'translateX(0)' : 'translateX(32px)',
+        transition: isNew ? 'opacity 0.32s ease, transform 0.32s ease' : 'none',
+      }}
+    >
+      {children}
     </div>
   )
 }
@@ -576,11 +611,12 @@ export default function AIPlanPage() {
   const country       = searchParams.get('country')  ?? ''
   const stateProvince = searchParams.get('state')    ?? undefined
 
-  // ── Single flat card set (replaces rounds architecture) ───────────────────
-  const [currentCards,  setCurrentCards]  = useState<PlanActivityCard[]>([])
-  const [currentAccomm, setCurrentAccomm] = useState<PlanAccommodation | undefined>()
-  const [seenNames,     setSeenNames]     = useState<string[]>([])
-  const [roundNum,      setRoundNum]      = useState(1)
+  // ── Flat accumulating card list ───────────────────────────────────────────
+  const [allCards,     setAllCards]     = useState<PlanActivityCard[]>([])
+  const [newCardIds,   setNewCardIds]   = useState<Set<string>>(new Set())
+  const [latestAccomm, setLatestAccomm] = useState<PlanAccommodation | undefined>()
+  const [seenNames,    setSeenNames]    = useState<string[]>([])
+  const [roundNum,     setRoundNum]     = useState(1)
 
   const [picked,       setPicked]       = useState<PlanActivityCard[]>([])
   const [loading,      setLoading]      = useState(false)
@@ -588,21 +624,18 @@ export default function AIPlanPage() {
   const [onboarding,   setOnboarding]   = useState<OnboardingProfile | null>(null)
   const [expandedCard, setExpandedCard] = useState<PlanActivityCard | null>(null)
 
-  // Slide animation: 'idle' | 'exit-left' | 'enter-right'
-  const [slideDir, setSlideDir] = useState<'idle' | 'exit-left' | 'enter-right'>('idle')
-
   // Refs to avoid stale closures
-  const pickedRef      = useRef<PlanActivityCard[]>([])
-  const onboardingRef  = useRef<OnboardingProfile | null>(null)
-  const seenNamesRef   = useRef<string[]>([])
-  const currentCardsRef= useRef<PlanActivityCard[]>([])
-  const roundNumRef    = useRef(1)
+  const pickedRef     = useRef<PlanActivityCard[]>([])
+  const onboardingRef = useRef<OnboardingProfile | null>(null)
+  const seenNamesRef  = useRef<string[]>([])
+  const allCardsRef   = useRef<PlanActivityCard[]>([])
+  const roundNumRef   = useRef(1)
 
-  useEffect(() => { pickedRef.current       = picked       }, [picked])
-  useEffect(() => { onboardingRef.current   = onboarding   }, [onboarding])
-  useEffect(() => { seenNamesRef.current    = seenNames    }, [seenNames])
-  useEffect(() => { currentCardsRef.current = currentCards }, [currentCards])
-  useEffect(() => { roundNumRef.current     = roundNum     }, [roundNum])
+  useEffect(() => { pickedRef.current     = picked     }, [picked])
+  useEffect(() => { onboardingRef.current = onboarding }, [onboarding])
+  useEffect(() => { seenNamesRef.current  = seenNames  }, [seenNames])
+  useEffect(() => { allCardsRef.current   = allCards   }, [allCards])
+  useEffect(() => { roundNumRef.current   = roundNum   }, [roundNum])
 
   // ── Load onboarding ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -619,56 +652,48 @@ export default function AIPlanPage() {
     load()
   }, [])
 
-  // ── Load a batch of cards ────────────────────────────────────────────────
-  // withExit=false on first load, true on "Suggest more"
-  const loadCards = useCallback(async (rn: number, withExit: boolean) => {
-    if (withExit) setSlideDir('exit-left')
+  // ── Fetch a batch and append it to the flat list ────────────────────────
+  const loadCards = useCallback(async (rn: number) => {
     setLoading(true)
 
-    // All names seen so far + the current batch being replaced
-    const newSeen = withExit
-      ? [...seenNamesRef.current, ...currentCardsRef.current.map(c => c.name)]
-      : seenNamesRef.current
+    // Accumulate seen names so AI never repeats a card already shown
+    const newSeen = [...seenNamesRef.current, ...allCardsRef.current.map(c => c.name)]
 
     try {
-      // Fetch concurrently with exit animation
-      const [data] = await Promise.all([
-        fetch('/api/plan/suggest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            destination, country, state_province: stateProvince,
-            picked: pickedRef.current,
-            seen_names: newSeen,
-            round: rn,
-            onboarding: onboardingRef.current,
-          }),
-        }).then(r => { if (!r.ok) throw new Error('Suggest failed'); return r.json() }),
-        // Ensure exit animation fully plays before we swap cards
-        withExit ? new Promise(r => setTimeout(r, 310)) : Promise.resolve(null),
-      ])
+      const data = await fetch('/api/plan/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destination, country, state_province: stateProvince,
+          picked: pickedRef.current,
+          seen_names: newSeen,
+          round: rn,
+          onboarding: onboardingRef.current,
+        }),
+      }).then(r => { if (!r.ok) throw new Error('Suggest failed'); return r.json() })
 
-      // Update seen names
+      const incoming: PlanActivityCard[] = data.cards ?? []
+      const incomingIds = new Set(incoming.map(c => c.id))
+
+      // Mark incoming cards as "new" for entrance animation
+      setNewCardIds(incomingIds)
+      setAllCards(prev => {
+        const updated = [...prev, ...incoming]
+        allCardsRef.current = updated
+        return updated
+      })
+
       setSeenNames(newSeen)
       seenNamesRef.current = newSeen
       setRoundNum(rn)
       roundNumRef.current = rn
 
-      // Swap cards + jump instantly to right side (no transition)
-      const newCards = data.cards ?? []
-      setCurrentCards(newCards)
-      currentCardsRef.current = newCards
-      if (data.accommodation) setCurrentAccomm(data.accommodation)
+      if (data.accommodation) setLatestAccomm(data.accommodation)
 
-      setSlideDir('enter-right')   // instant jump right (transition disabled below)
-
-      // Next two frames: slide in from right
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => setSlideDir('idle'))
-      )
+      // Clear "new" markers after animation completes
+      setTimeout(() => setNewCardIds(new Set()), 600)
     } catch (err) {
       console.error('[AIPlan]', err)
-      setSlideDir('idle')
     } finally {
       setLoading(false)
     }
@@ -679,12 +704,12 @@ export default function AIPlanPage() {
   useEffect(() => {
     if (firedRef.current || !destination || !country) return
     firedRef.current = true
-    loadCards(1, false)
+    loadCards(1)
   }, [destination, country, loadCards])
 
   function handleSuggestMore() {
     if (loading) return
-    loadCards(roundNumRef.current + 1, true)
+    loadCards(roundNumRef.current + 1)
   }
 
   function togglePick(card: PlanActivityCard) {
@@ -695,19 +720,6 @@ export default function AIPlanPage() {
       pickedRef.current = updated
       return updated
     })
-  }
-
-  // Slide animation style — disable transition when jumping to 'enter-right'
-  const gridStyle: React.CSSProperties = {
-    transition: slideDir === 'enter-right'
-      ? 'none'
-      : 'opacity 0.28s ease, transform 0.28s ease',
-    opacity:   slideDir === 'idle' ? 1 : 0,
-    transform: slideDir === 'idle'
-      ? 'translateX(0)'
-      : slideDir === 'exit-left'
-      ? 'translateX(-56px)'
-      : 'translateX(56px)',
   }
 
   return (
@@ -766,63 +778,72 @@ export default function AIPlanPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-4">
 
         {/* Section label */}
-        {(currentCards.length > 0 || loading) && (
+        {(allCards.length > 0 || loading) && (
           <div className="flex items-center gap-3 mb-5">
             <p className="text-white/28 text-[10px] uppercase tracking-widest font-semibold shrink-0">
-              {roundNum === 1 ? `Suggestions for ${destination}` : `More ideas · set ${roundNum}`}
+              Suggestions for {destination}
             </p>
             <div className="h-px flex-1 bg-white/[0.07]"/>
-            {currentCards.length > 0 && (
-              <p className="text-white/18 text-[10px] shrink-0">{currentCards.length} suggestions</p>
+            {allCards.length > 0 && (
+              <p className="text-white/18 text-[10px] shrink-0">{allCards.length} suggestions</p>
             )}
           </div>
         )}
 
-        {/* Card grid — animated as a single unit */}
-        <div style={gridStyle}>
-          {loading && currentCards.length === 0 ? (
-            /* First-load skeleton */
-            <div className="flex flex-wrap justify-center gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]">
-                  <SkeletonCard/>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-3">
-              {currentCards.map(card => (
-                <div key={card.id} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]">
+        {/* Flat accumulating card grid — new cards animate in from right */}
+        {loading && allCards.length === 0 ? (
+          /* First-load skeleton */
+          <div className="flex flex-wrap justify-center gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]">
+                <SkeletonCard/>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-wrap justify-center gap-3">
+            {allCards.map((card) => {
+              const isNew = newCardIds.has(card.id)
+              // Stagger new cards by their position within the incoming batch
+              const batchIndex = isNew
+                ? Array.from(newCardIds).indexOf(card.id)
+                : -1
+              return (
+                <NewCardWrapper
+                  key={card.id}
+                  isNew={isNew}
+                  staggerMs={batchIndex >= 0 ? batchIndex * 45 : 0}
+                >
                   <ActivityCard
                     card={card}
                     picked={!!picked.find(p => p.id === card.id)}
                     onExpand={setExpandedCard}
                   />
-                </div>
-              ))}
-              {currentAccomm && (
-                <div className="w-full mt-1">
-                  <AccommodationCard acc={currentAccomm} budget={onboarding?.budget_per_day}/>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                </NewCardWrapper>
+              )
+            })}
+            {latestAccomm && (
+              <div className="w-full mt-1">
+                <AccommodationCard acc={latestAccomm} budget={onboarding?.budget_per_day}/>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* "Suggest more" loading state — shown below current cards while fetching */}
-        {loading && currentCards.length > 0 && (
-          <div className="flex items-center justify-center gap-2 mt-8 text-white/28 text-xs">
-            <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-            </svg>
-            Finding more suggestions…
+        {/* Skeleton row appended below existing cards while fetching more */}
+        {loading && allCards.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-3 mt-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]">
+                <SkeletonCard/>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       {/* ── Bottom bar ───────────────────────────────────────────────────────── */}
-      {(currentCards.length > 0 || loading) && (
+      {(allCards.length > 0 || loading) && (
         <div className="fixed bottom-0 inset-x-0 z-20">
           <div className="bg-[#0d1f35]/95 backdrop-blur border-t border-white/[0.08]">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">

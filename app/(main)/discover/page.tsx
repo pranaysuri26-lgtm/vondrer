@@ -1103,7 +1103,7 @@ function DestinationCard({
             {/* CTAs row */}
             <div className="space-y-2">
               <a
-                href={`/plan/new?dest=${encodeURIComponent(dest.name)}&country=${encodeURIComponent(dest.country)}`}
+                href={`/plan/ai/${encodeURIComponent(dest.name)}?country=${encodeURIComponent(dest.country)}${dest.state_province ? `&state=${encodeURIComponent(dest.state_province)}` : ''}&from=discover`}
                 onClick={e => e.stopPropagation()}
                 className="block w-full text-center bg-[#C97552] text-white font-semibold text-sm py-3.5 rounded-full hover:bg-[#b86644] transition-colors"
               >

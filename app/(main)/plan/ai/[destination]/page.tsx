@@ -8,12 +8,6 @@ import type { ItineraryResult } from '@/app/api/itinerary/route'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface RoundGroup {
-  round:          number
-  cards:          PlanActivityCard[]
-  accommodation?: PlanAccommodation
-}
-
 interface OnboardingProfile {
   home_city?:            string
   home_country?:         string
@@ -35,56 +29,270 @@ const DIETARY_OPTIONS = [
 
 // ─── Category config ──────────────────────────────────────────────────────────
 
-function getCategoryMeta(category: string): { colour: string; border: string; bg: string } {
-  if (category.includes('Beach'))   return { colour: 'text-sky-400',    border: 'border-t-sky-400/60',    bg: 'bg-sky-400/5'    }
-  if (category.includes('Art'))     return { colour: 'text-violet-400', border: 'border-t-violet-400/60', bg: 'bg-violet-400/5' }
-  if (category.includes('Food'))    return { colour: 'text-orange-400', border: 'border-t-orange-400/60', bg: 'bg-orange-400/5' }
-  if (category.includes('Nature'))  return { colour: 'text-emerald-400',border: 'border-t-emerald-400/60',bg: 'bg-emerald-400/5'}
-  if (category.includes('Night'))   return { colour: 'text-indigo-400', border: 'border-t-indigo-400/60', bg: 'bg-indigo-400/5' }
-  if (category.includes('History')) return { colour: 'text-yellow-400', border: 'border-t-yellow-400/60', bg: 'bg-yellow-400/5' }
-  if (category.includes('Shop'))    return { colour: 'text-pink-400',   border: 'border-t-pink-400/60',   bg: 'bg-pink-400/5'   }
-  if (category.includes('Exp'))     return { colour: 'text-teal-400',   border: 'border-t-teal-400/60',   bg: 'bg-teal-400/5'   }
-  if (category.includes('Active'))  return { colour: 'text-lime-400',   border: 'border-t-lime-400/60',   bg: 'bg-lime-400/5'   }
-  if (category.includes('Cafe'))    return { colour: 'text-amber-400',  border: 'border-t-amber-400/60',  bg: 'bg-amber-400/5'  }
+function getCategoryMeta(category: string) {
+  if (category.includes('Beach'))
+    return { colour: 'text-sky-400',     border: 'border-t-sky-400/60',     gradFrom: 'rgba(56,189,248,0.10)'  }
+  if (category.includes('Art'))
+    return { colour: 'text-violet-400',  border: 'border-t-violet-400/60',  gradFrom: 'rgba(167,139,250,0.10)' }
+  if (category.includes('Food'))
+    return { colour: 'text-orange-400',  border: 'border-t-orange-400/60',  gradFrom: 'rgba(251,146,60,0.10)'  }
+  if (category.includes('Nature'))
+    return { colour: 'text-emerald-400', border: 'border-t-emerald-400/60', gradFrom: 'rgba(52,211,153,0.10)'  }
+  if (category.includes('Night'))
+    return { colour: 'text-indigo-400',  border: 'border-t-indigo-400/60',  gradFrom: 'rgba(129,140,248,0.10)' }
+  if (category.includes('History'))
+    return { colour: 'text-yellow-400',  border: 'border-t-yellow-400/60',  gradFrom: 'rgba(250,204,21,0.10)'  }
+  if (category.includes('Shop'))
+    return { colour: 'text-pink-400',    border: 'border-t-pink-400/60',    gradFrom: 'rgba(244,114,182,0.10)' }
+  if (category.includes('Exp'))
+    return { colour: 'text-teal-400',    border: 'border-t-teal-400/60',    gradFrom: 'rgba(45,212,191,0.10)'  }
+  if (category.includes('Active'))
+    return { colour: 'text-lime-400',    border: 'border-t-lime-400/60',    gradFrom: 'rgba(163,230,53,0.10)'  }
+  if (category.includes('Cafe'))
+    return { colour: 'text-amber-400',   border: 'border-t-amber-400/60',   gradFrom: 'rgba(251,191,36,0.10)'  }
   if (category.includes('Street') || category.includes('Walk'))
-                                    return { colour: 'text-cyan-400',   border: 'border-t-cyan-400/60',   bg: 'bg-cyan-400/5'   }
-  return                                   { colour: 'text-white/50',   border: 'border-t-white/20',      bg: 'bg-white/3'      }
+    return { colour: 'text-cyan-400',    border: 'border-t-cyan-400/60',    gradFrom: 'rgba(34,211,238,0.10)'  }
+  return   { colour: 'text-white/50',   border: 'border-t-white/20',       gradFrom: 'rgba(255,255,255,0.05)' }
 }
 
 // ─── Price badge ──────────────────────────────────────────────────────────────
 
 function PriceBadge({ price }: { price: string }) {
-  if (price === 'Free') return <span className="text-xs font-medium text-emerald-400">Free</span>
-  return <span className="text-xs text-white/40 font-medium">{price}</span>
+  if (price === 'Free') return <span className="text-xs font-semibold text-emerald-400">Free</span>
+  return <span className="text-xs text-white/45 font-medium">{price}</span>
 }
 
-// ─── Activity card ────────────────────────────────────────────────────────────
+// ─── Animated checkmark ───────────────────────────────────────────────────────
+
+function AnimatedCheck({ trigger }: { trigger: boolean }) {
+  return (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="mx-auto">
+      <circle cx="32" cy="32" r="22" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"
+        strokeDasharray="138" strokeDashoffset={trigger ? 0 : 138}
+        style={{ transition: trigger ? 'stroke-dashoffset 0.5s ease-out' : 'none' }}
+      />
+      <path d="M20 32 L28 40 L44 22" stroke="#4ade80" strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round"
+        strokeDasharray="32" strokeDashoffset={trigger ? 0 : 32}
+        style={{ transition: trigger ? 'stroke-dashoffset 0.3s 0.3s ease-out' : 'none' }}
+      />
+    </svg>
+  )
+}
+
+// ─── Animated cross ───────────────────────────────────────────────────────────
+
+function AnimatedCross({ trigger }: { trigger: boolean }) {
+  return (
+    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="mx-auto">
+      <circle cx="32" cy="32" r="22" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round"
+        strokeDasharray="138" strokeDashoffset={trigger ? 0 : 138}
+        style={{ transition: trigger ? 'stroke-dashoffset 0.45s ease-out' : 'none' }}
+      />
+      <path d="M22 22 L42 42" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round"
+        strokeDasharray="28" strokeDashoffset={trigger ? 0 : 28}
+        style={{ transition: trigger ? 'stroke-dashoffset 0.25s 0.2s ease-out' : 'none' }}
+      />
+      <path d="M42 22 L22 42" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round"
+        strokeDasharray="28" strokeDashoffset={trigger ? 0 : 28}
+        style={{ transition: trigger ? 'stroke-dashoffset 0.25s 0.34s ease-out' : 'none' }}
+      />
+    </svg>
+  )
+}
+
+// ─── Card detail sheet ────────────────────────────────────────────────────────
+
+function CardDetailSheet({
+  card,
+  isPicked,
+  onPick,
+  onClose,
+}: {
+  card:     PlanActivityCard
+  isPicked: boolean
+  onPick:   () => void
+  onClose:  () => void
+}) {
+  const meta = getCategoryMeta(card.category)
+  const [visible,   setVisible]   = useState(false)
+  const [action,    setAction]    = useState<'pick' | 'remove' | null>(null)
+  const [animating, setAnimating] = useState(false)
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  function close() {
+    setVisible(false)
+    setTimeout(onClose, 300)
+  }
+
+  function handlePick() {
+    if (animating) return
+    setAction('pick')
+    setAnimating(true)
+    setTimeout(() => { onPick(); close() }, 680)
+  }
+
+  function handleRemove() {
+    if (animating) return
+    setAction('remove')
+    setAnimating(true)
+    setTimeout(() => { onPick(); close() }, 520)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+        style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.28s ease' }}
+        onClick={() => !animating && close()}
+      />
+
+      {/* Sheet */}
+      <div
+        className="relative w-full max-w-lg rounded-t-[28px] border-t border-x border-white/[0.11] shadow-2xl overflow-hidden"
+        style={{
+          background: 'linear-gradient(160deg, #0f2035 0%, #0a1624 100%)',
+          transform:  visible ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
+        }}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-9 h-[3px] rounded-full bg-white/18"/>
+        </div>
+
+        {animating ? (
+          <div className="flex flex-col items-center justify-center py-14 px-6">
+            {action === 'pick' ? (
+              <>
+                <AnimatedCheck trigger />
+                <p className="text-emerald-400 font-semibold mt-4 text-sm tracking-wide">Added to your trip</p>
+              </>
+            ) : (
+              <>
+                <AnimatedCross trigger />
+                <p className="text-rose-400/80 font-semibold mt-4 text-sm tracking-wide">Removed</p>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="px-6 pb-8 pt-3">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <span className={`text-[10px] font-bold uppercase tracking-widest ${meta.colour}`}>
+                {card.category}
+              </span>
+              <button onClick={close}
+                className="w-7 h-7 rounded-full bg-white/8 flex items-center justify-center text-white/35 hover:bg-white/15 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Name */}
+            <h2 className="text-white font-bold text-[22px] leading-tight tracking-tight mb-1">
+              {card.name}
+            </h2>
+            <p className="text-white/40 text-sm mb-4 leading-relaxed">{card.tagline}</p>
+
+            <div className="h-px bg-white/[0.07] mb-4"/>
+
+            {/* Why */}
+            <p className="text-white/70 text-[13px] leading-relaxed mb-5">{card.why}</p>
+
+            {/* Metadata pills */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs">
+                <PriceBadge price={card.price} />
+              </span>
+              <span className="px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs text-white/45">
+                {card.duration}
+              </span>
+              <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs text-white/45">
+                <svg className="w-3 h-3 text-white/25 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                </svg>
+                {card.neighbourhood}
+              </span>
+            </div>
+
+            {card.related_to && (
+              <p className="text-[#C97552]/55 text-xs mb-5">↳ {card.related_to}</p>
+            )}
+
+            {/* Actions */}
+            {isPicked ? (
+              <div className="flex gap-3">
+                <button onClick={handleRemove}
+                  className="flex-1 py-3.5 rounded-2xl border border-rose-500/25 bg-rose-500/7 text-rose-400 text-sm font-semibold hover:bg-rose-500/14 transition-colors">
+                  Remove ✗
+                </button>
+                <button onClick={close}
+                  className="flex-1 py-3.5 rounded-2xl bg-white/7 border border-white/12 text-white/55 text-sm font-semibold hover:bg-white/12 transition-colors">
+                  Keep ✓
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <button onClick={close}
+                  className="py-3.5 px-5 rounded-2xl border border-white/12 text-white/35 text-sm font-semibold hover:bg-white/5 transition-colors">
+                  Skip ✗
+                </button>
+                <button onClick={handlePick}
+                  className="flex-1 py-3.5 rounded-2xl bg-[#C97552] text-white text-sm font-bold hover:bg-[#b86644] transition-colors flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Pick it
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Compact activity card ────────────────────────────────────────────────────
 
 function ActivityCard({
   card,
   picked,
-  onToggle,
+  onExpand,
 }: {
   card:     PlanActivityCard
   picked:   boolean
-  onToggle: (card: PlanActivityCard) => void
+  onExpand: (card: PlanActivityCard) => void
 }) {
   const meta = getCategoryMeta(card.category)
 
   return (
     <button
-      onClick={() => onToggle(card)}
+      onClick={() => onExpand(card)}
       className={`
-        group relative w-full text-left rounded-2xl border-t-2 transition-all duration-200 overflow-hidden
+        group relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200
+        border-t-2 ${meta.border}
         ${picked
-          ? `border-t-[#C97552] bg-[#C97552]/8 border border-[#C97552]/30 border-t-2`
-          : `${meta.border} bg-white/[0.04] border border-white/10 hover:bg-white/[0.07] hover:border-white/18`
+          ? 'border border-[#C97552]/40 shadow-[0_0_24px_rgba(201,117,82,0.09)]'
+          : 'border border-white/[0.08] hover:border-white/18'
         }
       `}
+      style={{
+        background: picked
+          ? 'linear-gradient(145deg, rgba(201,117,82,0.07) 0%, rgba(13,31,53,0.9) 100%)'
+          : `linear-gradient(145deg, ${meta.gradFrom} 0%, rgba(13,31,53,0.9) 100%)`,
+      }}
     >
-      {/* Picked overlay tick */}
+      {/* Picked badge */}
       {picked && (
-        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#C97552] flex items-center justify-center shadow-md">
+        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#C97552] flex items-center justify-center z-10 shadow-sm">
           <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
@@ -92,91 +300,69 @@ function ActivityCard({
       )}
 
       <div className="p-4">
-        {/* Category chip */}
-        <div className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider mb-2.5 ${picked ? 'text-[#C97552]' : meta.colour}`}>
+        {/* Category */}
+        <div className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${picked ? 'text-[#C97552]' : meta.colour}`}>
           {card.category}
         </div>
 
-        {/* Name */}
-        <h3 className={`font-semibold text-sm leading-snug mb-1 pr-5 transition-colors ${picked ? 'text-white' : 'text-white/90 group-hover:text-white'}`}>
+        {/* Name — hero */}
+        <h3 className={`font-bold text-[15px] leading-snug mb-1.5 pr-6 transition-colors ${picked ? 'text-white' : 'text-white/88 group-hover:text-white'}`}>
           {card.name}
         </h3>
 
         {/* Tagline */}
-        <p className="text-white/40 text-xs mb-2.5 leading-relaxed">{card.tagline}</p>
-
-        {/* Why */}
-        <p className="text-white/65 text-xs leading-relaxed mb-3 line-clamp-3">{card.why}</p>
+        <p className="text-white/38 text-[11px] leading-relaxed mb-3 line-clamp-2">
+          {card.tagline}
+        </p>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-white/8">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.07]">
+          <div className="flex items-center gap-1.5">
             <PriceBadge price={card.price} />
-            <span className="text-white/20 text-xs">·</span>
-            <span className="text-white/40 text-xs">{card.duration}</span>
+            <span className="text-white/18 text-[10px]">·</span>
+            <span className="text-white/30 text-[10px]">{card.duration}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <svg className="w-2.5 h-2.5 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-            </svg>
-            <span className="text-white/30 text-[10px]">{card.neighbourhood}</span>
-          </div>
+          <span className="text-white/22 text-[9px] truncate max-w-[80px]">{card.neighbourhood}</span>
         </div>
-
-        {card.related_to && (
-          <div className="mt-2 flex items-center gap-1">
-            <span className="text-[#C97552]/70 text-[10px]">↳ {card.related_to}</span>
-          </div>
-        )}
       </div>
     </button>
   )
 }
 
-// ─── Accommodation card ────────────────────────────────────────────────────────
+// ─── Accommodation card ───────────────────────────────────────────────────────
 
 function AccommodationCard({ acc, budget }: { acc: PlanAccommodation; budget?: string }) {
   const BUDGET_LABELS: Record<string, string> = {
-    'under-20': 'budget',
-    '20-50':    'budget-friendly',
-    '50-150':   'mid-range',
-    '150-300':  'comfortable',
-    '300+':     'luxury',
+    'under-20': 'budget', '20-50': 'budget-friendly',
+    '50-150': 'mid-range', '150-300': 'comfortable', '300+': 'luxury',
   }
-  const budgetLabel = BUDGET_LABELS[budget ?? ''] ?? 'mid-range'
-
   return (
-    <div className="col-span-full rounded-2xl border-t-2 border-t-blue-400/50 bg-blue-500/5 border border-blue-500/15 p-5">
+    <div className="rounded-2xl border-t-2 border-t-blue-400/50 bg-blue-500/5 border border-blue-500/15 p-5">
       <div className="flex items-start gap-4">
         <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center shrink-0">
           <span className="text-lg">🏨</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-400 mb-1">
-            Where to stay · {budgetLabel} budget
+          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">
+            Where to stay · {BUDGET_LABELS[budget ?? ''] ?? 'mid-range'} budget
           </p>
           <p className="text-white font-semibold text-sm mb-1">{acc.neighbourhood}</p>
           <p className="text-white/55 text-xs leading-relaxed">{acc.why}</p>
-          <p className="text-white/35 text-xs mt-2">{acc.price_range} / night</p>
+          <p className="text-white/30 text-xs mt-2">{acc.price_range} / night</p>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// ─── Skeleton card ────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border-t-2 border-t-white/10 bg-white/[0.04] border border-white/10 p-4 animate-pulse">
+    <div className="rounded-2xl border-t-2 border-t-white/10 bg-white/[0.04] border border-white/8 p-4 animate-pulse">
       <div className="h-2.5 w-20 bg-white/10 rounded-full mb-3"/>
-      <div className="h-4 w-3/4 bg-white/10 rounded mb-2"/>
+      <div className="h-[15px] w-3/4 bg-white/10 rounded mb-2"/>
       <div className="h-2.5 w-1/2 bg-white/8 rounded mb-3"/>
-      <div className="space-y-1.5 mb-3">
-        <div className="h-2.5 w-full bg-white/8 rounded"/>
-        <div className="h-2.5 w-5/6 bg-white/8 rounded"/>
-        <div className="h-2.5 w-4/6 bg-white/8 rounded"/>
-      </div>
       <div className="flex justify-between pt-2.5 border-t border-white/8">
         <div className="h-2.5 w-16 bg-white/8 rounded"/>
         <div className="h-2.5 w-20 bg-white/8 rounded"/>
@@ -188,14 +374,7 @@ function SkeletonCard() {
 // ─── Build modal ──────────────────────────────────────────────────────────────
 
 function BuildModal({
-  destination,
-  country,
-  picked,
-  accommodation,
-  onboarding,
-  onClose,
-  onDone,
-  router,
+  destination, country, picked, accommodation, onboarding, onClose, router,
 }: {
   destination:    string
   country:        string
@@ -203,7 +382,6 @@ function BuildModal({
   accommodation?: PlanAccommodation
   onboarding:     OnboardingProfile | null
   onClose:        () => void
-  onDone:         (shareToken: string | null) => void
   router:         ReturnType<typeof import('next/navigation').useRouter>
 }) {
   const today = new Date().toISOString().split('T')[0]
@@ -232,22 +410,18 @@ function BuildModal({
       const dietaryStr   = dietary.filter(d => d !== 'none').join(', ')
 
       const itinBody = {
-        destination,
-        country,
-        days,
-        start_date: startDate,
+        destination, country, days, start_date: startDate,
         user_profile: {
-          budget_per_day:      onboarding?.budget_per_day      ?? '50-150',
-          group_type:          onboarding?.group_type           ?? 'couple',
-          interests:           onboarding?.interests            ?? [],
+          budget_per_day:      onboarding?.budget_per_day ?? '50-150',
+          group_type:          onboarding?.group_type ?? 'couple',
+          interests:           onboarding?.interests ?? [],
           dietary_preferences: dietary.filter(d => d !== 'none'),
-          home_city:           onboarding?.home_city            ?? '',
-          home_country:        onboarding?.home_country         ?? '',
+          home_city:           onboarding?.home_city ?? '',
+          home_country:        onboarding?.home_country ?? '',
         },
         must_do:      pickedNames,
         trip_context: [
-          `The traveler selected these specific activities through AI planning: ${pickedNames}.`,
-          `Build the entire itinerary around these — they are non-negotiable.`,
+          `The traveler selected these specific activities: ${pickedNames}. Build the entire itinerary around these — they are non-negotiable.`,
           `Fill remaining slots with complementary activities near ${clusterAreas}.`,
           accommodation ? `Accommodation is in ${accommodation.neighbourhood}.` : '',
           dietaryStr ? `Dietary requirements: ${dietaryStr}. Every restaurant must satisfy these.` : '',
@@ -259,7 +433,9 @@ function BuildModal({
         searching_hotel: !accommodation,
       }
 
-      const itinRes = await fetch('/api/itinerary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinBody) })
+      const itinRes = await fetch('/api/itinerary', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itinBody),
+      })
       if (!itinRes.ok) throw new Error('Failed')
       const result: ItineraryResult = await itinRes.json()
 
@@ -268,32 +444,20 @@ function BuildModal({
       if (!user) throw new Error('Not authenticated')
 
       const { data: trip, error: tripErr } = await supabase.from('trips').insert({
-        user_id:    user.id,
-        trip_name:  `${destination} — AI Planned`,
-        status:     'planning',
-        total_days: days,
-        start_date: startDate,
-        end_date:   result.end_date,
-        trip_pace:  pace,
+        user_id: user.id, trip_name: `${destination} — AI Planned`, status: 'planning',
+        total_days: days, start_date: startDate, end_date: result.end_date, trip_pace: pace,
       }).select().single()
-
       if (tripErr || !trip) throw new Error('Save failed')
 
       await supabase.from('trip_destinations').insert({
-        trip_id:          trip.id,
-        destination_name: destination,
-        country,
-        position:         1,
-        days,
-        start_date:       startDate,
-        end_date:         result.end_date,
-        itinerary_json:   result.itinerary.map(({ day, title, morning, afternoon, evening, day_total_estimate }) =>
-                            ({ day, title, morning, afternoon, evening, day_total_estimate })),
+        trip_id: trip.id, destination_name: destination, country, position: 1,
+        days, start_date: startDate, end_date: result.end_date,
+        itinerary_json: result.itinerary.map(({ day, title, morning, afternoon, evening, day_total_estimate }) =>
+          ({ day, title, morning, afternoon, evening, day_total_estimate })),
         notes: JSON.stringify({ must_do: pickedNames, ai_picks: picked, accommodation: accommodation ?? null }),
       })
 
       setDone(trip.share_token ?? trip.id)
-      onDone(trip.share_token ?? null)
     } catch (err) {
       console.error('[Build]', err)
       setError('Something went wrong — please try again.')
@@ -305,9 +469,7 @@ function BuildModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
       <div className="absolute inset-0 bg-[#0d1f35]/80 backdrop-blur-sm" onClick={!done ? onClose : undefined}/>
       <div className="relative w-full max-w-md bg-[#0d1f35] rounded-t-3xl sm:rounded-3xl border border-white/12 p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
-
         {done ? (
-          /* ── Success ── */
           <div className="text-center py-4">
             <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-5">
               <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -316,22 +478,17 @@ function BuildModal({
             </div>
             <h3 className="text-white font-semibold text-xl mb-1">Itinerary ready</h3>
             <p className="text-white/40 text-sm mb-8">Your {destination} trip has been saved.</p>
-            <button
-              onClick={() => router.push(`/trip/${done}`)}
-              className="w-full py-4 rounded-full bg-[#C97552] text-white font-bold text-sm hover:bg-[#b86644] transition-colors mb-3"
-            >
+            <button onClick={() => router.push(`/trip/${done}`)}
+              className="w-full py-4 rounded-full bg-[#C97552] text-white font-bold text-sm hover:bg-[#b86644] transition-colors mb-3">
               View my itinerary →
             </button>
-            <button
-              onClick={() => router.push('/trips')}
-              className="w-full py-3 rounded-full border border-white/12 text-white/50 text-sm hover:border-white/25 hover:text-white/70 transition-all"
-            >
+            <button onClick={() => router.push('/trips')}
+              className="w-full py-3 rounded-full border border-white/12 text-white/50 text-sm hover:border-white/25 hover:text-white/70 transition-all">
               All my trips
             </button>
           </div>
         ) : (
           <>
-            {/* Header */}
             <div className="flex items-start justify-between mb-5">
               <div>
                 <h2 className="text-white font-bold text-lg">Build itinerary</h2>
@@ -342,7 +499,6 @@ function BuildModal({
               </button>
             </div>
 
-            {/* Picks */}
             <div className="flex flex-wrap gap-1.5 mb-5 p-3 bg-white/3 border border-white/8 rounded-xl">
               {picked.slice(0, 5).map(p => (
                 <span key={p.id} className="text-xs px-2.5 py-1 rounded-full bg-[#C97552]/15 text-[#C97552] border border-[#C97552]/25">{p.name}</span>
@@ -350,14 +506,12 @@ function BuildModal({
               {picked.length > 5 && <span className="text-xs px-2.5 py-1 rounded-full bg-white/8 text-white/40">+{picked.length - 5} more</span>}
             </div>
 
-            {/* Date */}
             <div className="mb-4">
               <label className="block text-white/50 text-xs font-medium mb-1.5 uppercase tracking-wide">When are you going?</label>
               <input type="date" value={startDate} min={today} onChange={e => setStartDate(e.target.value)}
                 className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"/>
             </div>
 
-            {/* Nights */}
             <div className="mb-4">
               <label className="block text-white/50 text-xs font-medium mb-1.5 uppercase tracking-wide">How many nights?</label>
               <div className="flex items-center gap-4 bg-white/4 border border-white/10 rounded-xl px-4 py-3">
@@ -367,7 +521,6 @@ function BuildModal({
               </div>
             </div>
 
-            {/* Food preferences */}
             <div className="mb-4">
               <label className="block text-white/50 text-xs font-medium mb-1 uppercase tracking-wide">Food preferences</label>
               <p className="text-white/30 text-xs mb-2.5">We'll only suggest restaurants that work for you</p>
@@ -384,7 +537,6 @@ function BuildModal({
               </div>
             </div>
 
-            {/* Pace */}
             <div className="mb-5">
               <label className="block text-white/50 text-xs font-medium mb-1.5 uppercase tracking-wide">Trip pace</label>
               <div className="flex gap-2">
@@ -413,82 +565,7 @@ function BuildModal({
   )
 }
 
-// ─── Animated round group ─────────────────────────────────────────────────────
-// Handles:
-//   • Flex grid with justify-center so the last (incomplete) row is always centred
-//   • Slide-out-left when isExiting = true
-//   • Slide-in-from-right on first mount (entrance animation)
-
-function RoundGroup({
-  group, gi, destination, picked, onToggle, budget, isExiting, onEntered,
-}: {
-  group:       RoundGroup
-  gi:          number
-  destination: string
-  picked:      PlanActivityCard[]
-  onToggle:    (c: PlanActivityCard) => void
-  budget?:     string
-  isExiting:   boolean
-  onEntered:   () => void
-}) {
-  const [entered, setEntered] = useState(false)
-
-  useEffect(() => {
-    // Double-RAF ensures initial hidden state is painted before we start the transition
-    const id = requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        setEntered(true)
-        onEntered()
-      })
-    )
-    return () => cancelAnimationFrame(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  return (
-    <div
-      className={`transition-all duration-300 ease-in-out ${
-        isExiting
-          ? 'opacity-0 -translate-x-12 pointer-events-none'
-          : entered
-          ? 'opacity-100 translate-x-0'
-          : 'opacity-0 translate-x-12'
-      }`}
-    >
-      {/* Section label */}
-      <div className="flex items-center gap-3 mb-4">
-        <p className="text-white/30 text-xs uppercase tracking-widest font-medium shrink-0">
-          {gi === 0 ? `Suggestions for ${destination}` : 'More picks'}
-        </p>
-        <div className="h-px flex-1 bg-white/8"/>
-        <p className="text-white/20 text-xs shrink-0">{group.cards.length} activities</p>
-      </div>
-
-      {/* Flex grid — justify-center centres the last incomplete row */}
-      <div className="flex flex-wrap justify-center gap-3">
-        {group.cards.map(card => (
-          <div
-            key={card.id}
-            className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]"
-          >
-            <ActivityCard
-              card={card}
-              picked={!!picked.find(p => p.id === card.id)}
-              onToggle={onToggle}
-            />
-          </div>
-        ))}
-        {group.accommodation && (
-          <div className="w-full">
-            <AccommodationCard acc={group.accommodation} budget={budget}/>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── Main page ─────────────────────────────────────────────────────────────────
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AIPlanPage() {
   const router       = useRouter()
@@ -499,27 +576,35 @@ export default function AIPlanPage() {
   const country       = searchParams.get('country')  ?? ''
   const stateProvince = searchParams.get('state')    ?? undefined
 
-  const [rounds,       setRounds]      = useState<RoundGroup[]>([])
-  const [picked,       setPicked]      = useState<PlanActivityCard[]>([])
-  const [loading,      setLoading]     = useState(false)
-  const [buildOpen,    setBuildOpen]   = useState(false)
-  const [onboarding,   setOnboarding]  = useState<OnboardingProfile | null>(null)
-  const [latestAccomm, setLatestAccomm]= useState<PlanAccommodation | undefined>()
-  // Animation: tracks which round is currently sliding out to the left
-  const [exitingRound, setExitingRound]= useState<number | null>(null)
-  // Animation: tracks which rounds have fully entered (for slide-in-from-right)
-  const [enteredRounds,setEnteredRounds]= useState<Set<number>>(new Set())
+  // ── Single flat card set (replaces rounds architecture) ───────────────────
+  const [currentCards,  setCurrentCards]  = useState<PlanActivityCard[]>([])
+  const [currentAccomm, setCurrentAccomm] = useState<PlanAccommodation | undefined>()
+  const [seenNames,     setSeenNames]     = useState<string[]>([])
+  const [roundNum,      setRoundNum]      = useState(1)
 
-  const roundsRef    = useRef<RoundGroup[]>([])
-  const pickedRef    = useRef<PlanActivityCard[]>([])
-  const onboardingRef= useRef<OnboardingProfile | null>(null)
-  const bottomRef    = useRef<HTMLDivElement>(null)
+  const [picked,       setPicked]       = useState<PlanActivityCard[]>([])
+  const [loading,      setLoading]      = useState(false)
+  const [buildOpen,    setBuildOpen]    = useState(false)
+  const [onboarding,   setOnboarding]   = useState<OnboardingProfile | null>(null)
+  const [expandedCard, setExpandedCard] = useState<PlanActivityCard | null>(null)
 
-  useEffect(() => { roundsRef.current    = rounds    }, [rounds])
-  useEffect(() => { pickedRef.current    = picked    }, [picked])
-  useEffect(() => { onboardingRef.current= onboarding}, [onboarding])
+  // Slide animation: 'idle' | 'exit-left' | 'enter-right'
+  const [slideDir, setSlideDir] = useState<'idle' | 'exit-left' | 'enter-right'>('idle')
 
-  // ── Load onboarding ──────────────────────────────────────────────────────────
+  // Refs to avoid stale closures
+  const pickedRef      = useRef<PlanActivityCard[]>([])
+  const onboardingRef  = useRef<OnboardingProfile | null>(null)
+  const seenNamesRef   = useRef<string[]>([])
+  const currentCardsRef= useRef<PlanActivityCard[]>([])
+  const roundNumRef    = useRef(1)
+
+  useEffect(() => { pickedRef.current       = picked       }, [picked])
+  useEffect(() => { onboardingRef.current   = onboarding   }, [onboarding])
+  useEffect(() => { seenNamesRef.current    = seenNames    }, [seenNames])
+  useEffect(() => { currentCardsRef.current = currentCards }, [currentCards])
+  useEffect(() => { roundNumRef.current     = roundNum     }, [roundNum])
+
+  // ── Load onboarding ──────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       const supabase = getSupabaseClient()
@@ -534,92 +619,119 @@ export default function AIPlanPage() {
     load()
   }, [])
 
-  // ── Fetch round ──────────────────────────────────────────────────────────────
-  const fetchRound = useCallback(async (roundNum: number) => {
+  // ── Load a batch of cards ────────────────────────────────────────────────
+  // withExit=false on first load, true on "Suggest more"
+  const loadCards = useCallback(async (rn: number, withExit: boolean) => {
+    if (withExit) setSlideDir('exit-left')
     setLoading(true)
+
+    // All names seen so far + the current batch being replaced
+    const newSeen = withExit
+      ? [...seenNamesRef.current, ...currentCardsRef.current.map(c => c.name)]
+      : seenNamesRef.current
+
     try {
-      const currentRounds    = roundsRef.current
-      const currentPicked    = pickedRef.current
-      const currentOnboarding= onboardingRef.current
-      const seenNames        = currentRounds.flatMap(r => r.cards.map(c => c.name))
+      // Fetch concurrently with exit animation
+      const [data] = await Promise.all([
+        fetch('/api/plan/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            destination, country, state_province: stateProvince,
+            picked: pickedRef.current,
+            seen_names: newSeen,
+            round: rn,
+            onboarding: onboardingRef.current,
+          }),
+        }).then(r => { if (!r.ok) throw new Error('Suggest failed'); return r.json() }),
+        // Ensure exit animation fully plays before we swap cards
+        withExit ? new Promise(r => setTimeout(r, 310)) : Promise.resolve(null),
+      ])
 
-      const res = await fetch('/api/plan/suggest', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination, country, state_province: stateProvince, picked: currentPicked, seen_names: seenNames, round: roundNum, onboarding: currentOnboarding }),
-      })
-      if (!res.ok) throw new Error('Suggest failed')
-      const data = await res.json()
+      // Update seen names
+      setSeenNames(newSeen)
+      seenNamesRef.current = newSeen
+      setRoundNum(rn)
+      roundNumRef.current = rn
 
-      setRounds(prev => {
-        const updated = [...prev, { round: roundNum, cards: data.cards ?? [], accommodation: data.accommodation }]
-        roundsRef.current = updated
-        return updated
-      })
-      if (data.accommodation) setLatestAccomm(data.accommodation)
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 150)
+      // Swap cards + jump instantly to right side (no transition)
+      const newCards = data.cards ?? []
+      setCurrentCards(newCards)
+      currentCardsRef.current = newCards
+      if (data.accommodation) setCurrentAccomm(data.accommodation)
+
+      setSlideDir('enter-right')   // instant jump right (transition disabled below)
+
+      // Next two frames: slide in from right
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => setSlideDir('idle'))
+      )
     } catch (err) {
       console.error('[AIPlan]', err)
+      setSlideDir('idle')
     } finally {
       setLoading(false)
     }
   }, [destination, country, stateProvince])
 
-  const roundFired = useRef(false)
+  // First load
+  const firedRef = useRef(false)
   useEffect(() => {
-    if (roundFired.current || !destination || !country) return
-    roundFired.current = true
-    fetchRound(1)
-  }, [destination, country, fetchRound])
+    if (firedRef.current || !destination || !country) return
+    firedRef.current = true
+    loadCards(1, false)
+  }, [destination, country, loadCards])
 
-  // Trigger exit animation then fetch — called when user taps "Suggest more"
   function handleSuggestMore() {
-    const lastRound = roundsRef.current[roundsRef.current.length - 1]?.round
-    if (lastRound !== undefined) {
-      setExitingRound(lastRound)
-      // After exit animation completes, hide that round and fetch next
-      setTimeout(() => {
-        setExitingRound(null)
-        fetchRound(roundsRef.current.length + 1)
-      }, 320)
-    } else {
-      fetchRound(1)
-    }
+    if (loading) return
+    loadCards(roundNumRef.current + 1, true)
   }
 
   function togglePick(card: PlanActivityCard) {
     setPicked(prev => {
-      const updated = prev.find(p => p.id === card.id) ? prev.filter(p => p.id !== card.id) : [...prev, card]
+      const updated = prev.find(p => p.id === card.id)
+        ? prev.filter(p => p.id !== card.id)
+        : [...prev, card]
       pickedRef.current = updated
       return updated
     })
   }
 
-  const nextRound = rounds.length + 1
+  // Slide animation style — disable transition when jumping to 'enter-right'
+  const gridStyle: React.CSSProperties = {
+    transition: slideDir === 'enter-right'
+      ? 'none'
+      : 'opacity 0.28s ease, transform 0.28s ease',
+    opacity:   slideDir === 'idle' ? 1 : 0,
+    transform: slideDir === 'idle'
+      ? 'translateX(0)'
+      : slideDir === 'exit-left'
+      ? 'translateX(-56px)'
+      : 'translateX(56px)',
+  }
 
   return (
     <div className="min-h-screen bg-[#0d1f35] pb-36">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[#0d1f35]/95 backdrop-blur border-b border-white/8">
+      <div className="sticky top-0 z-30 bg-[#0d1f35]/95 backdrop-blur border-b border-white/[0.07]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
           <button onClick={() => router.back()}
             className="w-9 h-9 rounded-full bg-white/6 flex items-center justify-center text-white/60 hover:bg-white/12 transition-colors shrink-0">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
+            </svg>
           </button>
-
           <div className="flex-1 min-w-0">
-            <p className="text-white/35 text-[10px] uppercase tracking-widest font-medium mb-0.5">AI Trip Planner</p>
+            <p className="text-white/28 text-[9px] uppercase tracking-widest font-semibold mb-0.5">AI Trip Planner</p>
             <h1 className="text-white font-semibold text-base leading-tight truncate">
               {destination}
-              {country && <span className="text-white/40 font-normal">, {country}</span>}
+              {country && <span className="text-white/38 font-normal">, {country}</span>}
             </h1>
           </div>
-
           <div className="flex items-center gap-2 shrink-0">
             {picked.length > 0 && (
-              <span className="text-xs text-white/50 hidden sm:block">
-                {picked.length} selected
-              </span>
+              <span className="text-xs text-white/45 hidden sm:block">{picked.length} selected</span>
             )}
             {picked.length >= 2 && (
               <button onClick={() => setBuildOpen(true)}
@@ -631,16 +743,18 @@ export default function AIPlanPage() {
         </div>
       </div>
 
-      {/* ── Picked chips ────────────────────────────────────────────────────── */}
+      {/* ── Picked chips ─────────────────────────────────────────────────────── */}
       {picked.length > 0 && (
-        <div className="border-b border-white/8 bg-[#0d1f35]">
+        <div className="border-b border-white/[0.07] bg-[#0d1f35]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2.5">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
               {picked.map(p => (
-                <button key={p.id} onClick={() => togglePick(p)}
-                  className="flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full bg-[#C97552]/12 border border-[#C97552]/30 text-[#C97552] text-xs font-medium hover:bg-[#C97552]/20 transition-colors">
+                <button key={p.id} onClick={() => setExpandedCard(p)}
+                  className="flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full bg-[#C97552]/12 border border-[#C97552]/28 text-[#C97552] text-xs font-medium hover:bg-[#C97552]/20 transition-colors">
                   {p.name}
-                  <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                  <svg className="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
                 </button>
               ))}
             </div>
@@ -648,42 +762,26 @@ export default function AIPlanPage() {
         </div>
       )}
 
-      {/* ── Content ─────────────────────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
+      {/* ── Content ──────────────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-4">
 
-        {/* Intro line on first load */}
-        {rounds.length === 0 && !loading && (
-          <div className="text-center py-20">
-            <p className="text-white/20 text-sm">Loading suggestions for {destination}…</p>
+        {/* Section label */}
+        {(currentCards.length > 0 || loading) && (
+          <div className="flex items-center gap-3 mb-5">
+            <p className="text-white/28 text-[10px] uppercase tracking-widest font-semibold shrink-0">
+              {roundNum === 1 ? `Suggestions for ${destination}` : `More ideas · set ${roundNum}`}
+            </p>
+            <div className="h-px flex-1 bg-white/[0.07]"/>
+            {currentCards.length > 0 && (
+              <p className="text-white/18 text-[10px] shrink-0">{currentCards.length} suggestions</p>
+            )}
           </div>
         )}
 
-        {rounds.map((group, gi) => {
-          const isExiting = exitingRound === group.round
-          const isEntered = enteredRounds.has(group.round)
-
-          return (
-            <RoundGroup
-              key={group.round}
-              group={group}
-              gi={gi}
-              destination={destination}
-              picked={picked}
-              onToggle={togglePick}
-              budget={onboarding?.budget_per_day}
-              isExiting={isExiting}
-              onEntered={() => setEnteredRounds(prev => new Set(prev).add(group.round))}
-            />
-          )
-        })}
-
-        {/* Loading skeleton */}
-        {loading && (
-          <div className="animate-fade-in">
-            <div className="flex items-center gap-3 mb-4">
-              <p className="text-white/20 text-xs uppercase tracking-widest font-medium shrink-0 animate-pulse">Finding more…</p>
-              <div className="h-px flex-1 bg-white/8"/>
-            </div>
+        {/* Card grid — animated as a single unit */}
+        <div style={gridStyle}>
+          {loading && currentCards.length === 0 ? (
+            /* First-load skeleton */
             <div className="flex flex-wrap justify-center gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]">
@@ -691,38 +789,61 @@ export default function AIPlanPage() {
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-3">
+              {currentCards.map(card => (
+                <div key={card.id} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(25%-9px)]">
+                  <ActivityCard
+                    card={card}
+                    picked={!!picked.find(p => p.id === card.id)}
+                    onExpand={setExpandedCard}
+                  />
+                </div>
+              ))}
+              {currentAccomm && (
+                <div className="w-full mt-1">
+                  <AccommodationCard acc={currentAccomm} budget={onboarding?.budget_per_day}/>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* "Suggest more" loading state — shown below current cards while fetching */}
+        {loading && currentCards.length > 0 && (
+          <div className="flex items-center justify-center gap-2 mt-8 text-white/28 text-xs">
+            <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            Finding more suggestions…
           </div>
         )}
-
-        <div ref={bottomRef}/>
       </div>
 
       {/* ── Bottom bar ───────────────────────────────────────────────────────── */}
-      {(rounds.length > 0 || loading) && (
+      {(currentCards.length > 0 || loading) && (
         <div className="fixed bottom-0 inset-x-0 z-20">
-          <div className="bg-[#0d1f35]/95 backdrop-blur border-t border-white/10">
+          <div className="bg-[#0d1f35]/95 backdrop-blur border-t border-white/[0.08]">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-
-              {/* Context text */}
-              <p className="text-white/30 text-xs hidden sm:block flex-1">
+              <p className="text-white/28 text-xs hidden sm:block flex-1">
                 {picked.length === 0
-                  ? 'Tap any card to add it to your trip'
+                  ? 'Tap a card to see details and add it to your trip'
                   : picked.length === 1
-                  ? '1 activity selected — pick at least one more to build'
+                  ? '1 activity — pick at least one more to build'
                   : `${picked.length} activities selected`}
               </p>
-
               <div className="flex gap-3 flex-1 sm:flex-none sm:ml-auto">
                 <button
-                  onClick={() => !loading && handleSuggestMore()}
+                  onClick={handleSuggestMore}
                   disabled={loading}
-                  className="flex-1 sm:flex-none sm:px-6 py-3 rounded-full border border-white/15 text-white/55 text-sm font-medium hover:border-white/30 hover:text-white/80 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="flex-1 sm:flex-none sm:px-6 py-3 rounded-full border border-white/14 text-white/45 text-sm font-medium hover:border-white/28 hover:text-white/70 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {loading
-                    ? <><svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Finding more…</>
-                    : 'Suggest more ↺'}
+                    ? <><svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Loading…</>
+                    : 'Suggest more ↺'
+                  }
                 </button>
-
                 {picked.length >= 2 && (
                   <button onClick={() => setBuildOpen(true)}
                     className="flex-1 sm:flex-none sm:px-6 py-3 rounded-full bg-[#C97552] text-white text-sm font-bold hover:bg-[#b86644] transition-colors">
@@ -735,16 +856,25 @@ export default function AIPlanPage() {
         </div>
       )}
 
-      {/* ── Build modal ──────────────────────────────────────────────────────── */}
+      {/* ── Card detail sheet ─────────────────────────────────────────────── */}
+      {expandedCard && (
+        <CardDetailSheet
+          card={expandedCard}
+          isPicked={!!picked.find(p => p.id === expandedCard.id)}
+          onPick={() => togglePick(expandedCard)}
+          onClose={() => setExpandedCard(null)}
+        />
+      )}
+
+      {/* ── Build modal ───────────────────────────────────────────────────── */}
       {buildOpen && (
         <BuildModal
           destination={destination}
           country={country}
           picked={picked}
-          accommodation={latestAccomm}
+          accommodation={currentAccomm}
           onboarding={onboarding}
           onClose={() => setBuildOpen(false)}
-          onDone={() => {}}
           router={router}
         />
       )}

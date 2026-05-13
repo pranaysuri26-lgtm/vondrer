@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import type { LocalGuide } from '@/app/api/guide/route'
+import type { LocalGuide, GuideAirport } from '@/app/api/guide/route'
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ function LoadingState({ destination }: { destination: string }) {
         ))}
       </div>
       <p className="text-center text-white/25 text-xs">
-        Researching {destination}…
+        Researching {destination}… this takes about 15 seconds
       </p>
     </div>
   )
@@ -66,6 +66,64 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+// ─── Airport card ─────────────────────────────────────────────────────────────
+
+function AirportCard({ airport }: { airport: GuideAirport }) {
+  return (
+    <div className={`relative bg-white/4 border rounded-2xl p-5 space-y-3 ${
+      airport.is_primary ? 'border-[#C97552]/35' : 'border-white/8'
+    }`}>
+      {airport.is_primary && (
+        <span className="absolute top-4 right-4 text-[10px] font-label tracking-widest uppercase text-[#C97552] bg-[#C97552]/10 border border-[#C97552]/25 rounded-full px-2.5 py-1">
+          Best choice
+        </span>
+      )}
+
+      {/* Header row */}
+      <div className="flex items-start gap-3 pr-24">
+        <span className="font-mono text-xl font-bold text-white/90 leading-none">{airport.iata}</span>
+        <div className="min-w-0">
+          <p className="text-white/80 text-sm font-medium leading-tight">{airport.name}</p>
+          <p className="text-white/35 text-xs mt-0.5">{airport.distance_km} km from centre</p>
+        </div>
+      </div>
+
+      {/* Transfer row */}
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
+        <div>
+          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-1.5">Time</span>
+          <span className="text-white/60">{airport.transfer_time}</span>
+        </div>
+        <div>
+          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-1.5">Cost</span>
+          <span className="text-white/60">{airport.transfer_cost}</span>
+        </div>
+      </div>
+
+      {/* Airlines */}
+      {airport.airlines && (
+        <p className="text-xs text-white/40">
+          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-1.5">Airlines</span>
+          {airport.airlines}
+        </p>
+      )}
+
+      {/* Best for */}
+      {airport.best_for && (
+        <p className="text-xs text-white/40">
+          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-1.5">Best for</span>
+          {airport.best_for}
+        </p>
+      )}
+
+      {/* Verdict */}
+      <p className="text-xs text-white/55 leading-snug border-t border-white/6 pt-3">
+        {airport.verdict}
+      </p>
+    </div>
+  )
+}
+
 // ─── Main guide content ───────────────────────────────────────────────────────
 
 function GuideContent() {
@@ -85,10 +143,14 @@ function GuideContent() {
     setLoading(true)
     setError('')
 
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 55_000)
+
     fetch('/api/guide', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ destination, country, state_province: stateProv || undefined }),
+      signal:  controller.signal,
     })
       .then(r => r.json())
       .then((data: LocalGuide & { error?: string }) => {
@@ -97,9 +159,13 @@ function GuideContent() {
         setLoading(false)
       })
       .catch(e => {
-        setError((e as Error).message || 'Failed to load guide')
+        const msg = (e as Error).name === 'AbortError'
+          ? 'Took too long — please try again'
+          : (e as Error).message || 'Failed to load guide'
+        setError(msg)
         setLoading(false)
       })
+      .finally(() => clearTimeout(timer))
   }, [destination, country, stateProv])
 
   const locationLabel = stateProv
@@ -158,6 +224,25 @@ function GuideContent() {
           <p className="text-white/65 text-base leading-relaxed font-light">
             {guide.intro}
           </p>
+
+          {/* Airports — where to land */}
+          {guide.airports?.length > 0 && (
+            <section>
+              <SectionLabel>Where to land</SectionLabel>
+              <div className="space-y-3">
+                {[...guide.airports]
+                  .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0))
+                  .map((airport, i) => (
+                    <AirportCard key={i} airport={airport} />
+                  ))}
+              </div>
+              {guide.airports.length > 1 && (
+                <p className="text-white/25 text-xs mt-3 leading-snug">
+                  Tip: check both airports when booking — fares can vary 30–50% for the same dates.
+                </p>
+              )}
+            </section>
+          )}
 
           {/* Neighbourhoods */}
           {guide.neighbourhoods?.length > 0 && (

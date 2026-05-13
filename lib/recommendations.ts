@@ -99,8 +99,11 @@ export interface RecommendationResponse {
 }
 
 // ─── Profile hash ─────────────────────────────────────────────────────────────
-// Bump PROMPT_VERSION whenever prompt logic changes — busts all cached results.
-const PROMPT_VERSION = 25
+// Bump PROMPT_VERSION whenever prompt logic changes significantly.
+// It is stored alongside cached results so stale-version rows get a background
+// refresh — users are never forced to stare at a loading screen just because
+// we tweaked the prompt.
+export const PROMPT_VERSION = 25
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -119,8 +122,10 @@ export function buildProfileHash(
 ): string {
   // Canonical payload — every field normalized so "New York" and "new york"
   // hash identically. Arrays are sorted so order doesn't matter.
+  // NOTE: prompt_version is intentionally excluded from the hash.
+  // Version bumps now trigger a background refresh via the `prompt_version` column,
+  // not a hard cache bust that forces every user to wait for a fresh AI call.
   const payload = {
-    prompt_version:       PROMPT_VERSION,
     home_country:         norm(onboarding.home_country),
     home_city:            norm(onboarding.home_city),
     travel_scope:         norm(onboarding.travel_scope) || 'anywhere',

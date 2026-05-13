@@ -2189,6 +2189,13 @@ function PlanNewInner() {
   const [savedDestIds, setSavedDestIds] = useState<Record<string, string>>({})
   const [saveStatus,   setSaveStatus]   = useState<'idle' | 'saving' | 'saved'>('idle')
 
+  // Cached recommendations for destination suggestions
+  const [suggestions,      setSuggestions]      = useState<{ name: string; country: string; match_score: number }[]>([])
+  // Prefill values for AddDestForm — changing formKey forces a re-mount so inputs reset
+  const [formPrefillName,    setFormPrefillName]    = useState('')
+  const [formPrefillCountry, setFormPrefillCountry] = useState('')
+  const [formKey,            setFormKey]            = useState(0)
+
   // transport legs — keyed by "fromId|toId"
   const [transportLegs,   setTransportLegs]   = useState<Record<string, LegTransport>>({})
   // index of the "from" destination when user clicks "+ Stop"
@@ -2228,19 +2235,27 @@ function PlanNewInner() {
   // Pre-open add form if dest pre-filled from discover
   useEffect(() => {
     if ((prefillDest || prefillCountry) && !formPrefillUsed) {
+      setFormPrefillName(prefillDest)
+      setFormPrefillCountry(prefillCountry)
       setShowAddForm(true)
       setFormPrefillUsed(true)
     }
   }, [prefillDest, prefillCountry, formPrefillUsed])
 
-  // Load user profile
+  // Load user profile + cached recommendations for suggestions
   useEffect(() => {
     async function load() {
       const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data } = await supabase.from('onboarding_responses').select('*').eq('user_id', user.id).single()
-      if (data) {
+
+      const [profileResult, recResult] = await Promise.all([
+        supabase.from('onboarding_responses').select('*').eq('user_id', user.id).single(),
+        supabase.from('recommendations').select('destinations').eq('user_id', user.id).single(),
+      ])
+
+      if (profileResult.data) {
+        const data = profileResult.data
         setProfile({
           budget_per_day:       data.budget_per_day      ?? '50-150',
           group_type:           data.group_type          ?? 'couple',
@@ -2267,6 +2282,17 @@ function PlanNewInner() {
             dietary_none:        false,
           }))
         }
+      }
+
+      // Load cached recommendation suggestions (top 6 unlocked, sorted by match score)
+      if (recResult.data?.destinations) {
+        const dests = recResult.data.destinations as { name: string; country: string; match_score: number; locked?: boolean }[]
+        const top = dests
+          .filter(d => !d.locked && d.name && d.country)
+          .sort((a, b) => b.match_score - a.match_score)
+          .slice(0, 6)
+          .map(d => ({ name: d.name, country: d.country, match_score: d.match_score }))
+        setSuggestions(top)
       }
     }
     load()
@@ -2829,19 +2855,55 @@ function PlanNewInner() {
             </div>
           ))}
 
+          {/* Destination suggestions from Discover picks */}
+          {suggestions.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-white/30 uppercase tracking-widest font-label">From your Discover picks</p>
+              <div className="flex flex-wrap gap-2">
+                {suggestions
+                  .filter(s => !destinations.some(d => d.name.toLowerCase() === s.name.toLowerCase()))
+                  .map((s, i) => (
+                    <button
+                      key={`${s.name}-${i}`}
+                      type="button"
+                      onClick={() => {
+                        setFormPrefillName(s.name)
+                        setFormPrefillCountry(s.country)
+                        setFormKey(k => k + 1)
+                        setShowAddForm(true)
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs hover:bg-white/10 hover:border-white/20 hover:text-white transition-all"
+                    >
+                      <span>{s.name}</span>
+                      <span className="text-[#C97552] font-medium">{s.match_score}%</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
           {/* Add form */}
           {showAddForm && (
             <AddDestForm
+              key={formKey}
               nextStart={nextStartDate}
-              onAdd={addDestination}
-              onCancel={() => setShowAddForm(false)}
-              prefillName={destinations.length === 0 ? prefillDest : ''}
-              prefillCountry={destinations.length === 0 ? prefillCountry : ''}
+              onAdd={dest => {
+                addDestination(dest)
+                setFormPrefillName('')
+                setFormPrefillCountry('')
+              }}
+              onCancel={() => {
+                setShowAddForm(false)
+                setFormPrefillName('')
+                setFormPrefillCountry('')
+              }}
+              prefillName={formPrefillName}
+              prefillCountry={formPrefillCountry}
             />
           )}
 
           {!showAddForm && (
-            <button onClick={() => setShowAddForm(true)}
+            <button onClick={() => { setShowAddForm(true); setFormPrefillName(''); setFormPrefillCountry('') }}
               className="w-full py-3 rounded-xl border border-dashed border-white/15 text-white/40 text-sm hover:border-white/30 hover:text-white/60 transition-all">
               + Add destination
             </button>

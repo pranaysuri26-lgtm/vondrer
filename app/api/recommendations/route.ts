@@ -7,6 +7,7 @@ import {
   buildRecommendationPrompt,
   validateResponse,
   filterByScope,
+  PROMPT_VERSION,
   type OnboardingData,
   type PastTrip,
   type RecommendedDestination,
@@ -135,6 +136,20 @@ export async function POST(req: NextRequest) {
     })
   }
 
+  // Admin accounts bypass the paywall entirely — all destinations sent fully unlocked.
+  const ADMIN_EMAILS = [
+    'pranaysuri26@gmail.com',   // owner — hardcoded as fallback
+    ...(process.env.ADMIN_EMAILS ?? '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean),
+  ]
+  const isAdmin = ADMIN_EMAILS.includes((user.email ?? '').toLowerCase())
+  console.log(`[Recommendations] user=${user.email} isAdmin=${isAdmin}`)
+
+  // Use this instead of applyPaywall() everywhere in this request.
+  const paywall = (dests: RecommendedDestination[]) =>
+    isAdmin
+      ? [...dests].sort((a, b) => b.match_score - a.match_score).map(d => ({ ...d, locked: false }))
+      : applyPaywall(dests)
+
   // ── Fetch profile ───────────────────────────────────────────────────────────
   const [onboardingResult, tripsResult] = await Promise.all([
     supabase.from('onboarding_responses').select('*').eq('user_id', user.id).single(),
@@ -166,50 +181,50 @@ export async function POST(req: NextRequest) {
     dietary_preferences: (onboarding.dietary_preferences ?? []).filter((p: string) => p !== 'none'),
   }
 
-  // ── Exact cache hit ─────────────────────────────────────────────────────────
+  // ── Cache lookup ─────────────────────────────────────────────────────────────
+  //
+  // Strategy:
+  //   1. Exact hit  — same profile_hash + same prompt_version → serve immediately, no refresh
+  //   2. Soft stale — same profile_hash but older prompt_version → serve immediately,
+  //                   trigger background refresh (user sees results instantly, fresh AI
+  //                   results swap in silently)
+  //   3. Profile changed — different hash, same home_country + travel_scope → serve stale,
+  //                        trigger background refresh
+  //   4. Nothing at all → live AI call (first-time user)
+  //
+  // Importantly, the stale query always includes eq('travel_scope', currentScope), so
+  // 'closer' users never see 'anywhere' results. It is safe to serve stale for all scopes.
   if (!force_refresh) {
-    const { data: exact } = await supabase
+    const currentScope = onboarding.travel_scope ?? 'anywhere'
+
+    const { data: cached } = await supabase
       .from('recommendations')
-      .select('destinations')
+      .select('destinations, profile_hash, prompt_version')
       .eq('user_id', user.id)
-      .eq('profile_hash', hash)
+      .eq('home_country', onboarding.home_country ?? '')
+      .eq('travel_scope', currentScope)
       .single()
 
-    if (exact?.destinations) {
+    if (cached?.destinations) {
+      const isExactProfile  = cached.profile_hash   === hash
+      const isFreshVersion  = (cached.prompt_version ?? 0) >= PROMPT_VERSION
+      const isExactHit      = isExactProfile && isFreshVersion
+
       return makeSSEResponse(async (ctrl) => {
-        const paywalled = applyPaywall(exact.destinations as RecommendedDestination[])
-        ctrl.enqueue(sseChunk({ type: 'meta', cached: true, total_count: paywalled.length, ...meta }))
+        const paywalled = paywall(cached.destinations as RecommendedDestination[])
+        ctrl.enqueue(sseChunk({
+          type:          'meta',
+          cached:        isExactHit,
+          stale:         !isExactHit,
+          needs_refresh: !isExactHit,
+          total_count:   paywalled.length,
+          ...meta,
+        }))
         for (const dest of paywalled) {
           ctrl.enqueue(sseChunk({ type: 'destination', ...dest }))
         }
         ctrl.enqueue(sseChunk({ type: 'done' }))
       })
-    }
-
-    // Stale cache — only check when scope is 'anywhere'.
-    // For 'closer' scope, a stale 'anywhere' result would show forbidden global
-    // destinations (NYC, Tokyo, etc.) to a user who explicitly chose domestic.
-    // Better to wait for a fresh live call than to show actively wrong results.
-    const currentScope = onboarding.travel_scope ?? 'anywhere'
-    if (currentScope !== 'closer') {
-      const { data: stale } = await supabase
-        .from('recommendations')
-        .select('destinations')
-        .eq('user_id', user.id)
-        .eq('home_country', onboarding.home_country ?? '')
-        .eq('travel_scope', currentScope)
-        .single()
-
-      if (stale?.destinations) {
-        return makeSSEResponse(async (ctrl) => {
-          const paywalled = applyPaywall(stale.destinations as RecommendedDestination[])
-          ctrl.enqueue(sseChunk({ type: 'meta', stale: true, needs_refresh: true, total_count: paywalled.length, ...meta }))
-          for (const dest of paywalled) {
-            ctrl.enqueue(sseChunk({ type: 'destination', ...dest }))
-          }
-          ctrl.enqueue(sseChunk({ type: 'done' }))
-        })
-      }
     }
   }
 
@@ -297,7 +312,7 @@ export async function POST(req: NextRequest) {
 
       if (collected.length >= 5) {
         const scopeFiltered = filterByScope(collected, onboarding.home_country ?? '', onboarding.travel_scope, onboarding.domestic_scope)
-        const paywalled = applyPaywall(scopeFiltered)
+        const paywalled = paywall(scopeFiltered)
         for (const d of paywalled) {
           ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
         }
@@ -328,7 +343,7 @@ export async function POST(req: NextRequest) {
 
         if (collected.length >= 5) {
           const scopeFiltered = filterByScope(collected, onboarding.home_country ?? '', onboarding.travel_scope, onboarding.domestic_scope)
-          const paywalled = applyPaywall(scopeFiltered)
+          const paywalled = paywall(scopeFiltered)
           for (const d of paywalled) {
             ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
           }
@@ -351,7 +366,7 @@ export async function POST(req: NextRequest) {
 
       if (stale?.destinations) {
         ctrl.enqueue(sseChunk({ type: 'meta', fallback: true, ...meta }))
-        const paywalled = applyPaywall(stale.destinations as RecommendedDestination[])
+        const paywalled = paywall(stale.destinations as RecommendedDestination[])
         for (const d of paywalled) {
           ctrl.enqueue(sseChunk({ type: 'destination', ...d }))
         }
@@ -364,26 +379,30 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Cache fresh results ───────────────────────────────────────────────────
-    // Cache the scope-filtered list so stale cache never contains forbidden destinations
+    // Cache the scope-filtered list so stale cache never contains forbidden destinations.
+    // Threshold is 5 (not 8) so domestic/filtered scopes with fewer results still cache.
     const toCache = filterByScope(collected, onboarding.home_country ?? '', onboarding.travel_scope, onboarding.domestic_scope)
-    if (toCache.length >= 8) {
+    if (toCache.length >= 5) {
       try {
         await supabase
           .from('recommendations')
           .upsert(
             {
-              user_id:      user.id,
-              destinations: toCache,
-              profile_hash: hash,
-              home_country: onboarding.home_country ?? '',
-              travel_scope: onboarding.travel_scope ?? 'anywhere',
-              generated_at: new Date().toISOString(),
+              user_id:        user.id,
+              destinations:   toCache,
+              profile_hash:   hash,
+              prompt_version: PROMPT_VERSION,
+              home_country:   onboarding.home_country ?? '',
+              travel_scope:   onboarding.travel_scope ?? 'anywhere',
+              generated_at:   new Date().toISOString(),
             },
             { onConflict: 'user_id' }
           )
       } catch (cacheErr) {
         console.warn('[Recommendations] Cache store failed:', cacheErr)
       }
+    } else {
+      console.warn(`[Recommendations] Cache skipped — only ${toCache.length} destinations after scope filter`)
     }
 
     ctrl.enqueue(sseChunk({ type: 'done' }))

@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+export const maxDuration = 60
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+// Cache TTL: 14 days. Guide content is evergreen — neighbourhoods and food
+// spots don't change week-to-week. Regenerate only when stale or missing.
+const CACHE_TTL_DAYS = 14
+
+function cacheKey(destination: string, country: string, state_province?: string): string {
+  const parts = [destination, state_province, country]
+    .filter(Boolean)
+    .map(s => s!.toLowerCase().trim())
+  return parts.join('|')
+}
 
 export interface GuideNeighbourhood {
   name:       string
@@ -48,11 +63,24 @@ export interface GuideAccommodation {
   }
 }
 
+export interface GuideAirport {
+  iata:          string   // e.g. "MIA"
+  name:          string   // e.g. "Miami International"
+  distance_km:   number   // from city centre
+  transfer_time: string   // e.g. "25–40 min by taxi"
+  transfer_cost: string   // e.g. "$30–45 taxi, $2.65 Metrorail"
+  best_for:      string   // e.g. "Direct intercontinental + domestic"
+  airlines:      string   // key carriers e.g. "American, Delta, United, LATAM"
+  verdict:       string   // one-line honest take e.g. "Main hub — best connections, pricier fares"
+  is_primary:    boolean  // true for the main recommended option
+}
+
 export interface LocalGuide {
   destination:    string
   country:        string
   state_province?: string
   intro:          string
+  airports:       GuideAirport[]
   neighbourhoods: GuideNeighbourhood[]
   food_spots:     GuideFoodSpot[]
   insider_tips:   GuideInsiderTip[]
@@ -75,6 +103,19 @@ RULES:
 OUTPUT: Return a single valid JSON object matching this schema exactly:
 {
   "intro": "2-3 sentences. The soul of the city — what makes it unlike anywhere else.",
+  "airports": [
+    {
+      "iata": "3-letter IATA code",
+      "name": "full airport name",
+      "distance_km": <number — km from city centre>,
+      "transfer_time": "realistic door-to-centre time e.g. '25–40 min by taxi'",
+      "transfer_cost": "cheapest + mid option e.g. '$2.65 Metrorail or $35–50 taxi'",
+      "best_for": "one line — which travellers should use this airport and why",
+      "airlines": "key carriers that fly here",
+      "verdict": "one honest sentence — the real tradeoff vs other options",
+      "is_primary": true/false — true for the single best default choice
+    }
+  ],
   "neighbourhoods": [
     {
       "name": "neighbourhood name",
@@ -131,7 +172,15 @@ ACCOMMODATION RULES:
 - Japan: mention ryokan if appropriate, book via jalan.net or japanican.com
 - Southeast Asia: Agoda.com strong, mention old-town guesthouse option
 
-Return 4 neighbourhoods, 6 food spots, 5 insider tips, 3 skip_these items, 1 accommodation object.
+AIRPORT RULES:
+- Always include ALL airports within ~100km that have meaningful scheduled service — never just the main one.
+- Common multi-airport cities: Miami (MIA + FLL), London (LHR/LGW/STN/LTN/LCY), Paris (CDG/ORY), New York (JFK/LGA/EWR), LA (LAX/BUR/LGB/ONT/SNA), Rome (FCO/CIA), Tokyo (NRT/HND), Bangkok (BKK/DMK), Kuala Lumpur (KUL/SZB), Chicago (ORD/MDW), Delhi (DEL only — one airport), Mumbai (BOM only — one airport).
+- For single-airport cities, return an array with just that one airport (is_primary: true).
+- is_primary should be true for the airport with the best overall balance of price + convenience for most travellers. Only one airport should have is_primary: true.
+- transfer_cost must name the cheapest public transport option first, then taxi/rideshare.
+- verdict must be honest about negatives — e.g. "FLL is 45 min farther but fares can be 30–40% cheaper on Spirit/Southwest."
+
+Return 2–4 airports (all relevant ones), 4 neighbourhoods, 6 food spots, 5 insider tips, 3 skip_these items, 1 accommodation object.
 No markdown. No explanation before or after. Just the JSON object.`
 
 export async function POST(req: NextRequest) {
@@ -146,13 +195,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'destination and country required' }, { status: 400 })
     }
 
+    // ── Supabase client (anon key — no auth required for guide cache) ──────────
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cs) => cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
+        },
+      }
+    )
+
+    const key = cacheKey(destination, country, state_province)
+    const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 86400_000).toISOString()
+
+    // ── Cache hit ─────────────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from('guide_cache')
+      .select('guide')
+      .eq('cache_key', key)
+      .gte('generated_at', cutoff)
+      .single()
+
+    if (cached?.guide) {
+      console.log(`[Guide] Cache hit: ${key}`)
+      return NextResponse.json(cached.guide)
+    }
+
+    // ── Generate fresh ────────────────────────────────────────────────────────
+    console.log(`[Guide] Generating fresh: ${key}`)
     const location = state_province
       ? `${destination}, ${state_province}, ${country}`
       : `${destination}, ${country}`
 
     const completion = await openai.chat.completions.create({
-      model:       'gpt-4o',
+      model:       'gpt-4o-mini',
       temperature: 0.7,
+      max_tokens:  4000,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM },
@@ -176,6 +257,15 @@ Give them the city that exists underneath the tourist layer.`,
       state_province: state_province || undefined,
       ...parsed,
     }
+
+    // ── Write to cache (fire-and-forget — never block the response) ───────────
+    supabase
+      .from('guide_cache')
+      .upsert(
+        { cache_key: key, guide, generated_at: new Date().toISOString() },
+        { onConflict: 'cache_key' }
+      )
+      .then(() => {})
 
     return NextResponse.json(guide)
   } catch (err) {

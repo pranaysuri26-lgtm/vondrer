@@ -238,6 +238,116 @@ const TRANSPORT_LABELS: Record<string, string> = {
   ferry: 'Find ferries',
 }
 
+// ─── Multi-airport cities ─────────────────────────────────────────────────────
+// When a destination has multiple usable airports, we show per-airport flight
+// search rows so the user can compare MIA vs FLL, JFK vs EWR, etc. in-context.
+
+interface AirportOption {
+  iata:  string   // e.g. "FLL"
+  label: string   // e.g. "Fort Lauderdale (FLL)"
+  note:  string   // one-line trade-off
+}
+
+const MULTI_AIRPORT_CITIES: Record<string, AirportOption[]> = {
+  // ── United States ──────────────────────────────────────────────────────────
+  'miami': [
+    { iata: 'MIA', label: 'Miami Intl (MIA)',        note: 'Main hub · 25 min to downtown · more direct routes' },
+    { iata: 'FLL', label: 'Fort Lauderdale (FLL)',   note: '45 min to Miami · often 30–40% cheaper on Spirit/Southwest' },
+  ],
+  'new york': [
+    { iata: 'JFK', label: 'JFK',                     note: 'International hub · 45–60 min to Manhattan' },
+    { iata: 'LGA', label: 'LaGuardia (LGA)',         note: 'Domestic only · 20–30 min to Manhattan' },
+    { iata: 'EWR', label: 'Newark (EWR)',             note: 'New Jersey · 45 min to Manhattan · often cheapest' },
+  ],
+  'new york city': [
+    { iata: 'JFK', label: 'JFK',                     note: 'International hub · 45–60 min to Manhattan' },
+    { iata: 'LGA', label: 'LaGuardia (LGA)',         note: 'Domestic only · 20–30 min to Manhattan' },
+    { iata: 'EWR', label: 'Newark (EWR)',             note: 'New Jersey · 45 min to Manhattan · often cheapest' },
+  ],
+  'los angeles': [
+    { iata: 'LAX', label: 'LAX',                     note: 'Main hub · all major carriers · most connections' },
+    { iata: 'BUR', label: 'Burbank (BUR)',            note: '30 min to Hollywood · smaller, faster security' },
+    { iata: 'LGB', label: 'Long Beach (LGB)',        note: 'JetBlue focus city · south of downtown' },
+    { iata: 'SNA', label: 'Orange County (SNA)',     note: 'Best for Disneyland/Newport · 45 min from LA' },
+  ],
+  'chicago': [
+    { iata: 'ORD', label: "O'Hare (ORD)",            note: 'International hub · more routes · farther out' },
+    { iata: 'MDW', label: 'Midway (MDW)',             note: 'Closer to downtown · Southwest focus · often cheaper' },
+  ],
+  'dallas': [
+    { iata: 'DFW', label: 'Dallas/Fort Worth (DFW)', note: 'AA hub · most routes · 30 min from Dallas' },
+    { iata: 'DAL', label: 'Love Field (DAL)',        note: 'Southwest only · closer to downtown · limited routes' },
+  ],
+  'houston': [
+    { iata: 'IAH', label: 'George Bush (IAH)',       note: 'United hub · international flights · north of city' },
+    { iata: 'HOU', label: 'Hobby (HOU)',             note: 'Southwest + budget · closer to downtown' },
+  ],
+  'washington': [
+    { iata: 'DCA', label: 'Reagan (DCA)',            note: 'Closest to DC · domestic only · Metro access' },
+    { iata: 'IAD', label: 'Dulles (IAD)',            note: 'International flights · 45 min from DC' },
+    { iata: 'BWI', label: 'Baltimore (BWI)',         note: 'Often cheapest · Southwest hub · 45 min from DC' },
+  ],
+  'san francisco': [
+    { iata: 'SFO', label: 'SFO',                    note: 'Main hub · international routes · BART to city' },
+    { iata: 'OAK', label: 'Oakland (OAK)',           note: 'Budget carriers · 30 min to SF by BART · often cheaper' },
+    { iata: 'SJC', label: 'San Jose (SJC)',          note: 'South Bay focus · 1h to SF · good for Silicon Valley' },
+  ],
+  'boston': [
+    { iata: 'BOS', label: 'Logan (BOS)',             note: 'Only major option · Silver Line to city free' },
+  ],
+  // ── Europe ────────────────────────────────────────────────────────────────
+  'london': [
+    { iata: 'LHR', label: 'Heathrow (LHR)',         note: 'Main hub · all major carriers · Tube + Elizabeth line' },
+    { iata: 'LGW', label: 'Gatwick (LGW)',          note: 'Budget + charter flights · 30 min by train · cheaper' },
+    { iata: 'STN', label: 'Stansted (STN)',         note: 'Ryanair/easyJet hub · 50 min to city · cheapest fares' },
+    { iata: 'LTN', label: 'Luton (LTN)',            note: 'Wizz Air + easyJet · 40 min to city · check total cost' },
+  ],
+  'paris': [
+    { iata: 'CDG', label: 'Charles de Gaulle (CDG)', note: 'Main hub · all carriers · RER B to city' },
+    { iata: 'ORY', label: 'Orly (ORY)',              note: 'Mostly domestic/EU · closer to south Paris' },
+  ],
+  'rome': [
+    { iata: 'FCO', label: 'Fiumicino (FCO)',         note: 'Main hub · direct trains to Termini · 30 min' },
+    { iata: 'CIA', label: 'Ciampino (CIA)',          note: 'Ryanair/Wizzair · cheaper · 40 min · bus only' },
+  ],
+  'milan': [
+    { iata: 'MXP', label: 'Malpensa (MXP)',         note: 'Long-haul hub · 50 min to city by train' },
+    { iata: 'LIN', label: 'Linate (LIN)',           note: 'Short-haul · 7km from centre · often cheaper' },
+    { iata: 'BGY', label: 'Bergamo (BGY)',          note: 'Ryanair hub · 50 min to Milan · cheapest fares' },
+  ],
+  'barcelona': [
+    { iata: 'BCN', label: 'El Prat (BCN)',          note: 'Only main option · Aerobus or Metro to city' },
+  ],
+  // ── Asia ─────────────────────────────────────────────────────────────────
+  'tokyo': [
+    { iata: 'NRT', label: 'Narita (NRT)',           note: 'International hub · 60–80 min to city' },
+    { iata: 'HND', label: 'Haneda (HND)',           note: 'Closer to city · 30 min · domestic + some intl' },
+  ],
+  'bangkok': [
+    { iata: 'BKK', label: 'Suvarnabhumi (BKK)',     note: 'Main intl hub · 30 min to city by rail' },
+    { iata: 'DMK', label: 'Don Mueang (DMK)',       note: 'Budget airlines (AirAsia, Nok) · cheaper fares' },
+  ],
+  'kuala lumpur': [
+    { iata: 'KUL', label: 'KLIA (KUL)',             note: 'Main hub · KLIA Ekspres 28 min to city' },
+    { iata: 'SZB', label: 'Subang (SZB)',           note: 'Firefly/Berjaya · domestic only · near PJ' },
+  ],
+  'jakarta': [
+    { iata: 'CGK', label: 'Soekarno-Hatta (CGK)',  note: 'Only option for Jakarta · Railink to city' },
+  ],
+}
+
+function getAirportOptions(destName: string): AirportOption[] {
+  return MULTI_AIRPORT_CITIES[destName.toLowerCase().trim()] ?? []
+}
+
+function buildFlightSearchUrl(homeCity: string, iata: string, destName: string, country: string, engine: 'google' | 'skyscanner'): string {
+  if (engine === 'skyscanner') {
+    const orig = homeCity.toLowerCase().replace(/\s+/g, '-')
+    return `https://www.skyscanner.com/transport/flights/${encodeURIComponent(orig)}/${iata.toLowerCase()}/`
+  }
+  return `https://www.google.com/travel/flights?q=flights+to+${iata}+from+${encodeURIComponent(homeCity)}`
+}
+
 function buildTransportLink(
   mode: string,
   homeCity: string,
@@ -332,7 +442,7 @@ function TransportBlock({
       )}
 
       <p className="text-[10px] text-white/20 mt-2 leading-snug">
-        Times are approximate. Prices in local currency. Check providers for live schedules.
+        Carriers and prices are AI estimates — always compare live fares before booking.
       </p>
     </div>
   )
@@ -344,36 +454,100 @@ function PrimaryTransportCard({ m, homeCity, destName, country }: {
   const link  = buildTransportLink(m.mode, homeCity, destName, country, m.booking)
   const icon  = TRANSPORT_ICONS[m.mode] ?? '🗺️'
   const label = TRANSPORT_LABELS[m.mode] ?? 'Find options'
+  const isFlight     = m.mode === 'fly'
+  const airports     = isFlight ? getAirportOptions(destName) : []
+  const hasAirports  = airports.length > 1
+
   return (
     <div className="bg-[#C97552]/8 border border-[#C97552]/20 rounded-xl px-3 py-3">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2">
           <span className="text-base leading-none">{icon}</span>
           <span className="text-xs font-semibold text-[#C97552]">
-            {m.service_name || TRANSPORT_LABELS[m.mode]}
+            {isFlight ? 'Flight' : (m.service_name || TRANSPORT_LABELS[m.mode])}
           </span>
+          {isFlight && m.service_name && (
+            <span className="text-[10px] text-white/30">via {m.service_name}</span>
+          )}
         </div>
         <span className="text-[9px] text-[#C97552]/70 border border-[#C97552]/25 rounded-full px-2 py-0.5 uppercase tracking-wider font-label flex-shrink-0">
-          ✓ Best for you
+          ✓ Recommended route
         </span>
       </div>
       <div className="flex items-baseline gap-3 text-xs mb-1">
         <span className="text-white/70 font-medium">{m.duration}</span>
-        {m.cost && <span className="text-white/45">{m.cost}</span>}
+        {m.cost && <span className="text-white/45">est. {m.cost}</span>}
       </div>
       <p className="text-[11px] text-white/45 leading-snug mb-1.5">{m.note}</p>
       {m.booking_window && (
         <p className="text-[11px] text-white/30 mb-2">📅 {m.booking_window}</p>
       )}
-      <a
-        href={link}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={e => e.stopPropagation()}
-        className="text-[11px] text-[#C97552]/80 hover:text-[#C97552] transition-colors"
-      >
-        {m.booking ? `Book on ${m.booking}` : label} ↗
-      </a>
+
+      {/* Flight with multiple airports — show per-airport rows */}
+      {isFlight && hasAirports ? (
+        <div className="mt-2 space-y-2">
+          <p className="text-[10px] text-white/25 uppercase tracking-widest font-label">Where to land</p>
+          {airports.map((ap, i) => (
+            <div key={ap.iata} className={`rounded-lg px-3 py-2.5 border ${
+              i === 0 ? 'border-[#C97552]/25 bg-[#C97552]/5' : 'border-white/8 bg-white/3'
+            }`}>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs text-white/75 font-medium">{ap.label}</span>
+                {i === 0 && <span className="text-[9px] text-[#C97552]/60 uppercase tracking-wider font-label">Main</span>}
+              </div>
+              <p className="text-[10px] text-white/35 leading-snug mb-1.5">{ap.note}</p>
+              <div className="flex gap-3">
+                <a
+                  href={buildFlightSearchUrl(homeCity, ap.iata, destName, country, 'google')}
+                  target="_blank" rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="text-[11px] text-[#C97552]/70 hover:text-[#C97552] transition-colors"
+                >
+                  Google Flights ↗
+                </a>
+                <a
+                  href={buildFlightSearchUrl(homeCity, ap.iata, destName, country, 'skyscanner')}
+                  target="_blank" rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  className="text-[11px] text-white/30 hover:text-white/55 transition-colors"
+                >
+                  Skyscanner ↗
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : isFlight ? (
+        /* Single airport or unknown city — generic compare links */
+        <div className="flex flex-wrap gap-3 mt-1">
+          <a
+            href={`https://www.google.com/travel/flights?q=flights+from+${encodeURIComponent(homeCity)}+to+${encodeURIComponent(destName+', '+country)}`}
+            target="_blank" rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="text-[11px] text-[#C97552]/80 hover:text-[#C97552] transition-colors font-medium"
+          >
+            Compare on Google Flights ↗
+          </a>
+          <a
+            href={`https://www.skyscanner.com/transport/flights/${encodeURIComponent(homeCity.toLowerCase())}/${encodeURIComponent(destName.toLowerCase())}/`}
+            target="_blank" rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="text-[11px] text-white/35 hover:text-white/60 transition-colors"
+          >
+            Skyscanner ↗
+          </a>
+        </div>
+      ) : (
+        /* Non-flight transport */
+        <a
+          href={link}
+          target="_blank" rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="text-[11px] text-[#C97552]/80 hover:text-[#C97552] transition-colors"
+        >
+          {m.booking ? `Book on ${m.booking}` : label} ↗
+        </a>
+      )}
     </div>
   )
 }
@@ -688,6 +862,7 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
 
 function DestinationCard({
   dest, rank, locked, currency, gemEmphasis = false, dietaryPrefs = [], homeCity = '',
+  isSaved = false, isSaving = false, onSave,
 }: {
   dest:          RecommendedDestination
   rank:          number
@@ -696,6 +871,9 @@ function DestinationCard({
   gemEmphasis?:  boolean
   dietaryPrefs?: string[]
   homeCity?:     string
+  isSaved?:      boolean
+  isSaving?:     boolean
+  onSave?:       (dest: RecommendedDestination) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const displayScore  = effectiveScore(dest)
@@ -721,17 +899,28 @@ function DestinationCard({
               #{rank}
             </span>
             <div className="min-w-0">
-              <h2 className={`font-serif italic text-xl leading-tight mb-0.5 truncate
-                ${locked ? 'blur-[6px] text-white/40 select-none' : 'text-white'}`}>
-                {locked ? '██████████' : dest.name}
-              </h2>
-              <p className={`text-sm ${locked ? 'blur-[4px] text-white/20 select-none' : 'text-white/50'}`}>
-                {locked ? '████████' : (
-                  dest.state_province
-                    ? `${dest.state_province}, ${dest.country}`
-                    : dest.country
-                )}
-              </p>
+              {locked ? (
+                <>
+                  <div className="flex items-center gap-2 mb-1">
+                    <svg className="w-3.5 h-3.5 text-white/25 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                    </svg>
+                    <span className="text-white/30 text-sm font-medium">Locked destination</span>
+                  </div>
+                  <p className="text-white/20 text-xs">Upgrade to reveal full details</p>
+                </>
+              ) : (
+                <>
+                  <h2 className="font-serif italic text-xl leading-tight mb-0.5 truncate text-white">
+                    {dest.name}
+                  </h2>
+                  <p className="text-sm text-white/50">
+                    {dest.state_province
+                      ? `${dest.state_province}, ${dest.country}`
+                      : dest.country}
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
@@ -885,10 +1074,30 @@ function DestinationCard({
                   </div>
                 )}
               </div>
-              <button onClick={e => e.stopPropagation()}
-                className="text-xs text-white/40 border border-white/12 rounded-full px-4 py-2 hover:border-white/25 hover:text-white/60 transition-all flex-shrink-0">
-                Save
-              </button>
+              {onSave && (
+                <button
+                  onClick={e => { e.stopPropagation(); onSave(dest) }}
+                  disabled={isSaving}
+                  title={isSaved ? 'Remove from saved' : 'Save this destination'}
+                  className={`flex items-center gap-1.5 text-xs border rounded-full px-3 py-2 transition-all flex-shrink-0 disabled:opacity-50 ${
+                    isSaved
+                      ? 'border-[#C97552]/50 text-[#C97552] bg-[#C97552]/10 hover:bg-[#C97552]/5'
+                      : 'border-white/12 text-white/40 hover:border-[#C97552]/40 hover:text-[#C97552]/70'
+                  }`}
+                >
+                  {isSaving ? (
+                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill={isSaved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                    </svg>
+                  )}
+                  <span>{isSaved ? 'Saved' : 'Save'}</span>
+                </button>
+              )}
             </div>
 
             {/* CTAs row */}
@@ -1046,9 +1255,14 @@ export default function DiscoverPage() {
   const [errorMsg, setErrorMsg]         = useState('')
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
-  const [previewAll, setPreviewAll]     = useState(false)
+  const [previewAll, setPreviewAll]     = useState(false)  // kept for compat, not used in UI
   const [mode, setMode]                 = useState<Mode>('discover')
   const [searchQuery, setSearchQuery]   = useState('')
+
+  // Saved / bookmarked destinations — persisted in Supabase `saved_destinations` table
+  const [savedIds, setSavedIds]                     = useState<Set<string>>(new Set())
+  const [savedDestinations, setSavedDestinations]   = useState<RecommendedDestination[]>([])
+  const [savingId, setSavingId]                     = useState<string | null>(null)
 
   // Read ?search=1 from URL after hydration (useState lazy init runs on server without window)
   useEffect(() => {
@@ -1067,6 +1281,61 @@ export default function DiscoverPage() {
     if (!q) return
     router.push(`/guide?q=${encodeURIComponent(q)}`)
   }, [searchQuery, router])
+
+  // ── Saved destinations ────────────────────────────────────────────────────
+  const savedKey = (name: string, country: string) => `${name}||${country}`
+
+  useEffect(() => {
+    async function loadSaved() {
+      const supabase = getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data, error } = await supabase
+        .from('saved_destinations')
+        .select('name, country, destination')
+        .eq('user_id', user.id)
+        .order('saved_at', { ascending: false })
+      if (error || !data) return   // table might not exist yet — fail silently
+      const ids = new Set(data.map((r: { name: string; country: string }) => savedKey(r.name, r.country)))
+      setSavedIds(ids)
+      setSavedDestinations(data.map((r: { destination: RecommendedDestination }) => r.destination))
+    }
+    loadSaved()
+  }, [])
+
+  const toggleSave = useCallback(async (dest: RecommendedDestination) => {
+    const key = savedKey(dest.name, dest.country)
+    const supabase = getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    setSavingId(key)
+    if (savedIds.has(key)) {
+      // Unsave
+      await supabase
+        .from('saved_destinations')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('name', dest.name)
+        .eq('country', dest.country)
+      setSavedIds(prev => { const next = new Set(prev); next.delete(key); return next })
+      setSavedDestinations(prev => prev.filter(d => savedKey(d.name, d.country) !== key))
+    } else {
+      // Save
+      await supabase
+        .from('saved_destinations')
+        .upsert({
+          user_id:     user.id,
+          name:        dest.name,
+          country:     dest.country,
+          destination: dest,
+          saved_at:    new Date().toISOString(),
+        }, { onConflict: 'user_id,name,country' })
+      setSavedIds(prev => new Set([...prev, key]))
+      setSavedDestinations(prev => [dest, ...prev.filter(d => savedKey(d.name, d.country) !== key)])
+    }
+    setSavingId(null)
+  }, [savedIds])
 
   const retry       = useCallback(() => { setState('loading'); setSlow(false); setRetryCount(n => n + 1) }, [])
   const handleLogout = useCallback(async () => {
@@ -1214,12 +1483,11 @@ export default function DiscoverPage() {
   // Sort descending by effective score (raw match_score − 20 if timing_warning)
   const sorted = [...destinations].sort((a, b) => effectiveScore(b) - effectiveScore(a))
 
-  // Use server-supplied locked field (set by applyPaywall) — authoritative paywall state.
-  // Server sorts by raw match_score; client sorts by effectiveScore. Both orderings agree on
-  // which cards are locked, but client timing-penalty adjustments could diverge. Trusting the
-  // server prevents the flash where a card briefly renders unlocked before the blur kicks in.
-  const freeCards   = previewAll ? sorted : sorted.filter(d => !d.locked)
-  const lockedCards = previewAll ? []     : sorted.filter(d =>  d.locked)
+  // Split into free (fully visible) and locked (paywall stubs).
+  // Server already stripped real name/country/reasons from locked destinations —
+  // there is nothing to "preview", so the old previewAll toggle is removed.
+  const freeCards      = sorted.filter(d => !d.locked)
+  const lockedCards    = sorted.filter(d =>  d.locked)
   const topLockedScore = lockedCards.length > 0 ? effectiveScore(lockedCards[0]) : 0
   const topFreeScore   = freeCards.length   > 0 ? effectiveScore(freeCards[0])   : 0
   // When scores are bunched (gap < 10pts), lead with gem score on locked cards
@@ -1257,19 +1525,17 @@ export default function DiscoverPage() {
               {dietaryFilterLabel(dietaryPrefs)}
             </p>
           )}
-          {/* Gem legend + PreviewAll toggle on the same row */}
+          {/* Gem legend + locked count on the same row */}
           <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
             <GemLegend />
-            <button
-              onClick={() => setPreviewAll(p => !p)}
-              className={`text-xs font-label tracking-widest uppercase transition-colors px-3 py-1 rounded-full border flex-shrink-0 ${
-                previewAll
-                  ? 'border-[#C97552]/60 text-[#C97552] bg-[#C97552]/10'
-                  : 'border-white/15 text-white/35 hover:text-white/60 hover:border-white/30'
-              }`}
-            >
-              {previewAll ? '🔓 All unlocked' : '👁 Preview all'}
-            </button>
+            {lockedCards.length > 0 && (
+              <a
+                href="#unlock"
+                className="text-xs font-label tracking-widest uppercase transition-colors px-3 py-1 rounded-full border border-white/15 text-white/35 hover:text-white/60 hover:border-white/30 flex-shrink-0"
+              >
+                🔒 {lockedCards.length} locked
+              </a>
+            )}
           </div>
         </div>
 
@@ -1349,26 +1615,66 @@ export default function DiscoverPage() {
           </div>
         )}
 
+        {/* ── Saved destinations (always visible) ───────────────────────────── */}
+        {savedDestinations.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-3.5 h-3.5 text-[#C97552]" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+              </svg>
+              <p className="text-xs text-white/35 uppercase tracking-widest font-label">Saved</p>
+            </div>
+            <div className="space-y-3">
+              {savedDestinations.map((dest, i) => {
+                const key = savedKey(dest.name, dest.country)
+                return (
+                  <DestinationCard
+                    key={`saved-${key}-${i}`}
+                    dest={dest}
+                    rank={i + 1}
+                    locked={false}
+                    currency={currency}
+                    dietaryPrefs={dietaryPrefs}
+                    homeCity={homeCity}
+                    isSaved={true}
+                    isSaving={savingId === key}
+                    onSave={toggleSave}
+                  />
+                )
+              })}
+            </div>
+            <div className="mt-4 border-t border-white/8" />
+          </div>
+        )}
+
         {/* ── Destination cards (discover mode only) ────────────────────────── */}
         {mode === 'discover' && (
         <div className="space-y-3">
-          {/* Free cards (lowest scores shown first) */}
-          {freeCards.map((dest, i) => (
-            <DestinationCard
-              key={dest.name}
-              dest={dest}
-              rank={i + 1}
-              locked={false}
-              currency={currency}
-              dietaryPrefs={dietaryPrefs}
-              homeCity={homeCity}
-            />
-          ))}
+          {/* Free cards */}
+          {freeCards.map((dest, i) => {
+            const key = savedKey(dest.name, dest.country)
+            return (
+              <DestinationCard
+                key={`${dest.name}-${i}`}
+                dest={dest}
+                rank={i + 1}
+                locked={false}
+                currency={currency}
+                dietaryPrefs={dietaryPrefs}
+                homeCity={homeCity}
+                isSaved={savedIds.has(key)}
+                isSaving={savingId === key}
+                onSave={toggleSave}
+              />
+            )
+          })}
 
           {/* Conversion hook + locked cards */}
           {lockedCards.length > 0 && (
             <>
-              <ConversionHook lockedCount={lockedCards.length} topScore={topLockedScore} />
+              <div id="unlock">
+                <ConversionHook lockedCount={lockedCards.length} topScore={topLockedScore} />
+              </div>
               {lockedCards.map((dest, i) => (
                 <DestinationCard
                   key={dest.name + i}

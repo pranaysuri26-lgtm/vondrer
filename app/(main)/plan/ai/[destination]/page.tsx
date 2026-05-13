@@ -893,7 +893,7 @@ export default function AIPlanPage() {
           destination={destination}
           country={country}
           picked={picked}
-          accommodation={currentAccomm}
+          accommodation={latestAccomm}
           onboarding={onboarding}
           onClose={() => setBuildOpen(false)}
           router={router}

@@ -193,6 +193,7 @@ function BuildModal({
   onboarding,
   onClose,
   onDone,
+  router,
 }: {
   destination:    string
   country:        string
@@ -200,7 +201,8 @@ function BuildModal({
   accommodation?: PlanAccommodation
   onboarding:     OnboardingProfile | null
   onClose:        () => void
-  onDone:         (tripId: string) => void
+  onDone:         (shareToken: string | null) => void
+  router:         ReturnType<typeof import('next/navigation').useRouter>
 }) {
   const today    = new Date().toISOString().split('T')[0]
   const [startDate, setStartDate]   = useState(today)
@@ -211,6 +213,7 @@ function BuildModal({
     return onboarding?.dietary_preferences ?? []
   })
   const [loading,   setLoading]     = useState(false)
+  const [done,      setDone]        = useState<string | null>(null)  // share_token after save
   const [error,     setError]       = useState('')
 
   function toggleDietary(id: string) {
@@ -319,7 +322,8 @@ function BuildModal({
         }),
       })
 
-      onDone(trip.id)
+      setDone(trip.share_token ?? trip.id)
+      onDone(trip.share_token ?? null)
     } catch (err) {
       console.error('[Build]', err)
       setError('Something went wrong — please try again.')
@@ -449,27 +453,53 @@ function BuildModal({
           <p className="text-red-400 text-sm mb-4">{error}</p>
         )}
 
-        <button
-          onClick={handleBuild}
-          disabled={loading}
-          className="w-full py-4 rounded-full bg-[#C97552] text-white font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed hover:bg-[#b86644] transition-colors flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        {done ? (
+          /* ── Success state ── */
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
               </svg>
-              Generating your itinerary…
-            </>
-          ) : (
-            'Generate my itinerary →'
-          )}
-        </button>
-
-        <p className="text-white/30 text-xs text-center mt-3">
-          Takes ~15 seconds · Saved to your trips automatically
-        </p>
+            </div>
+            <p className="text-white font-semibold text-base mb-1">Itinerary ready!</p>
+            <p className="text-white/40 text-sm mb-5">Your trip has been saved.</p>
+            <button
+              onClick={() => router.push(`/trip/${done}`)}
+              className="w-full py-4 rounded-full bg-[#C97552] text-white font-bold text-sm hover:bg-[#b86644] transition-colors"
+            >
+              View my itinerary →
+            </button>
+            <button
+              onClick={() => router.push('/trips')}
+              className="w-full mt-2 py-3 rounded-full border border-white/15 text-white/50 text-sm hover:border-white/30 hover:text-white/70 transition-all"
+            >
+              All my trips
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={handleBuild}
+              disabled={loading}
+              className="w-full py-4 rounded-full bg-[#C97552] text-white font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed hover:bg-[#b86644] transition-colors flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  Generating your itinerary…
+                </>
+              ) : (
+                'Generate my itinerary →'
+              )}
+            </button>
+            <p className="text-white/30 text-xs text-center mt-3">
+              Takes ~15 seconds · Saved to your trips automatically
+            </p>
+          </>
+        )}
       </div>
     </div>
   )
@@ -492,7 +522,6 @@ export default function AIPlanPage() {
   const [buildOpen,    setBuildOpen]   = useState(false)
   const [onboarding,   setOnboarding]  = useState<OnboardingProfile | null>(null)
   const [latestAccomm, setLatestAccomm]= useState<PlanAccommodation | undefined>()
-  const [doneMsg,      setDoneMsg]     = useState('')
 
   // Use refs so fetchRound never has stale closure over rounds/picked/onboarding
   const roundsRef    = useRef<RoundGroup[]>([])
@@ -582,11 +611,9 @@ export default function AIPlanPage() {
     })
   }
 
-  // ── After trip built ─────────────────────────────────────────────────────────
-  function handleTripDone(_tripId: string) {
-    setBuildOpen(false)
-    setDoneMsg('Trip saved!')
-    setTimeout(() => router.push('/trips'), 1200)
+  // ── After trip built — modal shows success screen, no auto-redirect ─────────
+  function handleTripDone(_shareToken: string | null) {
+    // Modal handles navigation via "View my itinerary →" button
   }
 
   const nextRound = rounds.length + 1
@@ -757,17 +784,10 @@ export default function AIPlanPage() {
           onboarding={onboarding}
           onClose={() => setBuildOpen(false)}
           onDone={handleTripDone}
+          router={router}
         />
       )}
 
-      {/* ── Success toast ────────────────────────────────────────────────────── */}
-      {doneMsg && (
-        <div className="fixed top-20 inset-x-0 z-50 flex justify-center pointer-events-none">
-          <div className="bg-green-500 text-white text-sm font-semibold px-6 py-3 rounded-full shadow-xl">
-            ✓ {doneMsg} — Redirecting to your trips…
-          </div>
-        </div>
-      )}
     </div>
   )
 }

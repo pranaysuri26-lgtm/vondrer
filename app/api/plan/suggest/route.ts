@@ -36,6 +36,14 @@ export interface SuggestResponse {
 
 const SYSTEM = `You are Voya's AI trip planner. Suggest specific, real experiences for a traveler building a personalised trip.
 
+STRICT GEOGRAPHIC RULE — THE MOST IMPORTANT RULE:
+Every suggestion MUST be physically located within the destination city itself.
+- If the destination is "San Francisco" → only suggest places inside San Francisco city limits. NOT San Jose, NOT Santa Cruz, NOT Monterey, NOT Sausalito, NOT the 17-Mile Drive, NOT Napa, NOT Berkeley, NOT Oakland.
+- If the destination is "London" → only suggest places inside Greater London. NOT Windsor, NOT Bath, NOT Oxford.
+- If the destination is "New York City" → only suggest Manhattan, Brooklyn, Queens, the Bronx, or Staten Island. NOT New Jersey, NOT the Hamptons.
+- Day trips to nearby cities are NOT suggestions — the user is planning a trip TO this city.
+When in doubt: if it requires leaving the city to get there, do NOT suggest it.
+
 WHAT TO SUGGEST — vary across these types every round:
 • Named streets and pedestrian strips with specific stretches:
   e.g. "Española Way (Washington Ave to Pennsylvania Ave)", "Calle Ocho / SW 8th Street between 12th–17th Ave", "Lincoln Road Mall pedestrian strip"
@@ -48,6 +56,7 @@ WHAT TO SUGGEST — vary across these types every round:
 • Live music venues, markets, events — exact names
 
 NEVER suggest:
+- Any place outside the destination city (see STRICT GEOGRAPHIC RULE above)
 - Generic "explore [neighbourhood]" without a named street or specific spot
 - Anything phrased as "visit the area" — always name the exact place
 - A single unnamed "local restaurant" — always use a real name
@@ -67,7 +76,7 @@ Return ONLY a JSON object — no markdown, no explanation:
       "category": "emoji + label e.g. '🚶 Street & Walk'",
       "duration": "e.g. '1–2 hours' or 'Half day' or 'Full evening'",
       "price": "Free or $ or $$ or $$$",
-      "neighbourhood": "exact neighbourhood name",
+      "neighbourhood": "exact neighbourhood name within the destination city",
       "related_to": "ONLY if directly near or pairs with a picked activity — e.g. 'Near Wynwood Walls' — otherwise OMIT this field entirely"
     }
   ],
@@ -80,6 +89,7 @@ Return ONLY a JSON object — no markdown, no explanation:
 
 Rules:
 - Return exactly 6 cards
+- ALL 6 cards must be within the destination city — no exceptions
 - Omit the accommodation block entirely when the user has fewer than 3 picks
 - Never repeat any place from the already-shown list
 - "why" must never be a generic travel cliché — always name something specific about this destination`
@@ -147,6 +157,8 @@ export async function POST(req: NextRequest) {
   if (round === 1) {
     userPrompt = `Suggest activities for a trip to: ${location}
 
+IMPORTANT: Every suggestion must be physically located inside ${destination} city itself — not in nearby cities, suburbs, or regions.
+
 Traveler context:
 - Home: ${onboarding?.home_city ? `${onboarding.home_city}, ` : ''}${onboarding?.home_country ?? 'not specified'}
 - Budget: ${budgetLabel}
@@ -157,7 +169,7 @@ This is Round 1. Suggest 6 diverse experiences covering:
 - At least 1 named street or pedestrian strip worth walking
 - At least 1 cultural district or art/history experience
 - At least 1 local food spot (specific named place)
-- At least 1 beach/park/nature spot (specific section)
+- At least 1 park/nature/waterfront spot (specific named section within the city)
 - Mix of morning, afternoon, and evening options across different neighbourhoods
 
 Do the famous things the non-tourist way — specific, real, local. Do NOT include the accommodation block in this round.`
@@ -167,6 +179,8 @@ Do the famous things the non-tourist way — specific, real, local. Do NOT inclu
     const seenList        = seen_names.join(', ')
 
     userPrompt = `Suggest MORE activities for a trip to: ${location}
+
+IMPORTANT: Every suggestion must be physically located inside ${destination} city itself — not in nearby cities, suburbs, or regions.
 
 Traveler context:
 - Home: ${onboarding?.home_city ? `${onboarding.home_city}, ` : ''}${onboarding?.home_country ?? 'not specified'}
@@ -180,10 +194,11 @@ Their picks cluster around: ${clusterAreas}
 Already SHOWN — do NOT repeat any of these: ${seenList || 'none yet'}
 
 Round ${round}. Suggest 6 MORE activities that:
-1. Complement their picks — geographically nearby OR thematically related
-2. Cover categories and neighbourhoods not yet well-represented
-3. Include a mix of streets/walks, food spots, and experiences — not just standalone buildings
-4. Never repeat anything from the "already shown" list
+1. Are all within ${destination} city — no day trips to other cities
+2. Complement their picks — geographically nearby OR thematically related
+3. Cover categories and neighbourhoods not yet well-represented
+4. Include a mix of streets/walks, food spots, and experiences — not just standalone buildings
+5. Never repeat anything from the "already shown" list
 ${picked.length >= 3
   ? `\nUser has 3+ picks — include the accommodation block. The neighbourhood should:
   - Be central to their pick cluster (${clusterAreas})

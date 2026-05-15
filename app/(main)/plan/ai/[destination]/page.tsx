@@ -617,7 +617,6 @@ export default function AIPlanPage() {
   const [allCards,     setAllCards]     = useState<PlanActivityCard[]>([])
   const [newCardIds,   setNewCardIds]   = useState<Set<string>>(new Set())
   const [latestAccomm, setLatestAccomm] = useState<PlanAccommodation | undefined>()
-  const [seenNames,    setSeenNames]    = useState<string[]>([])
   const [roundNum,     setRoundNum]     = useState(1)
 
   const [picked,       setPicked]       = useState<PlanActivityCard[]>([])
@@ -629,13 +628,11 @@ export default function AIPlanPage() {
   // Refs to avoid stale closures
   const pickedRef     = useRef<PlanActivityCard[]>([])
   const onboardingRef = useRef<OnboardingProfile | null>(null)
-  const seenNamesRef  = useRef<string[]>([])
   const allCardsRef   = useRef<PlanActivityCard[]>([])
   const roundNumRef   = useRef(1)
 
   useEffect(() => { pickedRef.current     = picked     }, [picked])
   useEffect(() => { onboardingRef.current = onboarding }, [onboarding])
-  useEffect(() => { seenNamesRef.current  = seenNames  }, [seenNames])
   useEffect(() => { allCardsRef.current   = allCards   }, [allCards])
   useEffect(() => { roundNumRef.current   = roundNum   }, [roundNum])
 
@@ -658,8 +655,9 @@ export default function AIPlanPage() {
   const loadCards = useCallback(async (rn: number) => {
     setLoading(true)
 
-    // Accumulate seen names so AI never repeats a card already shown
-    const newSeen = [...seenNamesRef.current, ...allCardsRef.current.map(c => c.name)]
+    // seen_names = every card name shown so far (allCardsRef is the single source of truth)
+    // Do NOT combine with seenNamesRef — that causes exponential duplication across rounds
+    const seenNames = allCardsRef.current.map(c => c.name)
 
     try {
       const data = await fetch('/api/plan/suggest', {
@@ -668,25 +666,28 @@ export default function AIPlanPage() {
         body: JSON.stringify({
           destination, country, state_province: stateProvince,
           picked: pickedRef.current,
-          seen_names: newSeen,
+          seen_names: seenNames,
           round: rn,
           onboarding: onboardingRef.current,
         }),
       }).then(r => { if (!r.ok) throw new Error('Suggest failed'); return r.json() })
 
       const incoming: PlanActivityCard[] = data.cards ?? []
-      const incomingIds = new Set(incoming.map(c => c.id))
+
+      // Client-side dedup — filter any card whose name already exists (AI sometimes ignores the list)
+      const existingNames = new Set(allCardsRef.current.map(c => c.name.toLowerCase()))
+      const deduped = incoming.filter(c => !existingNames.has(c.name.toLowerCase()))
+
+      const incomingIds = new Set(deduped.map(c => c.id))
 
       // Mark incoming cards as "new" for entrance animation
       setNewCardIds(incomingIds)
       setAllCards(prev => {
-        const updated = [...prev, ...incoming]
+        const updated = [...prev, ...deduped]
         allCardsRef.current = updated
         return updated
       })
 
-      setSeenNames(newSeen)
-      seenNamesRef.current = newSeen
       setRoundNum(rn)
       roundNumRef.current = rn
 

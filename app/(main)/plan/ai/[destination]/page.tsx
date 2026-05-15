@@ -52,6 +52,8 @@ function getCategoryMeta(category: string) {
     return { colour: 'text-amber-400',   border: 'border-t-amber-400/60',   gradFrom: 'rgba(251,191,36,0.10)'  }
   if (category.includes('Street') || category.includes('Walk'))
     return { colour: 'text-cyan-400',    border: 'border-t-cyan-400/60',    gradFrom: 'rgba(34,211,238,0.10)'  }
+  if (category.includes('Day Trip') || category.includes('Day'))
+    return { colour: 'text-rose-300',    border: 'border-t-rose-300/60',    gradFrom: 'rgba(253,164,175,0.10)' }
   return   { colour: 'text-white/50',   border: 'border-t-white/20',       gradFrom: 'rgba(255,255,255,0.05)' }
 }
 

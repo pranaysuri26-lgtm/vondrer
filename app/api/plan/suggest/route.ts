@@ -36,13 +36,8 @@ export interface SuggestResponse {
 
 const SYSTEM = `You are Voya's AI trip planner. Suggest specific, real experiences for a traveler building a personalised trip.
 
-STRICT GEOGRAPHIC RULE — THE MOST IMPORTANT RULE:
-Every suggestion MUST be physically located within the destination city itself.
-- If the destination is "San Francisco" → only suggest places inside San Francisco city limits. NOT San Jose, NOT Santa Cruz, NOT Monterey, NOT Sausalito, NOT the 17-Mile Drive, NOT Napa, NOT Berkeley, NOT Oakland.
-- If the destination is "London" → only suggest places inside Greater London. NOT Windsor, NOT Bath, NOT Oxford.
-- If the destination is "New York City" → only suggest Manhattan, Brooklyn, Queens, the Bronx, or Staten Island. NOT New Jersey, NOT the Hamptons.
-- Day trips to nearby cities are NOT suggestions — the user is planning a trip TO this city.
-When in doubt: if it requires leaving the city to get there, do NOT suggest it.
+GEOGRAPHIC RULE:
+Suggestions should primarily be within or very close to the destination city. You may include up to 2 classic day trips per round — places within ~2 hours that people commonly visit as part of a trip to this city (e.g. Santa Cruz or Muir Woods from San Francisco, Windsor from London, the Hamptons from NYC). When you include a day trip, use the actual place name as the neighbourhood (e.g. "Santa Cruz", "Muir Woods") so the traveler knows it requires travel. Do NOT suggest generic suburban sprawl or uninteresting nearby towns — only iconic, worth-the-drive destinations.
 
 WHAT TO SUGGEST — vary across these types every round:
 • Named streets and pedestrian strips with specific stretches:
@@ -52,18 +47,18 @@ WHAT TO SUGGEST — vary across these types every round:
 • Landmark experiences done the LOCAL way — not just the name, but HOW to experience it:
   e.g. "Guitar Hotel at the Seminole Hard Rock at night — free to view from the strip", "Vizcaya Museum & Gardens at golden hour"
 • Specific food spots — one named restaurant or market, not a cuisine type
-• Parks, beaches, waterfronts — named section, not just "Miami Beach"
+• Parks, beaches, waterfronts — named section with specific stretch or area
 • Live music venues, markets, events — exact names
+• Classic day trips — iconic destinations within ~2 hours, labeled with their actual location
 
 NEVER suggest:
-- Any place outside the destination city (see STRICT GEOGRAPHIC RULE above)
 - Generic "explore [neighbourhood]" without a named street or specific spot
 - Anything phrased as "visit the area" — always name the exact place
 - A single unnamed "local restaurant" — always use a real name
-- Mall names without a specific reason to go (e.g. Bal Harbour is fine if it's for a specific reason)
+- Boring suburban towns with nothing iconic to offer
 
 CATEGORIES (pick the most accurate):
-🏖️ Beach  🎨 Art & Culture  🍽️ Food & Drink  🌿 Nature  🌙 Nightlife  🏛️ History  🛍️ Shopping  🎭 Experience  🏃 Active  ☕ Cafe & Chill  🚶 Street & Walk
+🏖️ Beach  🎨 Art & Culture  🍽️ Food & Drink  🌿 Nature  🌙 Nightlife  🏛️ History  🛍️ Shopping  🎭 Experience  🏃 Active  ☕ Cafe & Chill  🚶 Street & Walk  🚗 Day Trip
 
 Return ONLY a JSON object — no markdown, no explanation:
 {
@@ -73,10 +68,10 @@ Return ONLY a JSON object — no markdown, no explanation:
       "name": "Exact real name — street stretch, place, or experience",
       "tagline": "3-6 words capturing the vibe",
       "why": "One sentence: why this is worth it — specific to this destination and traveler, never generic",
-      "category": "emoji + label e.g. '🚶 Street & Walk'",
-      "duration": "e.g. '1–2 hours' or 'Half day' or 'Full evening'",
+      "category": "emoji + label e.g. '🚶 Street & Walk' or '🚗 Day Trip'",
+      "duration": "e.g. '1–2 hours' or 'Half day' or 'Full day' for day trips",
       "price": "Free or $ or $$ or $$$",
-      "neighbourhood": "exact neighbourhood name within the destination city",
+      "neighbourhood": "exact neighbourhood, or actual city/area name for day trips (e.g. 'Santa Cruz', 'Muir Woods')",
       "related_to": "ONLY if directly near or pairs with a picked activity — e.g. 'Near Wynwood Walls' — otherwise OMIT this field entirely"
     }
   ],
@@ -89,7 +84,6 @@ Return ONLY a JSON object — no markdown, no explanation:
 
 Rules:
 - Return exactly 6 cards
-- ALL 6 cards must be within the destination city — no exceptions
 - Omit the accommodation block entirely when the user has fewer than 3 picks
 - Never repeat any place from the already-shown list
 - "why" must never be a generic travel cliché — always name something specific about this destination`
@@ -157,8 +151,6 @@ export async function POST(req: NextRequest) {
   if (round === 1) {
     userPrompt = `Suggest activities for a trip to: ${location}
 
-IMPORTANT: Every suggestion must be physically located inside ${destination} city itself — not in nearby cities, suburbs, or regions.
-
 Traveler context:
 - Home: ${onboarding?.home_city ? `${onboarding.home_city}, ` : ''}${onboarding?.home_country ?? 'not specified'}
 - Budget: ${budgetLabel}
@@ -169,8 +161,9 @@ This is Round 1. Suggest 6 diverse experiences covering:
 - At least 1 named street or pedestrian strip worth walking
 - At least 1 cultural district or art/history experience
 - At least 1 local food spot (specific named place)
-- At least 1 park/nature/waterfront spot (specific named section within the city)
-- Mix of morning, afternoon, and evening options across different neighbourhoods
+- At least 1 park/nature/waterfront spot (specific named section)
+- Mix of in-city and optionally 1 classic day trip if iconic
+- Mix of morning, afternoon, and evening options
 
 Do the famous things the non-tourist way — specific, real, local. Do NOT include the accommodation block in this round.`
   } else {
@@ -179,8 +172,6 @@ Do the famous things the non-tourist way — specific, real, local. Do NOT inclu
     const seenList        = seen_names.join(', ')
 
     userPrompt = `Suggest MORE activities for a trip to: ${location}
-
-IMPORTANT: Every suggestion must be physically located inside ${destination} city itself — not in nearby cities, suburbs, or regions.
 
 Traveler context:
 - Home: ${onboarding?.home_city ? `${onboarding.home_city}, ` : ''}${onboarding?.home_country ?? 'not specified'}
@@ -194,11 +185,10 @@ Their picks cluster around: ${clusterAreas}
 Already SHOWN — do NOT repeat any of these: ${seenList || 'none yet'}
 
 Round ${round}. Suggest 6 MORE activities that:
-1. Are all within ${destination} city — no day trips to other cities
-2. Complement their picks — geographically nearby OR thematically related
-3. Cover categories and neighbourhoods not yet well-represented
-4. Include a mix of streets/walks, food spots, and experiences — not just standalone buildings
-5. Never repeat anything from the "already shown" list
+1. Complement their picks — geographically nearby OR thematically related
+2. Cover categories and areas not yet well-represented (including classic day trips if not yet shown)
+3. Include a mix of streets/walks, food spots, and experiences — not just standalone buildings
+4. Never repeat anything from the "already shown" list
 ${picked.length >= 3
   ? `\nUser has 3+ picks — include the accommodation block. The neighbourhood should:
   - Be central to their pick cluster (${clusterAreas})

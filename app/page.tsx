@@ -5,7 +5,19 @@ import { cookies } from 'next/headers'
 // Middleware already handles unauthenticated users (rewrites to /landing.html)
 // This page only runs for authenticated users.
 
-export default async function RootPage() {
+export default async function RootPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string; next?: string }>
+}) {
+  // If Supabase redirected here with ?code= (dashboard redirect URL = "/"),
+  // forward to the dedicated callback handler so the code gets exchanged.
+  const params = await searchParams
+  if (params.code) {
+    const qs = new URLSearchParams({ code: params.code })
+    if (params.next) qs.set('next', params.next)
+    redirect(`/auth/callback?${qs.toString()}`)
+  }
   const cookieStore = await cookies()
 
   // In Next.js 15+, cookies().set() throws in Server Components.

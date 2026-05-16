@@ -19,7 +19,7 @@ async function fromUnsplash(q: string, count: number, key: string): Promise<stri
   if (!res.ok) return []
   const data = await res.json()
   return count > 1 && Array.isArray(data)
-    ? data.map((p: { urls?: { regular?: string } }) => p?.urls?.regular).filter(Boolean)
+    ? data.map((p: { urls?: { regular?: string } }) => p?.urls?.regular).filter((u): u is string => Boolean(u))
     : data?.urls?.regular ? [data.urls.regular] : []
 }
 

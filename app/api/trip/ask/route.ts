@@ -13,7 +13,7 @@ export interface TripStop {
   name:           string
   city:           string
   state:          string
-  type:           string   // brunch | coffee | scenic | food | activity | rest
+  type:           string
   why:            string
   dietary_fit:    string
   price_range:    string
@@ -27,7 +27,7 @@ export interface TripStop {
 export interface TripAskParsed {
   origin:       string
   destination:  string
-  mode:         string   // car | bus | train | walk (transport mode)
+  mode:         string
   stop_types:   string[]
   vibes:        string[]
   dietary:      string[]
@@ -36,37 +36,60 @@ export interface TripAskParsed {
 
 export interface LocalPlace {
   name:          string
-  area:          string   // neighbourhood / district within the location
-  type:          string   // e.g. "hole-in-the-wall snack stall", "hidden cove", "solo-friendly bar"
-  story:         string   // 2–3 sentences: the real reason locals go, not guidebook copy
-  tagline:       string   // ≤12 punchy words for the map pin popup
-  price_range:   string   // $ | $$ | $$$
-  best_time?:    string   // time of day or season
-  insider_tip?:  string   // one specific practical tip a first-timer wouldn't know
+  area:          string
+  type:          string
+  story:         string
+  tagline:       string
+  price_range:   string
+  best_time?:    string
+  insider_tip?:  string
   lat:           number | null
   lng:           number | null
   display_name:  string
 }
 
 export interface LocalDiscoveryParsed {
-  location:  string   // city or area the user is asking about
+  location:  string
   country:   string
-  intent:    string   // concise description of what they want to find
+  intent:    string
+}
+
+export interface PhotoSpot {
+  name:         string        // exact location name
+  area:         string        // neighbourhood/district
+  composition:  string        // exactly where to stand + what to frame (2–3 sentences)
+  locals_tip:   string        // where pros/locals set up vs where tourists go
+  best_session: 'golden_sunrise' | 'golden_sunset' | 'blue_sunrise' | 'blue_sunset' | 'midday' | 'night'
+  light_note:   string        // why this light + this spot = magic
+  lens:         string        // e.g. "24mm — fits the full arch and reflection"
+  avoid:        string        // what tourists do wrong here
+  lat:          number | null
+  lng:          number | null
+  display_name: string
+}
+
+export interface PhotoSunTimes {
+  date:              string   // YYYY-MM-DD (today at that location)
+  blue_am_start:     string   // HH:MM local approx
+  blue_am_end:       string
+  golden_am_start:   string
+  golden_am_end:     string
+  golden_pm_start:   string
+  golden_pm_end:     string
+  blue_pm_start:     string
+  blue_pm_end:       string
+}
+
+export interface PhotoSpotsParsed {
+  location:  string
+  country:   string
+  intent:    string   // any photographic intent mentioned
 }
 
 export type TripAskResponse =
-  | {
-      mode:          'road_trip'
-      parsed:        TripAskParsed
-      stops:         TripStop[]
-      route_summary: string
-    }
-  | {
-      mode:          'local_discovery'
-      parsed:        LocalDiscoveryParsed
-      places:        LocalPlace[]
-      map_center:    { lat: number; lng: number; zoom: number }
-    }
+  | { mode: 'road_trip';        parsed: TripAskParsed;        stops:  TripStop[];   route_summary: string }
+  | { mode: 'local_discovery';  parsed: LocalDiscoveryParsed; places: LocalPlace[]; map_center: { lat: number; lng: number; zoom: number } }
+  | { mode: 'photo_spots';      parsed: PhotoSpotsParsed;     spots:  PhotoSpot[];  sun: PhotoSunTimes; map_center: { lat: number; lng: number; zoom: number } }
 
 // ─── Nominatim geocoder ───────────────────────────────────────────────────────
 
@@ -86,10 +109,7 @@ function calcZoom(places: { lat: number | null; lng: number | null }[]): number 
   const lats = places.filter(p => p.lat != null).map(p => p.lat!)
   const lngs = places.filter(p => p.lng != null).map(p => p.lng!)
   if (!lats.length) return 13
-  const span = Math.max(
-    Math.max(...lats) - Math.min(...lats),
-    Math.max(...lngs) - Math.min(...lngs)
-  )
+  const span = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lngs) - Math.min(...lngs))
   if (span < 0.01) return 15
   if (span < 0.05) return 14
   if (span < 0.15) return 13
@@ -98,10 +118,58 @@ function calcZoom(places: { lat: number | null; lng: number | null }[]): number 
   return 9
 }
 
+// ─── Sun times ────────────────────────────────────────────────────────────────
+// Approximate local time from UTC using longitude (±15 min accuracy for most locations)
+
+function utcToApproxLocal(utcIso: string, lngDeg: number): string {
+  const offsetMin = Math.round(lngDeg / 15) * 60
+  const d = new Date(new Date(utcIso).getTime() + offsetMin * 60_000)
+  return d.toISOString().substring(11, 16) // "HH:MM"
+}
+
+function addMinutes(hhmm: string, mins: number): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  const total = h * 60 + m + mins
+  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+async function fetchSunTimes(lat: number, lng: number): Promise<PhotoSunTimes | null> {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const r = await fetch(
+      `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&formatted=0&date=${today}`,
+      { headers: { 'User-Agent': 'Voya-App/1.0' } }
+    )
+    const data = await r.json() as {
+      status: string
+      results: { sunrise: string; sunset: string; dawn: string; dusk: string }
+    }
+    if (data.status !== 'OK') return null
+
+    const sunrise      = utcToApproxLocal(data.results.sunrise, lng)
+    const sunset       = utcToApproxLocal(data.results.sunset,  lng)
+    const dawn         = utcToApproxLocal(data.results.dawn,    lng)
+    const dusk         = utcToApproxLocal(data.results.dusk,    lng)
+    const goldenAmEnd  = addMinutes(sunrise, 60)
+    const goldenPmStart = addMinutes(sunset, -60)
+
+    return {
+      date:            today,
+      blue_am_start:   dawn,
+      blue_am_end:     sunrise,
+      golden_am_start: sunrise,
+      golden_am_end:   goldenAmEnd,
+      golden_pm_start: goldenPmStart,
+      golden_pm_end:   sunset,
+      blue_pm_start:   sunset,
+      blue_pm_end:     dusk,
+    }
+  } catch { return null }
+}
+
 // ─── POST /api/trip/ask ───────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // ── Auth ──────────────────────────────────────────────────────────────────
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -126,33 +194,24 @@ export async function POST(req: NextRequest) {
     response_format: { type: 'json_object' },
     messages: [{
       role: 'system',
-      content: `You are a travel query parser. Determine if this is a road trip (traveling FROM one place TO another) or a local discovery search (finding specific places within one city/area).
+      content: `You are a travel query classifier. Determine which type this is:
 
-Return JSON — choose ONE format:
+"road_trip"       — traveling FROM one city/place TO another city/place
+"local_discovery" — finding places, food, experiences within one location
+"photo_spots"     — finding photography locations, viewpoints, golden hour spots, photo timing
 
-Road trip format:
-{
-  "query_mode": "road_trip",
-  "origin": "full city/address as written",
-  "destination": "full city/address",
-  "transport": "car|bus|train|walk",
-  "stop_types": ["brunch","coffee","scenic","food","activity","rest"],
-  "vibes": ["relax","quick","scenic","lively","quiet"],
-  "dietary": ["vegan","vegetarian","halal","gluten-free","kosher"],
-  "travelers": number or null
-}
+Return ONE JSON format:
 
-Local discovery format:
-{
-  "query_mode": "local_discovery",
-  "location": "city or specific area/neighbourhood",
-  "country": "country name in English",
-  "intent": "concise description of exactly what they want to find"
-}
+Road trip:
+{ "query_mode": "road_trip", "origin": "...", "destination": "...", "transport": "car|bus|train|walk", "stop_types": [], "vibes": [], "dietary": [], "travelers": null }
 
-Use road_trip when the user is traveling BETWEEN two places.
-Use local_discovery when the user wants to find places WITHIN one location.
-For road trip, use empty arrays or null for missing fields.`,
+Local discovery:
+{ "query_mode": "local_discovery", "location": "city or area", "country": "country in English", "intent": "what they want to find" }
+
+Photo spots:
+{ "query_mode": "photo_spots", "location": "city or area", "country": "country in English", "intent": "photographic intent or subject" }
+
+For photo_spots: detect keywords like "photo", "shoot", "golden hour", "sunrise", "sunset", "viewpoint", "lens", "light", "Instagram", "photography", "spot", "capture".`,
     }, {
       role: 'user',
       content: query,
@@ -160,15 +219,15 @@ For road trip, use empty arrays or null for missing fields.`,
   })
 
   const parseRaw = JSON.parse(parseCompletion.choices[0]?.message?.content ?? '{}') as {
-    query_mode: 'road_trip' | 'local_discovery'
-    // road_trip fields
+    query_mode?: string
+    // road trip
     origin?: string; destination?: string; transport?: string
     stop_types?: string[]; vibes?: string[]; dietary?: string[]; travelers?: number | null
-    // local_discovery fields
+    // local / photo
     location?: string; country?: string; intent?: string
   }
 
-  // ── Road trip path ────────────────────────────────────────────────────────
+  // ── Road trip ──────────────────────────────────────────────────────────────
   if (parseRaw.query_mode === 'road_trip' || parseRaw.origin) {
     const parsed: TripAskParsed = {
       origin:      parseRaw.origin      ?? '',
@@ -179,152 +238,131 @@ For road trip, use empty arrays or null for missing fields.`,
       dietary:     parseRaw.dietary     ?? [],
       travelers:   parseRaw.travelers   ?? null,
     }
-
     if (!parsed.origin || !parsed.destination) {
       return NextResponse.json({ error: 'Could not find a route — try "I\'m in [city], going to [city]"' }, { status: 400 })
     }
-
     const dietaryNote   = parsed.dietary.length    ? `Group dietary needs: ${parsed.dietary.join(', ')}. Every suggestion MUST work for these needs.` : ''
     const stopTypesNote = parsed.stop_types.length ? `Looking for: ${parsed.stop_types.join(', ')}` : 'Looking for: interesting stops'
     const vibesNote     = parsed.vibes.length      ? `Vibe: ${parsed.vibes.join(', ')}` : ''
 
-    const generateCompletion = await openai.chat.completions.create({
-      model:           'gpt-4o-mini',
-      temperature:     0.7,
-      response_format: { type: 'json_object' },
+    const genComp = await openai.chat.completions.create({
+      model: 'gpt-4o-mini', temperature: 0.7, response_format: { type: 'json_object' },
       messages: [{
         role: 'system',
-        content: `You are a road trip guide. Generate 5–7 REAL, named places along a driving route.
-
-Rules:
-- All places must ACTUALLY EXIST and be accessible by car along this route
-- Places must be geographically ordered (origin → destination)
-- Include city and state so they can be accurately geocoded
-- ${dietaryNote}
-- Be specific: exact restaurant/café name, not generic descriptions
-- "why" field: 1–2 sentences on exactly why it fits this specific request
-- "dietary_fit": "Fully vegan" | "Strong vegan menu" | "Vegan options available" | "Ask kitchen" | ""
-- "distance_note": "On route" or "[X] mi off [highway]"
-- "open_note": any relevant hours info or ""
-- "price_range": $ (under $15) | $$ ($15–30) | $$$ (30+)
-
-Return JSON: {
-  "route_summary": "origin → destination via [highway], approx [time]",
-  "stops": [ { "name", "city", "state", "type", "why", "dietary_fit", "price_range", "distance_note", "open_note" } ]
-}`,
+        content: `Road trip guide. Generate 5–7 REAL named places along the route. Geographically ordered origin→destination. ${dietaryNote}
+Return JSON: { "route_summary": "origin → destination via [highway], approx [time]", "stops": [{ "name","city","state","type","why","dietary_fit","price_range","distance_note","open_note" }] }`,
       }, {
         role: 'user',
-        content: `Route: ${parsed.origin} → ${parsed.destination} by ${parsed.mode || 'car'}
-${stopTypesNote}
-${vibesNote}
-${dietaryNote}
-${parsed.travelers ? `Group size: ${parsed.travelers} people` : ''}`,
+        content: `Route: ${parsed.origin} → ${parsed.destination} by ${parsed.mode || 'car'}\n${stopTypesNote}\n${vibesNote}\n${dietaryNote}\n${parsed.travelers ? `Group: ${parsed.travelers}` : ''}`,
       }],
     })
+    const gen = JSON.parse(genComp.choices[0]?.message?.content ?? '{}') as { route_summary: string; stops: Omit<TripStop, 'lat'|'lng'|'display_name'>[] }
+    const stops: TripStop[] = await Promise.all((gen.stops ?? []).map(async s => {
+      const geo = await geocode(`${s.name}, ${s.city}, ${s.state}`)
+      return { ...s, lat: geo?.lat ?? null, lng: geo?.lng ?? null, display_name: geo?.display_name ?? `${s.city}, ${s.state}` }
+    }))
+    return NextResponse.json({ mode: 'road_trip', parsed, stops, route_summary: gen.route_summary ?? `${parsed.origin} → ${parsed.destination}` } as TripAskResponse)
+  }
 
-    const generated = JSON.parse(generateCompletion.choices[0]?.message?.content ?? '{}') as {
-      route_summary: string
-      stops: Omit<TripStop, 'lat' | 'lng' | 'display_name'>[]
+  // ── Photo spots ────────────────────────────────────────────────────────────
+  if (parseRaw.query_mode === 'photo_spots') {
+    const parsed: PhotoSpotsParsed = {
+      location: parseRaw.location ?? '',
+      country:  parseRaw.country  ?? '',
+      intent:   parseRaw.intent   ?? query,
+    }
+    if (!parsed.location) return NextResponse.json({ error: 'Could not find a location — include a city or place name' }, { status: 400 })
+    const locationStr = parsed.country ? `${parsed.location}, ${parsed.country}` : parsed.location
+
+    // Geocode location first (needed for sun times)
+    const centerGeo = await geocode(locationStr)
+    if (!centerGeo) return NextResponse.json({ error: `Couldn't locate "${locationStr}" — try a more specific place name` }, { status: 400 })
+
+    // Run GPT + sun times in parallel
+    const [spotsComp, sunTimes] = await Promise.all([
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini', temperature: 0.7, response_format: { type: 'json_object' },
+        messages: [{
+          role: 'system',
+          content: `You are a professional travel photographer briefing a client. Generate 4–5 REAL, specific photo locations in ${locationStr}.
+
+Be hyper-specific — not generic viewpoints, but exact positions, exact compositions.
+
+Rules:
+- Real locations with exact names locals recognise
+- "composition": exactly where to stand, what's in frame, how to frame it (2–3 sentences)
+- "locals_tip": precisely WHERE pros/locals set up vs where tourist groups congregate
+- "best_session": "golden_sunrise" | "golden_sunset" | "blue_sunrise" | "blue_sunset" | "midday" | "night"
+- "light_note": why THIS specific light at THIS spot is special — what it does to the scene
+- "lens": focal length + brief reason (e.g. "24mm — fits full arch and its reflection below")
+- "avoid": what most tourists do wrong (wrong position, wrong time, wrong focal length)
+- "area": neighbourhood/district within ${locationStr}
+
+Return JSON: { "spots": [{ "name","area","composition","locals_tip","best_session","light_note","lens","avoid" }] }`,
+        }, {
+          role: 'user',
+          content: `Location: ${locationStr}\nPhotographic intent: ${parsed.intent || 'general photography'}`,
+        }],
+      }),
+      fetchSunTimes(centerGeo.lat, centerGeo.lng),
+    ])
+
+    const gen = JSON.parse(spotsComp.choices[0]?.message?.content ?? '{}') as { spots: Omit<PhotoSpot, 'lat'|'lng'|'display_name'>[] }
+    const spots: PhotoSpot[] = await Promise.all((gen.spots ?? []).map(async s => {
+      const geo = await geocode(`${s.name}, ${s.area}, ${locationStr}`)
+        ?? await geocode(`${s.area}, ${locationStr}`)
+      return { ...s, lat: geo?.lat ?? null, lng: geo?.lng ?? null, display_name: geo?.display_name ?? `${s.area}, ${locationStr}` }
+    }))
+
+    // Fallback sun times if API unavailable
+    const sun: PhotoSunTimes = sunTimes ?? {
+      date:            new Date().toISOString().split('T')[0],
+      blue_am_start:   '05:10', blue_am_end:     '05:40',
+      golden_am_start: '05:40', golden_am_end:   '06:40',
+      golden_pm_start: '17:20', golden_pm_end:   '18:20',
+      blue_pm_start:   '18:20', blue_pm_end:     '18:50',
     }
 
-    const stops: TripStop[] = await Promise.all(
-      (generated.stops ?? []).map(async (stop) => {
-        const geo = await geocode(`${stop.name}, ${stop.city}, ${stop.state}`)
-        return {
-          ...stop,
-          lat:          geo?.lat          ?? null,
-          lng:          geo?.lng          ?? null,
-          display_name: geo?.display_name ?? `${stop.city}, ${stop.state}`,
-        }
-      })
-    )
-
     return NextResponse.json({
-      mode:          'road_trip',
+      mode:       'photo_spots',
       parsed,
-      stops,
-      route_summary: generated.route_summary ?? `${parsed.origin} → ${parsed.destination}`,
+      spots,
+      sun,
+      map_center: { lat: centerGeo.lat, lng: centerGeo.lng, zoom: calcZoom(spots) },
     } as TripAskResponse)
   }
 
-  // ── Local discovery path ──────────────────────────────────────────────────
+  // ── Local discovery ────────────────────────────────────────────────────────
   const localParsed: LocalDiscoveryParsed = {
     location: parseRaw.location ?? '',
     country:  parseRaw.country  ?? '',
     intent:   parseRaw.intent   ?? query,
   }
+  if (!localParsed.location) return NextResponse.json({ error: 'Could not understand the location — try adding a city name' }, { status: 400 })
+  const locationStr = localParsed.country ? `${localParsed.location}, ${localParsed.country}` : localParsed.location
 
-  if (!localParsed.location) {
-    return NextResponse.json({ error: 'Could not understand the location — try adding a city name' }, { status: 400 })
-  }
-
-  const locationStr = localParsed.country
-    ? `${localParsed.location}, ${localParsed.country}`
-    : localParsed.location
-
-  const discoveryCompletion = await openai.chat.completions.create({
-    model:           'gpt-4o-mini',
-    temperature:     0.75,
-    response_format: { type: 'json_object' },
+  const discovComp = await openai.chat.completions.create({
+    model: 'gpt-4o-mini', temperature: 0.75, response_format: { type: 'json_object' },
     messages: [{
       role: 'system',
-      content: `You are a deeply knowledgeable local guide — not a tourist guide. Generate 4–6 REAL, specific places.
-
-Rules:
-- All places must ACTUALLY EXIST — use exact names locals would recognise
-- Include the specific neighbourhood/area/district within the city
-- "story": 2–3 sentences. The real reason this place matters. Write like a local, not a travel magazine.
-- "tagline": ≤12 words. One punchy, specific line that captures the essence — for a map pin popup.
-- Be opinionated. Skip tourist traps. These are genuine local finds.
-- "type": specific (e.g. "hole-in-the-wall snack stall", "hidden cove", "old-school kissariat", "solo counter seat bar")
-- "best_time": when to go (morning, dusk, winter only, etc.)
-- "insider_tip": one very specific practical tip a first-timer wouldn't know
-- "price_range": $ | $$ | $$$
-
-Return JSON: {
-  "places": [ { "name", "area", "type", "story", "tagline", "price_range", "best_time", "insider_tip" } ]
-}`,
+      content: `Deeply knowledgeable local guide. Generate 4–6 REAL places in ${locationStr}.
+Rules: Real names locals recognise. "story": 2–3 sentences, written like a local not a guidebook. "tagline": ≤12 words. Skip tourist traps.
+Return JSON: { "places": [{ "name","area","type","story","tagline","price_range","best_time","insider_tip" }] }`,
     }, {
       role: 'user',
-      content: `Find: ${localParsed.intent}
-Location: ${locationStr}`,
+      content: `Find: ${localParsed.intent}\nLocation: ${locationStr}`,
     }],
   })
-
-  const discoveryGenerated = JSON.parse(discoveryCompletion.choices[0]?.message?.content ?? '{}') as {
-    places: Omit<LocalPlace, 'lat' | 'lng' | 'display_name'>[]
-  }
-
-  // ── Geocode each place + location center ──────────────────────────────────
+  const dGen = JSON.parse(discovComp.choices[0]?.message?.content ?? '{}') as { places: Omit<LocalPlace, 'lat'|'lng'|'display_name'>[] }
   const [placesGeo, centerGeo] = await Promise.all([
-    Promise.all(
-      (discoveryGenerated.places ?? []).map(async (place) => {
-        // Try specific name first, fall back to area
-        const geo = await geocode(`${place.name}, ${place.area}, ${locationStr}`)
-          ?? await geocode(`${place.area}, ${locationStr}`)
-        return {
-          ...place,
-          lat:          geo?.lat          ?? null,
-          lng:          geo?.lng          ?? null,
-          display_name: geo?.display_name ?? `${place.area}, ${locationStr}`,
-        } as LocalPlace
-      })
-    ),
+    Promise.all((dGen.places ?? []).map(async p => {
+      const geo = await geocode(`${p.name}, ${p.area}, ${locationStr}`) ?? await geocode(`${p.area}, ${locationStr}`)
+      return { ...p, lat: geo?.lat ?? null, lng: geo?.lng ?? null, display_name: geo?.display_name ?? `${p.area}, ${locationStr}` } as LocalPlace
+    })),
     geocode(locationStr),
   ])
-
-  // Map center: use geocoded location, or fall back to centroid of places
-  const placesWithCoords = placesGeo.filter(p => p.lat != null && p.lng != null)
-  const centerLat = centerGeo?.lat
-    ?? (placesWithCoords.length ? placesWithCoords.reduce((s, p) => s + p.lat!, 0) / placesWithCoords.length : 0)
-  const centerLng = centerGeo?.lng
-    ?? (placesWithCoords.length ? placesWithCoords.reduce((s, p) => s + p.lng!, 0) / placesWithCoords.length : 0)
-  const zoom = calcZoom(placesGeo)
-
-  return NextResponse.json({
-    mode:       'local_discovery',
-    parsed:     localParsed,
-    places:     placesGeo,
-    map_center: { lat: centerLat, lng: centerLng, zoom },
-  } as TripAskResponse)
+  const withCoords = placesGeo.filter(p => p.lat != null)
+  const cLat = centerGeo?.lat ?? (withCoords.length ? withCoords.reduce((s, p) => s + p.lat!, 0) / withCoords.length : 0)
+  const cLng = centerGeo?.lng ?? (withCoords.length ? withCoords.reduce((s, p) => s + p.lng!, 0) / withCoords.length : 0)
+  return NextResponse.json({ mode: 'local_discovery', parsed: localParsed, places: placesGeo, map_center: { lat: cLat, lng: cLng, zoom: calcZoom(placesGeo) } } as TripAskResponse)
 }

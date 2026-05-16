@@ -1,10 +1,15 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import type { LocalPlace } from '@/app/api/trip/ask/route'
+// Minimal shape required by the map — both LocalPlace and PhotoSpot satisfy this
+export interface MapPin {
+  lat:  number | null
+  lng:  number | null
+  name?: string
+}
 
 interface LeafletMapProps {
-  places:        LocalPlace[]
+  places:        MapPin[]
   center:        { lat: number; lng: number; zoom: number }
   selectedIndex: number | null
   onSelect:      (index: number) => void

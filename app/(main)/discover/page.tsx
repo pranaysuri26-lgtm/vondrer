@@ -77,7 +77,7 @@ function LoadingScreen({ slow }: { slow: boolean }) {
     return () => clearInterval(id)
   }, [])
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center px-4">
       <div className="relative w-16 h-16 mb-10">
         <div className="absolute inset-0 rounded-full border border-[#E8E0D6]" />
         <div className="absolute inset-0 rounded-full border border-[#C97552]/40"

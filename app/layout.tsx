@@ -45,7 +45,7 @@ export default function RootLayout({
       lang="en"
       className={`${cormorant.variable} ${raleway.variable} ${josefin.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0d1f35] text-white">
+      <body className="min-h-full flex flex-col bg-[#FAF8F5] text-[#1A1A1A]">
         {children}
       </body>
     </html>

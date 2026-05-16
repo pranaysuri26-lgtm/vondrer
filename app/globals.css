@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0d1f35;
-  --foreground: #f8f5f0;
+  --background: #FAF8F5;
+  --foreground: #1A1A1A;
 
   /* Voya brand colours */
   --voya-navy:      #0d1f35;
@@ -24,8 +24,8 @@
 }
 
 body {
-  background: var(--voya-navy);
-  color: var(--voya-cream);
+  background: var(--background);
+  color: var(--foreground);
   font-family: var(--font-body);
 }
 

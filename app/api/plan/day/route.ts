@@ -93,15 +93,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'place and date required' }, { status: 400 })
   }
 
-  // ── 1. Geocode the place via Nominatim ────────────────────────────────────────
-  const geoRes = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`,
-    { headers: { 'User-Agent': 'Voya-App/1.0 (getvoya.net)' } }
-  )
-  const geoData = await geoRes.json() as Array<{ lat: string; lon: string; display_name: string }>
+  // ── 1. Geocode the place via Nominatim (with fallback strategies) ────────────
+  type GeoResult = Array<{ lat: string; lon: string; display_name: string }>
+
+  async function nominatim(q: string): Promise<GeoResult> {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&addressdetails=0`,
+      { headers: { 'User-Agent': 'Voya-App/1.0 (getvoya.net)' } }
+    )
+    return r.json()
+  }
+
+  // Try progressively simpler queries until one works
+  const queries = [
+    place,                                              // exact as typed
+    place.replace(/warf/gi, "wharf"),                  // fix common misspelling
+    place.split(',')[0].trim(),                        // just the place, no city
+    place.replace(/[''']/g, "'").split(',')[0].trim(), // normalise apostrophes
+  ]
+
+  let geoData: GeoResult = []
+  for (const q of queries) {
+    geoData = await nominatim(q)
+    if (geoData.length) break
+  }
 
   if (!geoData.length) {
-    return NextResponse.json({ error: 'Location not found — try a more specific name' }, { status: 404 })
+    return NextResponse.json({ error: 'Location not found — try adding a city name (e.g. "Fisherman\'s Wharf, San Francisco")' }, { status: 404 })
   }
 
   const { lat, lon, display_name } = geoData[0]

@@ -33,11 +33,12 @@ function TierBadge({ tier, daysLeft }: TierInfo) {
 // ─── Tabs config ──────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'discover',  href: '/discover',  icon: '🧭', label: 'Discover'  },
-  { key: 'deals',     href: '/deals',     icon: '💡', label: 'Tips'      },
-  { key: 'plan-day',  href: '/plan/day',  icon: '☀️', label: 'Plan Day'  },
-  { key: 'trips',     href: '/trips',     icon: '🗺️', label: 'Trips'     },
-  { key: 'profile',   href: '/profile',   icon: '👤', label: 'Profile'   },
+  { key: 'discover',  href: '/discover',   icon: '🧭', label: 'Discover'  },
+  { key: 'deals',     href: '/deals',      icon: '💡', label: 'Tips'      },
+  { key: 'plan-day',  href: '/plan/day',   icon: '☀️', label: 'Plan Day'  },
+  { key: 'plan-ask',  href: '/plan/ask',   icon: '🚗', label: 'Trip Ask'  },
+  { key: 'trips',     href: '/trips',      icon: '🗺️', label: 'Trips'     },
+  { key: 'profile',   href: '/profile',    icon: '👤', label: 'Profile'   },
 ] as const
 
 // ─── AppNav ───────────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ export default function AppNav() {
   function isActive(key: string): boolean {
     if (key === 'discover') return pathname === '/discover' && searchParams.get('search') !== '1'
     if (key === 'plan-day') return pathname.startsWith('/plan/day')
+    if (key === 'plan-ask') return pathname.startsWith('/plan/ask')
     return pathname.startsWith(`/${key}`)
   }
 
@@ -118,12 +120,12 @@ export default function AppNav() {
           <button
             key={tab.key}
             onClick={() => handleTab(tab.key, tab.href)}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5"
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1"
           >
-            <span className={`text-xl leading-none transition-opacity ${active ? 'opacity-100' : 'opacity-40'}`}>
+            <span className={`text-lg leading-none transition-opacity ${active ? 'opacity-100' : 'opacity-40'}`}>
               {tab.icon}
             </span>
-            <span className={`text-[9px] font-label tracking-widest uppercase transition-colors ${
+            <span className={`text-[8px] font-label tracking-wide uppercase transition-colors ${
               active ? 'text-[#C97552]' : 'text-[#6b5f54]'
             }`}>
               {tab.label}

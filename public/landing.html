@@ -32,23 +32,32 @@
 html,body{width:100%;overflow-x:hidden}
 html{scroll-behavior:smooth}
 
-/* ─── Tokens — pulled from the Wadi Rum photo palette ────────────────────
-   Canyon rust    #c97552   ← the exact colour of the sandstone walls
-   Desert sand    #e8d8c4   ← warm ochre of the canyon floor
-   Haze blue      #3a7bd5   ← the cool distant sky through the canyon mouth
-   Deep shadow    #1c1610   ← dark espresso — warm canyon interior, not cold navy
-   Pale dust      #f8f5f0   ← light catching the rock face
+/* ─── Tokens — Condé Nast / Monocle aesthetic ────────────────────────────
+   Photography leads. Light warm parchment. Dark editorial text.
+   Terracotta accent threads through everything.
+
+   Canyon rust    #c97552   ← unchanged — the hero accent
+   Parchment      #faf8f5   ← page background (warm off-white)
+   Warm card      #f2ede8   ← elevated surfaces
+   Deep surface   #ede6de   ← highest-contrast surface
+   Editorial ink  #1a1410   ← primary text (warm near-black)
+   Warm stone     #6b5f54   ← secondary / muted text
+   Hairline       #e8e0d6   ← borders and dividers
    ──────────────────────────────────────────────────────────────────────── */
 :root{
-  --white:    #f8f5f0;
-  --sand:     #e8d8c4;
-  --aegean:   #3a7bd5;
-  --aegean-d: #1d5fa8;
-  --terra:    #c97552;
-  --bloom:    #d4728a;
-  --ink:      #1c1610;
-  --ink-2:    rgba(28,22,16,.72);
-  --rule:     rgba(248,245,240,.18);
+  --bg-primary:   #faf8f5;
+  --bg-elevated:  #f2ede8;
+  --bg-surface:   #ede6de;
+  --text-primary: #1a1410;
+  --text-secondary:#6b5f54;
+  --border:       #e8e0d6;
+  --terra:        #c97552;
+  --sand:         #e8d8c4;
+  /* legacy aliases — used by boarding pass internals, keep as-is */
+  --white:        #faf8f5;
+  --ink:          #1a1410;
+  --ink-2:        rgba(26,20,16,.72);
+  --rule:         rgba(26,20,16,.12);
 }
 
 /* ─── Base typography ────────────────────────────────────────────────────
@@ -60,8 +69,8 @@ body{
   font-weight: 300;
   font-size: 17px;
   line-height: 1.65;
-  color: var(--white);
-  background: var(--ink);
+  color: var(--text-primary);
+  background: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -117,14 +126,13 @@ body{
   z-index:0;
 }
 
-/* Gradient — left uses deep warm canyon shadow for text legibility;
-   right breathes open letting the rust walls and hazy sky show through;
-   bottom grounds into the sandy desert floor */
+/* Gradient — left dark canyon shadow keeps headline legible;
+   bottom bleeds seamlessly into the parchment page below (no hard edge) */
 .hero-bg::after{
   content:"";position:absolute;inset:0;
   background:
-    linear-gradient(108deg, rgba(16,8,4,.85) 0%, rgba(13,20,28,.44) 46%, rgba(13,31,53,.05) 100%),
-    linear-gradient(to top, rgba(28,14,6,.52) 0%, transparent 44%);
+    linear-gradient(108deg, rgba(16,8,4,.85) 0%, rgba(13,20,28,.40) 48%, rgba(13,31,53,.04) 100%),
+    linear-gradient(to bottom, transparent 55%, #faf8f5 100%);
 }
 
 /* ─── NAV ──────────────────────────────────────────────────────────────── */
@@ -260,26 +268,37 @@ body{
   display:flex;gap:14px;flex-wrap:wrap;margin-top:40px;align-items:center;
 }
 
-/* Buttons — Raleway labels, very light weight */
+/* Buttons — hero context (over dark photo): cream on dark */
 .btn{
   display:inline-flex;align-items:center;gap:10px;
   padding:15px 28px;border-radius:999px;
   font-family:'Josefin Sans',sans-serif;
   font-weight:300;font-size:10px;letter-spacing:.26em;text-transform:uppercase;
   text-decoration:none;cursor:pointer;
-  border:1px solid var(--white);
-  background:var(--white);color:var(--ink);
+  border:1px solid rgba(250,248,245,.9);
+  background:rgba(250,248,245,.9);color:var(--text-primary);
   transition:transform .4s cubic-bezier(.2,.8,.2,1),background .3s,color .3s,border-color .3s;
 }
-.btn:hover{transform:translateY(-3px);background:var(--terra);border-color:var(--terra);color:var(--white)}
+.btn:hover{transform:translateY(-3px);background:var(--terra);border-color:var(--terra);color:#faf8f5}
 .btn .arr{display:inline-block;transition:transform .4s cubic-bezier(.2,.8,.2,1);font-size:12px}
 .btn:hover .arr{transform:translateX(5px)}
 .btn.ghost{
-  background:rgba(248,245,240,.08);
+  background:rgba(250,248,245,.1);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  color:var(--white);border-color:rgba(248,245,240,.35);
+  color:#faf8f5;border-color:rgba(250,248,245,.4);
 }
-.btn.ghost:hover{background:rgba(248,245,240,.18);border-color:rgba(248,245,240,.6)}
+.btn.ghost:hover{background:rgba(250,248,245,.2);border-color:rgba(250,248,245,.65)}
+/* Light-bg context: dark editorial button */
+.btn-editorial{
+  border-color:var(--text-primary);
+  background:var(--text-primary);color:var(--bg-primary);
+}
+.btn-editorial:hover{background:var(--terra);border-color:var(--terra);color:#faf8f5}
+.btn-editorial.ghost{
+  background:transparent;backdrop-filter:none;
+  border-color:var(--border);color:var(--text-secondary);
+}
+.btn-editorial.ghost:hover{background:var(--bg-elevated);border-color:var(--text-secondary);color:var(--text-primary)}
 
 .hero-footnote{
   margin-top:24px;
@@ -466,9 +485,9 @@ body{
    MARQUEE STRIP
 ═══════════════════════════════════════════════════════════════ */
 .strip{
-  background:rgba(248,245,240,.05);
-  border-top:1px solid rgba(248,245,240,.08);
-  border-bottom:1px solid rgba(248,245,240,.08);
+  background:var(--bg-elevated);
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
   overflow:hidden;
 }
 .strip-track{
@@ -477,7 +496,7 @@ body{
   font-weight:200;font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;
   white-space:nowrap;
   animation:marquee 55s linear infinite;
-  color:rgba(248,245,240,.4);
+  color:var(--text-secondary);
 }
 .strip-track span{display:inline-flex;align-items:center;gap:52px}
 .strip-track span::after{content:"·";color:var(--terra);opacity:.7;font-size:16px;line-height:0;vertical-align:-.1em}
@@ -492,11 +511,11 @@ body{
 .section-eyebrow{
   font-family:'Josefin Sans',sans-serif;
   font-weight:200;font-size:9.5px;letter-spacing:.34em;text-transform:uppercase;
-  color:rgba(248,245,240,.35);
+  color:var(--text-secondary);
   margin-bottom:20px;
   display:flex;align-items:center;gap:14px;
 }
-.section-eyebrow::before{content:"";width:36px;height:1px;background:rgba(248,245,240,.2)}
+.section-eyebrow::before{content:"";width:36px;height:1px;background:var(--border)}
 
 /* Section headline — Cormorant large italic */
 .section-title{
@@ -505,13 +524,13 @@ body{
   font-size:clamp(40px,5.5vw,72px);
   line-height:.95;
   letter-spacing:-.015em;
-  color:var(--white);
+  color:var(--text-primary);
   margin-bottom:60px;
   max-width:700px;
 }
 .section-title em{
   font-style:italic;
-  color:rgba(232,216,196,.85);
+  color:var(--terra);
 }
 
 /* Feature grid */
@@ -519,26 +538,26 @@ body{
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:1px;
-  background:rgba(248,245,240,.07);
-  border:1px solid rgba(248,245,240,.07);
+  background:var(--border);
+  border:1px solid var(--border);
   border-radius:14px;
   overflow:hidden;
+  box-shadow:0 2px 24px rgba(26,20,16,.06),0 1px 4px rgba(26,20,16,.04);
 }
 @media(max-width:860px){.feat-grid{grid-template-columns:1fr}}
 
 .feat-card{
   padding:40px 36px;
-  background:rgba(38,26,16,.7);
-  backdrop-filter:blur(4px);
+  background:var(--bg-elevated);
   transition:background .4s;
 }
-.feat-card:hover{background:rgba(50,34,20,.65)}
+.feat-card:hover{background:var(--bg-surface)}
 
 .feat-num{
   font-family:'Cormorant Garamond',serif;
   font-style:italic;font-weight:300;
   font-size:48px;line-height:1;
-  color:rgba(201,117,82,.35);
+  color:rgba(201,117,82,.4);
   margin-bottom:20px;
   display:block;
 }
@@ -547,14 +566,14 @@ body{
   font-weight:400;
   font-size:28px;line-height:1.1;
   letter-spacing:-.01em;
-  color:var(--white);
+  color:var(--text-primary);
   margin-bottom:14px;
 }
-.feat-title em{font-style:italic;color:var(--sand)}
+.feat-title em{font-style:italic;color:var(--terra)}
 .feat-body{
   font-family:'Raleway',sans-serif;
   font-weight:300;font-size:15px;line-height:1.75;
-  color:rgba(248,245,240,.55);
+  color:var(--text-secondary);
   letter-spacing:.01em;
 }
 
@@ -565,21 +584,22 @@ body{
   text-align:center;
   padding:100px 52px 120px;
   position:relative;
-  border-top:1px solid rgba(248,245,240,.06);
+  background:var(--bg-elevated);
+  border-top:1px solid var(--border);
 }
 
-/* Faint canyon warmth behind CTA — terracotta glow, not Aegean blue */
+/* Faint terracotta warmth — barely visible radial on parchment */
 .cta-section::before{
   content:"";position:absolute;inset:0;
   background:
-    radial-gradient(ellipse 60% 70% at 50% 50%, rgba(201,117,82,.07), transparent 70%);
+    radial-gradient(ellipse 60% 70% at 50% 50%, rgba(201,117,82,.05), transparent 70%);
   pointer-events:none;
 }
 
 .cta-eyebrow{
   font-family:'Josefin Sans',sans-serif;
   font-weight:200;font-size:9.5px;letter-spacing:.38em;text-transform:uppercase;
-  color:rgba(248,245,240,.3);
+  color:var(--text-secondary);
   margin-bottom:28px;
 }
 
@@ -590,16 +610,16 @@ body{
   font-size:clamp(60px,10vw,140px);
   line-height:.88;
   letter-spacing:-.03em;
-  color:var(--white);
+  color:var(--text-primary);
   max-width:1000px;
   margin:0 auto;
 }
-.cta-h2 em{font-style:italic;color:var(--sand)}
+.cta-h2 em{font-style:italic;color:var(--terra)}
 
 .cta-sub{
   font-family:'Raleway',sans-serif;
   font-weight:300;font-size:17px;line-height:1.7;
-  color:rgba(248,245,240,.5);
+  color:var(--text-secondary);
   max-width:440px;margin:32px auto 0;
   letter-spacing:.01em;
 }
@@ -613,19 +633,20 @@ body{
   margin-top:28px;
   font-family:'Josefin Sans',sans-serif;
   font-weight:200;font-size:9px;letter-spacing:.3em;text-transform:uppercase;
-  color:rgba(248,245,240,.22);
+  color:rgba(107,95,84,.4);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    FOOTER
 ═══════════════════════════════════════════════════════════════ */
 footer{
-  border-top:1px solid rgba(248,245,240,.07);
+  border-top:1px solid var(--border);
   padding:28px 52px;
   display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
   font-family:'Josefin Sans',sans-serif;
   font-weight:200;font-size:9px;letter-spacing:.26em;text-transform:uppercase;
-  color:rgba(248,245,240,.25);
+  color:var(--text-secondary);
+  background:var(--bg-primary);
 }
 @media(max-width:720px){footer{padding:24px;flex-direction:column;gap:10px;text-align:center}}
 
@@ -701,9 +722,9 @@ footer{
 .gem-strip-headline{
   font-family:'Cormorant Garamond',serif;font-weight:400;
   font-size:clamp(24px,3vw,34px);line-height:1.15;letter-spacing:-.01em;
-  color:var(--white);flex:1;min-width:200px;
+  color:var(--text-primary);flex:1;min-width:200px;
 }
-.gem-strip-headline em{font-style:italic;color:var(--sand)}
+.gem-strip-headline em{font-style:italic;color:var(--terra)}
 .gem-scale{
   display:flex;flex-direction:column;gap:10px;
   flex-shrink:0;
@@ -718,11 +739,11 @@ footer{
   width:8px;height:8px;border-radius:50%;flex-shrink:0;
 }
 .gem-dot.on{background:#C97552}
-.gem-dot.off{background:rgba(248,245,240,.12)}
+.gem-dot.off{background:var(--border)}
 .gem-row-label{
   font-family:'Josefin Sans',sans-serif;font-weight:300;
   font-size:12px;letter-spacing:.06em;
-  color:rgba(248,245,240,.45);
+  color:var(--text-secondary);
   white-space:nowrap;
 }
 
@@ -741,12 +762,12 @@ footer{
 .step-title{
   font-family:'Cormorant Garamond',serif;font-weight:400;
   font-size:26px;line-height:1.15;letter-spacing:-.01em;
-  color:var(--white);margin-bottom:12px;
+  color:var(--text-primary);margin-bottom:12px;
 }
-.step-title em{font-style:italic;color:var(--sand)}
+.step-title em{font-style:italic;color:var(--terra)}
 .step-body{
   font-family:'Raleway',sans-serif;font-weight:300;
-  font-size:15px;line-height:1.78;color:rgba(248,245,240,.5);letter-spacing:.01em;
+  font-size:15px;line-height:1.78;color:var(--text-secondary);letter-spacing:.01em;
 }
 .step-arrow{
   display:flex;align-items:flex-start;justify-content:center;
@@ -758,74 +779,75 @@ footer{
 /* ─── Stats bar ──────────────────────────────────────────────────────────── */
 .stat-bar{
   display:flex;justify-content:center;flex-wrap:wrap;gap:0;
-  border-top:1px solid rgba(248,245,240,.06);
-  border-bottom:1px solid rgba(248,245,240,.06);
-  background:rgba(248,245,240,.02);
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  background:var(--bg-elevated);
 }
 .stat-bar-item{
   flex:1;min-width:160px;
   padding:32px 28px;
   text-align:center;
-  border-right:1px solid rgba(248,245,240,.06);
+  border-right:1px solid var(--border);
 }
 .stat-bar-item:last-child{border-right:none}
 .stat-bar-num{
   font-family:'Cormorant Garamond',serif;font-weight:300;font-style:italic;
   font-size:42px;line-height:1;letter-spacing:-.02em;
-  color:var(--sand);display:block;margin-bottom:6px;
+  color:var(--terra);display:block;margin-bottom:6px;
 }
 .stat-bar-label{
   font-family:'Josefin Sans',sans-serif;font-weight:200;
   font-size:9px;letter-spacing:.28em;text-transform:uppercase;
-  color:rgba(248,245,240,.35);
+  color:var(--text-secondary);
 }
 
 /* ─── Pricing ────────────────────────────────────────────────────────────── */
 .pricing-grid{
   display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
-  background:rgba(248,245,240,.07);
-  border:1px solid rgba(248,245,240,.07);border-radius:14px;overflow:hidden;
+  background:var(--border);
+  border:1px solid var(--border);border-radius:14px;overflow:hidden;
   max-width:1060px;margin:0 auto;
+  box-shadow:0 2px 24px rgba(26,20,16,.06),0 1px 4px rgba(26,20,16,.04);
 }
 @media(max-width:860px){.pricing-grid{grid-template-columns:1fr}}
-.pricing-card{padding:44px 38px;background:rgba(38,26,16,.55)}
-.pricing-card.pro{background:rgba(58,123,213,.09)}
+.pricing-card{padding:44px 38px;background:var(--bg-elevated)}
+.pricing-card.pro{background:var(--bg-surface);border-top:2px solid var(--terra)}
 .pricing-tier{
   font-family:'Josefin Sans',sans-serif;font-weight:200;
   font-size:8px;letter-spacing:.32em;text-transform:uppercase;
-  color:rgba(248,245,240,.35);display:block;margin-bottom:8px;
+  color:var(--text-secondary);display:block;margin-bottom:8px;
 }
 .pricing-plan{
   font-family:'Cormorant Garamond',serif;font-weight:400;
-  font-size:28px;letter-spacing:-.01em;color:var(--white);margin-bottom:4px;
+  font-size:28px;letter-spacing:-.01em;color:var(--text-primary);margin-bottom:4px;
 }
 .pricing-price{
   font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
   font-size:54px;line-height:1.1;letter-spacing:-.02em;
-  color:var(--sand);margin:14px 0 22px;display:block;
+  color:var(--terra);margin:14px 0 22px;display:block;
 }
-.pricing-price small{font-size:16px;font-style:normal;color:rgba(248,245,240,.38);letter-spacing:0}
+.pricing-price small{font-size:16px;font-style:normal;color:var(--text-secondary);letter-spacing:0}
 .pricing-features{list-style:none;display:flex;flex-direction:column;gap:11px}
 .pricing-features li{
   font-family:'Raleway',sans-serif;font-weight:300;font-size:14px;
-  color:rgba(248,245,240,.58);display:flex;align-items:center;gap:10px;
+  color:var(--text-secondary);display:flex;align-items:center;gap:10px;
   letter-spacing:.01em;
 }
-.pricing-features li::before{content:"—";color:rgba(201,117,82,.55);flex-shrink:0}
+.pricing-features li::before{content:"—";color:var(--terra);opacity:.7;flex-shrink:0}
 .pricing-cta-btn{
   display:inline-flex;align-items:center;gap:8px;
   margin-top:30px;padding:13px 26px;border-radius:999px;
   font-family:'Josefin Sans',sans-serif;font-weight:300;
   font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;
   text-decoration:none;cursor:pointer;
-  border:1px solid rgba(248,245,240,.25);color:var(--white);
-  background:rgba(248,245,240,.08);transition:background .3s;
+  border:1px solid var(--border);color:var(--text-primary);
+  background:transparent;transition:background .3s,border-color .3s;
 }
-.pricing-cta-btn:hover{background:rgba(248,245,240,.18)}
+.pricing-cta-btn:hover{background:var(--bg-surface);border-color:var(--text-secondary)}
 .pro .pricing-cta-btn{
-  background:rgba(58,123,213,.25);border-color:rgba(58,123,213,.5);
+  background:var(--terra);border-color:var(--terra);color:#faf8f5;
 }
-.pro .pricing-cta-btn:hover{background:rgba(58,123,213,.4)}
+.pro .pricing-cta-btn:hover{background:#b86642;border-color:#b86642}
 
 /* ─── Scroll reveal ──────────────────────────────────────────────────────── */
 .reveal{opacity:0;transform:translateY(28px);transition:opacity 1s ease,transform 1s cubic-bezier(.2,.8,.2,1)}

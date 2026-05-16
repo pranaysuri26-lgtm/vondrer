@@ -66,6 +66,77 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+// ─── Hero image carousel ──────────────────────────────────────────────────────
+
+function HeroCarousel({ destination, country }: { destination: string; country: string }) {
+  const [images,    setImages]    = useState<string[]>([])
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [loaded,    setLoaded]    = useState<boolean[]>([])
+  useEffect(() => {
+    const q = `${destination} ${country} travel landscape`.trim()
+    fetch(`/api/destination-image?q=${encodeURIComponent(q)}&count=4`)
+      .then(r => r.json())
+      .then(d => {
+        const urls: string[] = (d.urls ?? (d.url ? [d.url] : [])).filter(Boolean)
+        setImages(urls)
+        setLoaded(urls.map(() => false))
+      })
+      .catch(() => {})
+  }, [destination, country])
+
+  // Auto-cycle every 4 s
+  useEffect(() => {
+    if (images.length <= 1) return
+    const id = setInterval(() => setActiveIdx(i => (i + 1) % images.length), 4000)
+    return () => clearInterval(id)
+  }, [images.length])
+
+  const isEmpty = images.length === 0
+
+  return (
+    <div
+      className="relative w-full h-64 md:h-80 overflow-hidden rounded-2xl mb-8"
+      style={isEmpty ? { background: 'linear-gradient(135deg,#D8D0C4,#EDE5D8)' } : undefined}
+    >
+      {/* Shimmer while loading */}
+      {isEmpty && <div className="absolute inset-0 animate-pulse bg-[#E2D8CC]" />}
+
+      {/* Images with crossfade */}
+      {images.map((url, i) => (
+        <img
+          key={url}
+          src={url}
+          alt={`${destination} ${i + 1}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1200ms] ${
+            i === activeIdx && loaded[i] ? 'opacity-100' : 'opacity-0'
+          }`}
+          loading="eager"
+          onLoad={() => setLoaded(prev => { const next = [...prev]; next[i] = true; return next })}
+          onError={() => setImages(prev => prev.filter((_, j) => j !== i))}
+        />
+      ))}
+
+      {/* Bottom gradient so text below reads cleanly */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
+
+      {/* Dot indicators */}
+      {images.length > 1 && (
+        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveIdx(i)}
+              className={`rounded-full transition-all duration-300 ${
+                i === activeIdx ? 'w-3 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/70'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Airport card ─────────────────────────────────────────────────────────────
 
 function AirportCard({ airport }: { airport: GuideAirport }) {
@@ -222,6 +293,9 @@ function GuideContent() {
 
       {!loading && !error && guide && (
         <div className="max-w-2xl mx-auto px-5 pb-16 space-y-12">
+
+          {/* Hero image carousel */}
+          <HeroCarousel destination={displayCity || destination} country={country} />
 
           {/* Intro */}
           <p className="text-[#5C564E] text-base leading-relaxed font-light">

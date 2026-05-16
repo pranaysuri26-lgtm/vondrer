@@ -6,20 +6,21 @@
 <title>Voya — Find places most apps will never show you</title>
 
 <!--
-  FONT RATIONALE — matched to the Santorini photo:
+  FONT RATIONALE — matched to the Wadi Rum hero photo:
 
-  Cormorant Garamond   → ultra-thin romantic serifs, like the white-washed walls
-                         and carved marble of Greek architecture. High contrast
-                         hairline strokes = Mediterranean elegance.
+  Cormorant Garamond   → ultra-thin romantic serifs that feel carved — like the
+                         wind-worn sandstone of the canyon walls. High-contrast
+                         hairline strokes echo the geology: drama + precision.
 
-  Raleway              → clean, airy geometric sans. Wide-open letterforms like
-                         the Aegean sky. Light weights feel like a sea breeze.
+  Raleway              → clean, airy geometric sans. Wide letterforms like the
+                         desert horizon. Light weights feel like open space.
 
   Josefin Sans         → geometric Art Deco sans, perfect for small-cap labels
-                         and eyebrows. The "carved stone inscription" of the three.
+                         and eyebrows. The "carved rock inscription" of the three.
 
   NOT Fraunces / NOT JetBrains Mono — those are editorial/newspaper energy.
-  This page is: boutique hotel on a cliff, sunlight on whitewash, slow afternoon.
+  This page is: two people walking into the unknown, terracotta canyon walls,
+  haze on the horizon, the feeling of a place most people will never find.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,13 +32,12 @@
 html,body{width:100%;overflow-x:hidden}
 html{scroll-behavior:smooth}
 
-/* ─── Tokens — pulled from the photo palette ─────────────────────────────
-   Aegean blue    #3a7bd5 / #1d5fa8
-   Terracotta     #c97552
-   Bougainvillea  #d4728a
-   Whitewash      #f8f5f0
-   Sand / warm    #e8d8c4
-   Deep night sea #0d1f35
+/* ─── Tokens — pulled from the Wadi Rum photo palette ────────────────────
+   Canyon rust    #c97552   ← the exact colour of the sandstone walls
+   Desert sand    #e8d8c4   ← warm ochre of the canyon floor
+   Haze blue      #3a7bd5   ← the cool distant sky through the canyon mouth
+   Deep shadow    #0d1f35   ← the dark canyon interior, pre-dawn
+   Pale dust      #f8f5f0   ← light catching the rock face
    ──────────────────────────────────────────────────────────────────────── */
 :root{
   --white:    #f8f5f0;
@@ -108,21 +108,23 @@ body{
   overflow:hidden;
 }
 
-/* Background — warm Santorini: whitewashed walls, Aegean blue, late afternoon light */
+/* Background — Wadi Rum canyon: rust sandstone walls, sandy floor, two figures, hazy horizon */
 .hero-bg{
   position:absolute;inset:0;
-  background-image:url("https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=1920&q=90&fit=crop");
+  background-image:url("https://images.unsplash.com/photo-1580204745408-9c18ddb64978?w=1920&q=90&fit=crop");
   background-size:cover;
-  background-position:center 20%;
+  background-position:center 45%;
   z-index:0;
 }
 
-/* Light gradient — left dark enough for text, right lets warm photo breathe */
+/* Gradient — left uses deep warm canyon shadow for text legibility;
+   right breathes open letting the rust walls and hazy sky show through;
+   bottom grounds into the sandy desert floor */
 .hero-bg::after{
   content:"";position:absolute;inset:0;
   background:
-    linear-gradient(108deg, rgba(13,31,53,.78) 0%, rgba(13,31,53,.42) 46%, rgba(13,31,53,.06) 100%),
-    linear-gradient(to top, rgba(13,31,53,.38) 0%, transparent 42%);
+    linear-gradient(108deg, rgba(16,8,4,.85) 0%, rgba(13,20,28,.44) 46%, rgba(13,31,53,.05) 100%),
+    linear-gradient(to top, rgba(28,14,6,.52) 0%, transparent 44%);
 }
 
 /* ─── NAV ──────────────────────────────────────────────────────────────── */
@@ -1151,7 +1153,7 @@ footer{
       <div class="reveal">
         <span class="step-num">01</span>
         <h3 class="step-title">Tell us who <em>you are.</em></h3>
-        <p class="step-body">Five questions. Your budget, your pace, what kind of beauty moves you. Delhi on ₹800 a day or a Santorini suite — Voya doesn't judge. It listens.</p>
+        <p class="step-body">Five questions. Your budget, your pace, what kind of beauty moves you. Delhi on ₹800 a day or a private camp under Wadi Rum stars — Voya doesn't judge. It listens.</p>
       </div>
       <div class="step-arrow reveal">→</div>
       <div class="reveal">

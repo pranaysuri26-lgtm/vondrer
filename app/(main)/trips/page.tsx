@@ -225,14 +225,22 @@ export default function TripsPage() {
             <div className="text-5xl mb-4">🗺️</div>
             <h2 className="text-white font-semibold text-lg mb-2">No trips yet</h2>
             <p className="text-white/40 text-sm max-w-xs mx-auto leading-relaxed mb-8">
-              Explore destinations and let the AI plan your perfect trip.
+              Pick your destinations and we'll build a day-by-day itinerary — flights, hotels, everything.
             </p>
             <button
-              onClick={() => router.push('/discover')}
-              className="bg-[#C97552] text-white text-sm font-semibold px-6 py-3.5 rounded-full hover:bg-[#b86644] transition-colors"
+              onClick={() => router.push('/plan/new')}
+              className="bg-[#C97552] text-white text-sm font-semibold px-6 py-3.5 rounded-full hover:bg-[#b86644] transition-colors mb-4"
             >
-              Explore destinations →
+              Plan your first trip →
             </button>
+            <div>
+              <button
+                onClick={() => router.push('/discover')}
+                className="text-white/35 text-sm hover:text-white/55 transition-colors"
+              >
+                Browse destinations first →
+              </button>
+            </div>
           </div>
         )}
 

@@ -32,7 +32,7 @@ interface FormData {
 
 // ─── Step config ──────────────────────────────────────────────────────────────
 
-const ONBOARDING_STEPS: Step[] = ['location', 'budget', 'duration', 'group', 'interests', 'dietary', 'offbeat', 'timing', 'past_trips']
+const ONBOARDING_STEPS: Step[] = ['location', 'budget', 'duration', 'group', 'interests', 'offbeat', 'past_trips']
 
 // ─── Dynamic timing options ───────────────────────────────────────────────────
 
@@ -222,11 +222,9 @@ export default function SignupPage() {
       case 'duration':   return !!form.duration
       case 'group':      return !!form.group_type
       case 'interests':  return form.interests.length >= 1
-      case 'dietary':    return true  // optional step — always skippable
+      case 'dietary':    return true  // kept for profile editing
       case 'offbeat':    return true
-      case 'timing':     return !!form.trip_timing && (
-                           form.trip_timing !== 'specific' || (!!form.date_from && !!form.date_to)
-                         )
+      case 'timing':     return true  // kept for profile editing
       case 'past_trips': return true
       default:           return false
     }

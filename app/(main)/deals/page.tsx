@@ -101,7 +101,7 @@ export default function DealsPage() {
       <div className="min-h-screen bg-[#0d1f35] flex flex-col items-center justify-center gap-4">
         <div className="w-8 h-8 rounded-full border border-[#C97552]/40"
           style={{ animation: 'spin 2s linear infinite' }} />
-        <p className="text-white/40 text-sm">Loading today's deals…</p>
+        <p className="text-white/40 text-sm">Loading today's tips…</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
@@ -127,7 +127,7 @@ export default function DealsPage() {
         {/* Header */}
         <div className="mb-8">
           <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">
-            Travel deals
+            Travel tips
             {cached
               ? <span className="ml-2 text-[#C97552]/50">· updated today</span>
               : <span className="ml-2 text-white/25">· fresh now</span>
@@ -135,15 +135,15 @@ export default function DealsPage() {
             {country && <span className="ml-2 text-white/20">· {country}</span>}
           </p>
           <h1 className="font-serif italic text-4xl text-white leading-tight">
-            What's running
+            Offers &amp; tips
             <br />
-            <span className="text-white/50">right now.</span>
+            <span className="text-white/50">for right now.</span>
           </h1>
           <p className="text-white/35 text-sm mt-3">
             Flight promotions, hotel offers, card bonuses, and travel news — curated daily for your country. Free for every user.
           </p>
           <p className="text-white/20 text-xs mt-3">
-            Deals are AI-curated and updated daily. Verify details directly with the provider before booking.
+            AI-curated and updated daily. Always verify details directly with the provider before booking.
           </p>
         </div>
 

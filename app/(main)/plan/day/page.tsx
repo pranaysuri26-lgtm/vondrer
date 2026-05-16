@@ -119,6 +119,8 @@ export default function PlanDayPage() {
   const [weather,   setWeather]   = useState<DayWeather | null>(null)
   const [location,  setLocation]  = useState('')
   const [homeCityData, setHomeCityData] = useState<{ home_city?: string; group_type?: string } | null>(null)
+  const [saved,     setSaved]     = useState(false)
+  const [saving,    setSaving]    = useState(false)
 
   // Load home city from onboarding
   useEffect(() => {
@@ -171,12 +173,36 @@ export default function PlanDayPage() {
       setPlan(data.plan)
       setWeather(data.weather)
       setLocation(data.location)
+      setSaved(false)
       setPhase('result')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Something went wrong')
       setPhase('input')
     }
   }, [place, date, homeCityData])
+
+  const handleSave = useCallback(async () => {
+    if (!plan || !weather || saving || saved) return
+    setSaving(true)
+    try {
+      const supabase = getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      await supabase.from('saved_day_plans').insert({
+        user_id:          user.id,
+        place:            place.trim(),
+        date,
+        location_display: location,
+        plan:             plan,
+        weather:          weather,
+      })
+      setSaved(true)
+    } catch (e) {
+      console.error('[save day plan]', e)
+    } finally {
+      setSaving(false)
+    }
+  }, [plan, weather, place, date, location, saving, saved])
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (phase === 'loading') {
@@ -199,12 +225,26 @@ export default function PlanDayPage() {
 
           {/* Header */}
           <div className="mb-6">
-            <button
-              onClick={() => setPhase('input')}
-              className="text-white/35 text-xs hover:text-white/60 transition-colors mb-4 flex items-center gap-1"
-            >
-              ← New plan
-            </button>
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => setPhase('input')}
+                className="text-white/35 text-xs hover:text-white/60 transition-colors flex items-center gap-1"
+              >
+                ← New plan
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${
+                  saved
+                    ? 'border-[#C97552]/40 bg-[#C97552]/15 text-[#C97552]'
+                    : 'border-white/15 text-white/45 hover:border-white/30 hover:text-white/70'
+                }`}
+              >
+                <span>{saved ? '✓' : '🔖'}</span>
+                <span>{saving ? 'Saving…' : saved ? 'Saved' : 'Save plan'}</span>
+              </button>
+            </div>
             <p className="text-[#C97552]/70 text-[11px] font-label tracking-widest uppercase mb-1">
               {formatDateLabel(date)}
             </p>

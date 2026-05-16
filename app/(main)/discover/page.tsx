@@ -858,6 +858,53 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
   )
 }
 
+// ─── Card thumbnail (collapsed state) ────────────────────────────────────────
+
+function CardThumbnail({ dest }: { dest: RecommendedDestination }) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    const cacheKey = `${dest.name}::${dest.country}`
+    if (imgSessionCache.has(cacheKey)) {
+      const cached = imgSessionCache.get(cacheKey)!
+      if (cached.length > 0) { setImgUrl(cached[0]); return }
+    }
+    const q = `${dest.name} ${dest.country} travel`
+    fetch(`/api/destination-image?q=${encodeURIComponent(q)}&count=4`)
+      .then(r => r.json())
+      .then(d => {
+        const urls: string[] = (d.urls ?? (d.url ? [d.url] : [])).filter(Boolean)
+        imgSessionCache.set(cacheKey, urls)
+        if (urls.length > 0) setImgUrl(urls[0])
+      })
+      .catch(() => {})
+  }, [dest.name, dest.country])
+
+  const fallback = getFallbackGradient(dest)
+
+  return (
+    <div
+      className="relative h-36 overflow-hidden"
+      style={!imgUrl ? { background: fallback } : undefined}
+    >
+      {imgUrl && (
+        <img
+          src={imgUrl}
+          alt={dest.name}
+          className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-80' : 'opacity-0'}`}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          onError={() => setImgUrl(null)}
+        />
+      )}
+      {!imgUrl && <div className="absolute inset-0 animate-pulse bg-white/3" />}
+      {/* Gradient scrim from bottom so card text reads cleanly */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#0d1f35]" />
+    </div>
+  )
+}
+
 // ─── Destination card (expandable) ───────────────────────────────────────────
 
 function DestinationCard({
@@ -890,6 +937,19 @@ function DestinationCard({
             : 'border-white/12 bg-white/5 hover:border-[#C97552]/40 hover:bg-white/7'
         }`}
     >
+      {/* Thumbnail — shows when collapsed; unlocked cards load real photo, locked show gradient */}
+      {!expanded && !locked && <CardThumbnail dest={dest} />}
+      {!expanded && locked && (
+        <div className="relative h-24 overflow-hidden" style={{ background: 'linear-gradient(135deg,#1a2535,#0d1f35)' }}>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <svg className="w-6 h-6 text-white/8" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+            </svg>
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d1f35]/80" />
+        </div>
+      )}
+
       {/* ── Collapsed view ── */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
@@ -1500,23 +1560,23 @@ export default function DiscoverPage() {
       <div className="relative overflow-hidden mb-2">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80&auto=format')", opacity: 0.2 }}
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80&auto=format')", opacity: 0.35 }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/50 via-[#0d1f35]/70 to-[#0d1f35]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/30 via-[#0d1f35]/60 to-[#0d1f35]" />
 
-        <div className="relative max-w-2xl mx-auto px-4 pt-8 pb-6">
+        <div className="relative max-w-2xl mx-auto px-4 pt-12 pb-8">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">Your results</p>
-              <h1 className="font-serif italic text-4xl text-white leading-tight">
+              <p className="text-xs text-white/40 uppercase tracking-widest font-label mb-3">Your results</p>
+              <h1 className="font-serif italic text-5xl text-white leading-tight">
                 {destinations.length} destinations
                 <br />
-                <span className="text-white/50">matched your profile</span>
+                <span className="text-white/45">matched your profile</span>
               </h1>
             </div>
             <a
               href="/plan/new"
-              className="hidden md:flex items-center gap-2 flex-shrink-0 bg-[#C97552] text-white text-sm font-medium px-4 py-2.5 rounded-full hover:bg-[#b86644] transition-colors mt-2 shadow-lg shadow-[#C97552]/20"
+              className="hidden md:flex items-center gap-2 flex-shrink-0 bg-[#C97552] text-white text-sm font-semibold px-5 py-3 rounded-full hover:bg-[#b86644] transition-colors mt-2 shadow-lg shadow-[#C97552]/25"
             >
               🗺️ Plan a trip
             </a>

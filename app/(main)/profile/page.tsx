@@ -290,6 +290,7 @@ export default function ProfilePage() {
 
     setSaving(false)
     setSaved(true)
+    router.push('/discover')
   }, [profile, router])
 
   const handleSignOut = useCallback(async () => {

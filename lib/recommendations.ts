@@ -945,7 +945,7 @@ ${offbeatVerificationBlock}
     If timing_score is 1 AND the destination is completely inaccessible during travel window AND you
     have 8+ viable alternatives, exclude the destination entirely rather than including it at any score.
 - upcoming_event: festival or event within the traveller's travel window. null if none relevant.
-- Return MINIMUM 8, MAXIMUM 12 destinations. Never fewer than 8.
+- Return MINIMUM 12, MAXIMUM 16 destinations. Never fewer than 12.
 - Never suggest a destination the traveller has already visited.
 - personalization_note: ONE short italic line connecting this specific destination to THIS specific traveller's profile. Not generic praise — a direct connection to their home city, budget, group type, or interests.
   Examples:
@@ -1206,7 +1206,7 @@ ${offbeatModeRules}
 - Hidden gem scores calibrated to what is genuinely obscure from ${homeLocation}, not globally
 - Budget is a hard constraint on ground costs. Flight costs are separate
 - Apply companion awareness for ${onboarding.group_type} travel style
-- Return 8–12 destinations`
+- Return 12–16 destinations`
 
   return { system, user }
 }
@@ -1229,7 +1229,7 @@ export function validateResponse(raw: string): RecommendedDestination[] {
         }
       } catch { /* not valid JSON on this line */ }
     }
-    if (ndjson.length >= 8) return ndjson.slice(0, 12)
+    if (ndjson.length >= 12) return ndjson.slice(0, 16)
   }
 
   // ── Fallback: JSON array format ───────────────────────────────────────────
@@ -1237,10 +1237,10 @@ export function validateResponse(raw: string): RecommendedDestination[] {
   if (!parsed.destinations || !Array.isArray(parsed.destinations)) {
     throw new Error('Response missing destinations array')
   }
-  if (parsed.destinations.length < 8) {
-    throw new Error(`Insufficient destinations: got ${parsed.destinations.length}, need at least 8`)
+  if (parsed.destinations.length < 12) {
+    throw new Error(`Insufficient destinations: got ${parsed.destinations.length}, need at least 12`)
   }
-  return parsed.destinations.slice(0, 12)
+  return parsed.destinations.slice(0, 16)
 }
 
 // ─── Server-side geographic scope filter ──────────────────────────────────────

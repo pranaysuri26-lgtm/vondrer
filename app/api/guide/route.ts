@@ -185,14 +185,33 @@ No markdown. No explanation before or after. Just the JSON object.`
 
 export async function POST(req: NextRequest) {
   try {
-    const { destination, country, state_province } = await req.json() as {
+    const body = await req.json() as {
       destination:    string
-      country:        string
+      country?:       string
       state_province?: string
     }
 
-    if (!destination || !country) {
-      return NextResponse.json({ error: 'destination and country required' }, { status: 400 })
+    if (!body.destination?.trim()) {
+      return NextResponse.json({ error: 'destination required' }, { status: 400 })
+    }
+
+    // If country is missing, try to infer it from the destination string.
+    // e.g. "Kota, Rajasthan, India" → country = "India", destination = "Kota"
+    let destination   = body.destination.trim()
+    let country       = body.country?.trim() ?? ''
+    let state_province = body.state_province?.trim()
+
+    if (!country) {
+      const parts = destination.split(',').map(p => p.trim()).filter(Boolean)
+      if (parts.length >= 2) {
+        destination    = parts[0]
+        country        = parts[parts.length - 1]
+        state_province = state_province ?? (parts.length >= 3 ? parts[parts.length - 2] : undefined)
+      } else {
+        // Last resort — pass full string as destination, leave country blank
+        // GPT can still generate a guide with partial info
+        country = destination
+      }
     }
 
     // ── Supabase client (anon key — no auth required for guide cache) ──────────

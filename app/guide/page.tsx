@@ -129,9 +129,16 @@ function AirportCard({ airport }: { airport: GuideAirport }) {
 function GuideContent() {
   const params         = useSearchParams()
   const router         = useRouter()
-  const destination    = params.get('q')?.trim()    ?? ''
+  const rawQuery       = params.get('q')?.trim()    ?? ''
   const country        = params.get('c')?.trim()    ?? ''
   const stateProv      = params.get('s')?.trim()    ?? ''
+
+  // If no explicit country param, the user typed a full string like "Kota, Rajasthan, India".
+  // Show just the first part as the city name in the header.
+  const destination    = rawQuery
+  const displayCity    = !country && rawQuery.includes(',')
+    ? rawQuery.split(',')[0].trim()
+    : rawQuery
 
   const [guide,  setGuide]  = useState<LocalGuide | null>(null)
   const [loading, setLoading] = useState(true)
@@ -193,17 +200,21 @@ function GuideContent() {
           Local Intel
         </p>
         <h1 className="font-serif italic text-4xl text-white leading-tight mb-1">
-          {destination || 'Your destination'}
+          {displayCity || 'Your destination'}
         </h1>
-        {(stateProv || country) && (
+        {(stateProv || country) ? (
           <p className="text-white/35 text-sm">
             {stateProv ? `${stateProv}, ${country}` : country}
           </p>
-        )}
+        ) : rawQuery.includes(',') ? (
+          <p className="text-white/35 text-sm">
+            {rawQuery.split(',').slice(1).join(',').trim()}
+          </p>
+        ) : null}
         <div className="w-8 h-px bg-white/12 mt-5" />
       </div>
 
-      {loading && <LoadingState destination={destination} />}
+      {loading && <LoadingState destination={displayCity || destination} />}
 
       {error && (
         <div className="max-w-2xl mx-auto px-5 py-10 text-center space-y-4">

@@ -1,1533 +1,933 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Voya — Find places most apps will never show you</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voya - AI Travel Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"Playfair Display"', 'Georgia', 'serif'],
+            sans: ['"Outfit"', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Outfit', system-ui, sans-serif; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Playfair Display', Georgia, serif; }
 
-<!--
-  FONT RATIONALE — matched to the Wadi Rum hero photo:
+    /* ── Boarding pass float ── */
+    @keyframes passFloat {
+      0%,100% { transform: translateY(0) rotate(.3deg); }
+      50%      { transform: translateY(-10px) rotate(-.2deg); }
+    }
+    .pass-float { animation: passFloat 7s ease-in-out infinite; }
 
-  Cormorant Garamond   → ultra-thin romantic serifs that feel carved — like the
-                         wind-worn sandstone of the canyon walls. High-contrast
-                         hairline strokes echo the geology: drama + precision.
+    /* ── Pass card — LANDSCAPE like a real boarding pass ── */
+    .pass-card {
+      background: #EDE5D8;
+      border-radius: 14px;
+      position: relative;
+      overflow: hidden;
+      color: #1a0e08;
+      display: flex;          /* horizontal layout */
+      flex-direction: row;
+      box-shadow:
+        0 48px 100px rgba(13,31,53,.50),
+        0 18px 44px rgba(13,31,53,.32),
+        0 5px 14px rgba(13,31,53,.18),
+        inset 0 1px 0 rgba(255,255,255,.9),
+        inset 0 -1px 0 rgba(13,31,53,.06);
+      width: 560px;
+    }
+    /* Paper grain */
+    .pass-card::before {
+      content: "";
+      position: absolute; inset: 0; border-radius: 14px; pointer-events: none; z-index: 1;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      opacity: .8;
+    }
+    .pass-card > * { position: relative; z-index: 2; }
 
-  Raleway              → clean, airy geometric sans. Wide letterforms like the
-                         desert horizon. Light weights feel like open space.
+    /* Left main body */
+    .pass-body {
+      flex: 1;
+      padding: 20px 22px 18px 22px;
+      display: flex; flex-direction: column; gap: 0;
+      position: relative;
+    }
 
-  Josefin Sans         → geometric Art Deco sans, perfect for small-cap labels
-                         and eyebrows. The "carved rock inscription" of the three.
+    /* Vertical tear — right side notch cutouts */
+    .pass-vtear {
+      width: 1px; flex-shrink: 0;
+      border-left: 1.5px dashed rgba(13,31,53,.2);
+      position: relative; z-index: 3; margin: 0;
+    }
+    .pass-vtear::before,
+    .pass-vtear::after {
+      content: ""; position: absolute; left: 50%; transform: translateX(-50%);
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #EDE5D8;
+      border: 1.5px dashed rgba(13,31,53,.2);
+      z-index: 4;
+    }
+    .pass-vtear::before { top: -8px; }
+    .pass-vtear::after  { bottom: -8px; }
 
-  NOT Fraunces / NOT JetBrains Mono — those are editorial/newspaper energy.
-  This page is: two people walking into the unknown, terracotta canyon walls,
-  haze on the horizon, the feeling of a place most people will never find.
--->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;1,300;1,400&family=Josefin+Sans:wght@200;300;400&display=swap" rel="stylesheet">
+    /* Right stub */
+    .pass-stub {
+      width: 148px; flex-shrink: 0;
+      padding: 20px 18px 18px;
+      display: flex; flex-direction: column;
+      background: rgba(13,31,53,.03);
+    }
 
-<style>
-/* ─── Reset ──────────────────────────────────────────────────────────────── */
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;overflow-x:hidden}
-html{scroll-behavior:smooth}
+    /* Stamp */
+    .pass-stamp {
+      position: absolute; right: 10px; top: 12px; z-index: 5;
+      width: 54px; height: 54px;
+      border: 1.5px solid #C97552; color: #C97552;
+      border-radius: 50%; display: grid; place-items: center; text-align: center;
+      font-family: 'Playfair Display', serif; font-style: italic; font-weight: 400;
+      font-size: 9.5px; line-height: 1.2;
+      transform: rotate(-14deg);
+      background: transparent;
+      transition: opacity .5s ease, transform .5s ease;
+      opacity: 0; pointer-events: none;
+    }
+    .pass-stamp.visible { opacity: 1; transform: rotate(-14deg) scale(1.04); }
+    .pass-stamp small {
+      display: block;
+      font-family: 'Outfit', sans-serif; font-style: normal; font-weight: 300;
+      font-size: 5.5px; letter-spacing: .18em; text-transform: uppercase;
+      margin-top: 2px; opacity: .75;
+    }
 
-/* ─── Tokens — Condé Nast / Monocle aesthetic ────────────────────────────
-   Photography leads. Light warm parchment. Dark editorial text.
-   Terracotta accent threads through everything.
+    /* Field labels / values */
+    .f-lbl {
+      font-family: 'Outfit', sans-serif; font-weight: 300;
+      font-size: 7px; letter-spacing: .24em; text-transform: uppercase;
+      color: rgba(13,31,53,.38); display: block; margin-bottom: 3px;
+    }
+    .f-val {
+      font-family: 'Outfit', sans-serif; font-weight: 600;
+      font-size: 11px; letter-spacing: .02em; color: rgba(13,31,53,.72);
+    }
 
-   Canyon rust    #c97552   ← unchanged — the hero accent
-   Parchment      #faf8f5   ← page background (warm off-white)
-   Warm card      #f2ede8   ← elevated surfaces
-   Deep surface   #ede6de   ← highest-contrast surface
-   Editorial ink  #1a1410   ← primary text (warm near-black)
-   Warm stone     #6b5f54   ← secondary / muted text
-   Hairline       #e8e0d6   ← borders and dividers
-   ──────────────────────────────────────────────────────────────────────── */
-:root{
-  --bg-primary:   #faf8f5;
-  --bg-elevated:  #f2ede8;
-  --bg-surface:   #ede6de;
-  --text-primary: #1a1410;
-  --text-secondary:#6b5f54;
-  --border:       #e8e0d6;
-  --terra:        #c97552;
-  --sand:         #e8d8c4;
-  /* legacy aliases — used by boarding pass internals, keep as-is */
-  --white:        #faf8f5;
-  --ink:          #1a1410;
-  --ink-2:        rgba(26,20,16,.72);
-  --rule:         rgba(26,20,16,.12);
-}
+    /* OD codes — the hero of the pass */
+    .od-code {
+      font-family: 'Playfair Display', serif;
+      font-weight: 500; font-size: 44px; line-height: .88; letter-spacing: -.03em;
+      color: #1a0e08;
+    }
+    .od-place {
+      font-family: 'Outfit', sans-serif; font-weight: 300;
+      font-size: 7px; letter-spacing: .15em; text-transform: uppercase;
+      color: rgba(13,31,53,.4); margin-top: 4px;
+    }
 
-/* ─── Base typography ────────────────────────────────────────────────────
-   Raleway is the workhorse body font — light, airy, reads beautifully
-   on photo backgrounds at weight 300.
-   ──────────────────────────────────────────────────────────────────────── */
-body{
-  font-family: 'Raleway', sans-serif;
-  font-weight: 300;
-  font-size: 17px;
-  line-height: 1.65;
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  -webkit-font-smoothing: antialiased;
-}
+    .pass-header-lbl {
+      font-family: 'Outfit', sans-serif; font-weight: 300;
+      font-size: 7.5px; letter-spacing: .26em; text-transform: uppercase;
+      color: rgba(13,31,53,.36);
+    }
+    .pass-airline {
+      font-family: 'Playfair Display', serif; font-style: italic; font-weight: 400;
+      font-size: 15px; letter-spacing: .06em; color: rgba(13,31,53,.5);
+    }
 
-/* ─── Display / headline helper ──────────────────────────────────────────
-   Cormorant Garamond shines at large sizes — hairline strokes,
-   beautiful italics, feels like it was carved into marble.
-   ──────────────────────────────────────────────────────────────────────── */
-.display{
-  font-family: 'Cormorant Garamond', serif;
-  font-weight: 300;
-  letter-spacing: -.01em;
-  line-height: .92;
-}
-.display-italic{
-  font-family: 'Cormorant Garamond', serif;
-  font-style: italic;
-  font-weight: 300;
-}
+    /* Big seat in stub */
+    .stub-seat {
+      font-family: 'Playfair Display', serif; font-weight: 500;
+      font-size: 48px; line-height: .88; letter-spacing: -.03em; color: #1a0e08;
+      margin-top: 2px;
+    }
 
-/* Josefin Sans: labels, eyebrows, tiny caps */
-.label{
-  font-family: 'Josefin Sans', sans-serif;
-  font-weight: 300;
-  font-size: 10px;
-  letter-spacing: .28em;
-  text-transform: uppercase;
-}
+    .dest-el { transition: opacity .4s ease; }
+    .dest-el.out { opacity: 0; }
 
-/* ─── Grain overlay ──────────────────────────────────────────────────── */
-.grain{
-  position:fixed;inset:0;pointer-events:none;z-index:500;
-  opacity:.25;mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 0.95 0 0 0 0 0.85 0 0 0 0.1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
+    /* Horizontal divider inside body */
+    .pass-rule {
+      border: none; border-top: 1px solid rgba(13,31,53,.1); margin: 10px 0;
+    }
 
-/* ═══════════════════════════════════════════════════════════════
-   HERO
-═══════════════════════════════════════════════════════════════ */
-.hero{
-  position:relative;
-  min-height:100svh;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-}
+    /* Vertical barcode in stub */
+    .barcode-v {
+      flex: 1; border-radius: 2px; margin-top: 12px;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(13,31,53,.72) 0 2px,    transparent 2px 4px,
+        rgba(13,31,53,.72) 4px 5px,  transparent 5px 8px,
+        rgba(13,31,53,.72) 8px 10px, transparent 10px 13px,
+        rgba(13,31,53,.72) 13px 14px,transparent 14px 17px,
+        rgba(13,31,53,.72) 17px 19px,transparent 19px 21px
+      );
+      opacity: .5; min-height: 60px;
+    }
+    .barcode-num {
+      font-family: 'Outfit', sans-serif; font-weight: 300;
+      font-size: 6.5px; letter-spacing: .1em;
+      color: rgba(13,31,53,.3); text-align: center; margin-top: 6px;
+      writing-mode: vertical-rl; text-orientation: mixed;
+      align-self: center;
+    }
 
-/* Background — Wadi Rum canyon: rust sandstone walls, sandy floor, two figures, hazy horizon */
-.hero-bg{
-  position:absolute;inset:0;
-  background-image:url("https://images.unsplash.com/photo-1580204745408-9c18ddb64978?w=1920&q=90&fit=crop");
-  background-size:cover;
-  background-position:center 45%;
-  z-index:0;
-}
-
-/* Gradient — left dark canyon shadow keeps headline legible;
-   bottom bleeds seamlessly into the parchment page below (no hard edge) */
-.hero-bg::after{
-  content:"";position:absolute;inset:0;
-  background:
-    linear-gradient(108deg, rgba(16,8,4,.85) 0%, rgba(13,20,28,.40) 48%, rgba(13,31,53,.04) 100%),
-    linear-gradient(to bottom, transparent 55%, #faf8f5 100%);
-}
-
-/* ─── NAV ──────────────────────────────────────────────────────────────── */
-.nav{
-  position:relative;z-index:10;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:36px 52px 0;
-}
-@media(max-width:720px){.nav{padding:24px 24px 0}}
-
-.brand{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:400;
-  font-size:28px;
-  letter-spacing:.12em;
-  color:var(--white);
-  text-decoration:none;
-  display:flex;align-items:center;gap:10px;
-}
-/* Brand mark — thin circle with compass needle */
-.brand-mark{
-  width:26px;height:26px;border-radius:50%;
-  border:1px solid rgba(248,245,240,.55);
-  position:relative;display:grid;place-items:center;flex-shrink:0;
-}
-.brand-mark::before{
-  content:"";position:absolute;inset:5px;border-radius:50%;
-  border:1px solid rgba(248,245,240,.3);
-}
-.brand-mark::after{
-  content:"";position:absolute;
-  width:1.5px;height:12px;background:var(--terra);
-  transform:rotate(35deg);
-}
-
-.nav-links{
-  display:flex;gap:36px;align-items:center;
-}
-.nav-links a{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:300;font-size:10px;letter-spacing:.28em;text-transform:uppercase;
-  color:rgba(248,245,240,.6);text-decoration:none;
-  transition:color .3s;
-}
-.nav-links a:hover{color:var(--white)}
-.nav-cta{
-  background:rgba(248,245,240,.1);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border:1px solid rgba(248,245,240,.25) !important;
-  color:var(--white) !important;
-  border-radius:999px;padding:9px 22px;
-  transition:background .3s,border-color .3s !important;
-}
-.nav-cta:hover{background:rgba(248,245,240,.2) !important;color:var(--white) !important}
-@media(max-width:680px){.nav-links a:not(.nav-cta){display:none}}
-
-/* ─── HERO BODY ────────────────────────────────────────────────────────── */
-.hero-body{
-  position:relative;z-index:10;
-  flex:1;
-  display:grid;
-  grid-template-columns:1fr 560px;
-  gap:48px;
-  align-items:center;
-  padding:52px 52px 80px;
-  max-width:1440px;margin:0 auto;width:100%;
-}
-@media(max-width:1140px){
-  .hero-body{grid-template-columns:1fr;gap:40px;padding:40px 24px 64px}
-  .hero-right{order:-1;display:flex;justify-content:center}
-}
-
-/* ─── HEADLINE ─────────────────────────────────────────────────────────── */
-.hero-eyebrow{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:10px;letter-spacing:.34em;text-transform:uppercase;
-  color:rgba(248,245,240,.5);
-  margin-bottom:28px;
-  display:flex;align-items:center;gap:14px;
-}
-.eyebrow-dot{
-  width:5px;height:5px;border-radius:50%;
-  background:var(--terra);
-  animation:pulse 2.8s ease-in-out infinite;flex-shrink:0;
-}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
-.eyebrow-line{
-  width:40px;height:1px;
-  background:rgba(248,245,240,.2);flex-shrink:0;
-}
-
-/* Big romantic headline — Cormorant Garamond at its best */
-.hero-h1{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:300;
-  font-size:clamp(64px,9.5vw,128px);
-  line-height:.88;
-  letter-spacing:-.02em;
-  color:var(--white);
-}
-/* Italic accent line — different weight for contrast */
-.hero-h1 .italic-line{
-  font-style:italic;
-  font-weight:300;
-  color:rgba(248,245,240,.88);
-  display:block;margin-top:.06em;
-}
-/* The colour pop — terra or bloom */
-.hero-h1 .accent{
-  color:var(--sand);
-  font-style:italic;
-}
-
-/* Sub-headline */
-.hero-sub{
-  font-family:'Raleway',sans-serif;
-  font-weight:300;
-  font-size:17px;
-  line-height:1.75;
-  color:rgba(248,245,240,.65);
-  max-width:460px;
-  margin-top:30px;
-  letter-spacing:.01em;
-}
-.hero-sub em{
-  font-style:italic;
-  color:rgba(248,245,240,.9);
-  font-weight:400;
-}
-
-/* CTA row */
-.hero-cta{
-  display:flex;gap:14px;flex-wrap:wrap;margin-top:40px;align-items:center;
-}
-
-/* Buttons — hero context (over dark photo): cream on dark */
-.btn{
-  display:inline-flex;align-items:center;gap:10px;
-  padding:15px 28px;border-radius:999px;
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:300;font-size:10px;letter-spacing:.26em;text-transform:uppercase;
-  text-decoration:none;cursor:pointer;
-  border:1px solid rgba(250,248,245,.9);
-  background:rgba(250,248,245,.9);color:var(--text-primary);
-  transition:transform .4s cubic-bezier(.2,.8,.2,1),background .3s,color .3s,border-color .3s;
-}
-.btn:hover{transform:translateY(-3px);background:var(--terra);border-color:var(--terra);color:#faf8f5}
-.btn .arr{display:inline-block;transition:transform .4s cubic-bezier(.2,.8,.2,1);font-size:12px}
-.btn:hover .arr{transform:translateX(5px)}
-.btn.ghost{
-  background:rgba(250,248,245,.1);
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  color:#faf8f5;border-color:rgba(250,248,245,.4);
-}
-.btn.ghost:hover{background:rgba(250,248,245,.2);border-color:rgba(250,248,245,.65)}
-/* Light-bg context: dark editorial button */
-.btn-editorial{
-  border-color:var(--text-primary);
-  background:var(--text-primary);color:var(--bg-primary);
-}
-.btn-editorial:hover{background:var(--terra);border-color:var(--terra);color:#faf8f5}
-.btn-editorial.ghost{
-  background:transparent;backdrop-filter:none;
-  border-color:var(--border);color:var(--text-secondary);
-}
-.btn-editorial.ghost:hover{background:var(--bg-elevated);border-color:var(--text-secondary);color:var(--text-primary)}
-
-.hero-footnote{
-  margin-top:24px;
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;
-  color:rgba(248,245,240,.3);
-  display:flex;align-items:center;gap:14px;
-}
-.hero-footnote::before{
-  content:"";width:24px;height:1px;background:rgba(248,245,240,.2);flex-shrink:0;
-}
-
-/* ─── BOARDING PASS ─────────────────────────────────────────────────────
-   Typography inside the card uses Cormorant for city codes (big, romantic)
-   Josefin Sans for all labels (clean, carved)
-   Raleway for stat values and descriptors
-   ──────────────────────────────────────────────────────────────────────── */
-.boarding-wrap{
-  animation:float 7s ease-in-out infinite;
-}
-@keyframes float{
-  0%,100%{transform:translateY(0) rotate(.3deg)}
-  50%{transform:translateY(-7px) rotate(-.15deg)}
-}
-
-.pass{
-  background: rgba(236,222,204,.98); /* heavy warm stock */
-  border-radius:14px;
-  padding:18px 22px 15px;
-  position:relative;
-  box-shadow:
-    0 60px 120px rgba(13,31,53,.70),
-    0 20px 50px rgba(13,31,53,.45),
-    0 6px 16px rgba(13,31,53,.30),
-    inset 0 1px 0 rgba(255,255,255,.8),
-    inset 0 -1px 0 rgba(13,31,53,.06);
-  color:var(--ink);
-  overflow:hidden;
-}
-
-/* Paper texture */
-.pass::before{
-  content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  opacity:.7;z-index:1;
-}
-.pass > *{position:relative;z-index:2}
-/* Compass sits below text content */
-.pass > .pass-compass{position:absolute;z-index:2}
-
-/* Dashed tear-line — replaces the dot perforation */
-.pass-tear{
-  border-top:1px dashed rgba(13,31,53,.16);
-  margin:10px -22px 0;
-  position:relative;z-index:2;
-}
-
-/* Pass header */
-.pass-header{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:18px;
-}
-.pass-header-label{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:9px;letter-spacing:.28em;text-transform:uppercase;
-  color:rgba(13,31,53,.45);
-}
-.pass-airline{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:400;font-style:italic;
-  font-size:17px;letter-spacing:.04em;
-  color:rgba(13,31,53,.55);
-}
-
-/* OD row — Origin → Destination */
-.od{
-  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
-  padding:4px 0 10px;
-  border-bottom:1px solid rgba(13,31,53,.1);
-}
-/* City codes — Cormorant at display size */
-.od-code{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:300;
-  font-size:50px;line-height:.88;
-  letter-spacing:-.03em;
-  color:var(--ink);
-}
-.od-code.dest{text-align:right}
-.od-place{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:8px;letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(13,31,53,.45);margin-top:5px;
-}
-.od-place.dest{text-align:right}
-
-/* Arrow */
-.od-arrow{
-  display:flex;flex-direction:column;align-items:center;gap:2px;
-  color:var(--terra);
-}
-.od-arrow .line{width:1px;height:14px;background:rgba(13,31,53,.2)}
-.od-arrow .plane{font-size:13px;transform:rotate(90deg)}
-
-/* Stats */
-.stats{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
-  padding-top:16px;
-}
-.stat-label{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:8px;letter-spacing:.22em;text-transform:uppercase;
-  color:rgba(13,31,53,.4);display:block;margin-bottom:5px;
-}
-.stat-value{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:400;
-  font-size:22px;line-height:1;letter-spacing:-.01em;
-  color:var(--ink);
-}
-.stat-value em{font-style:italic;color:var(--terra)}
-
-/* Barcode */
-.barcode{
-  margin-top:10px;height:22px;border-radius:2px;
-  background:repeating-linear-gradient(90deg,rgba(13,31,53,.75) 0 1.5px,transparent 1.5px 3.5px,rgba(13,31,53,.75) 3.5px 4.5px,transparent 4.5px 7px,rgba(13,31,53,.75) 7px 9px,transparent 9px 12px,rgba(13,31,53,.75) 12px 13px,transparent 13px 15.5px);
-  opacity:.65;
-}
-
-/* Stamp */
-.pass-stamp{
-  position:absolute;right:16px;top:16px;z-index:4;
-  width:76px;height:76px;
-  border:1.5px solid var(--terra);color:var(--terra);
-  border-radius:50%;display:grid;place-items:center;text-align:center;
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
-  font-size:14px;line-height:1.15;
-  transform:rotate(-14deg) scale(1);
-  transform-origin:center;
-  background:transparent;
-  /* Smooth appear / disappear */
-  transition: opacity .55s cubic-bezier(.2,.8,.2,1),
-              transform .55s cubic-bezier(.2,.8,.2,1);
-  opacity:0; /* starts hidden — appears only for hidden gems */
-  pointer-events:none;
-}
-.pass-stamp.gem-on{
-  opacity:1;
-  transform:rotate(-14deg) scale(1);
-}
-.pass-stamp small{
-  display:block;
-  font-family:'Josefin Sans',sans-serif;font-style:normal;
-  font-size:7px;letter-spacing:.2em;margin-top:4px;opacity:.8;
-}
-
-/* Fade animation for changing destinations */
-.dest-el{transition:opacity .45s ease}
-.dest-el.out{opacity:0}
-
-/* ─── SCROLL HINT ──────────────────────────────────────────────────────── */
-.scroll-hint{
-  position:absolute;bottom:36px;left:52px;z-index:10;
-  display:flex;align-items:center;gap:14px;
-}
-.scroll-hint-line{
-  width:1px;height:56px;
-  background:linear-gradient(to bottom,rgba(248,245,240,.4),transparent);
-  animation:scrollPulse 2.2s ease-in-out infinite;
-}
-@keyframes scrollPulse{
-  0%,100%{transform:scaleY(1) translateY(0);opacity:.4}
-  50%{transform:scaleY(.6) translateY(6px);opacity:.8}
-}
-.scroll-hint-text{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:9px;letter-spacing:.3em;text-transform:uppercase;
-  color:rgba(248,245,240,.35);
-  writing-mode:vertical-rl;
-}
-@media(max-width:1080px){.scroll-hint{left:24px;bottom:20px}}
-
-/* ═══════════════════════════════════════════════════════════════
-   MARQUEE STRIP
-═══════════════════════════════════════════════════════════════ */
-.strip{
-  background:var(--bg-elevated);
-  border-top:1px solid var(--border);
-  border-bottom:1px solid var(--border);
-  overflow:hidden;
-}
-.strip-track{
-  display:flex;gap:52px;padding:14px 0;
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;
-  white-space:nowrap;
-  animation:marquee 55s linear infinite;
-  color:var(--text-secondary);
-}
-.strip-track span{display:inline-flex;align-items:center;gap:52px}
-.strip-track span::after{content:"·";color:var(--terra);opacity:.7;font-size:16px;line-height:0;vertical-align:-.1em}
-@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-
-/* ═══════════════════════════════════════════════════════════════
-   FEATURES SECTION
-═══════════════════════════════════════════════════════════════ */
-.section{padding:100px 52px;max-width:1400px;margin:0 auto}
-@media(max-width:720px){.section{padding:72px 24px}}
-
-.section-eyebrow{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:9.5px;letter-spacing:.34em;text-transform:uppercase;
-  color:var(--text-secondary);
-  margin-bottom:20px;
-  display:flex;align-items:center;gap:14px;
-}
-.section-eyebrow::before{content:"";width:36px;height:1px;background:var(--border)}
-
-/* Section headline — Cormorant large italic */
-.section-title{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:300;
-  font-size:clamp(40px,5.5vw,72px);
-  line-height:.95;
-  letter-spacing:-.015em;
-  color:var(--text-primary);
-  margin-bottom:60px;
-  max-width:700px;
-}
-.section-title em{
-  font-style:italic;
-  color:var(--terra);
-}
-
-/* Feature grid */
-.feat-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:1px;
-  background:var(--border);
-  border:1px solid var(--border);
-  border-radius:14px;
-  overflow:hidden;
-  box-shadow:0 2px 24px rgba(26,20,16,.06),0 1px 4px rgba(26,20,16,.04);
-}
-@media(max-width:860px){.feat-grid{grid-template-columns:1fr}}
-
-.feat-card{
-  padding:40px 36px;
-  background:var(--bg-elevated);
-  transition:background .4s;
-}
-.feat-card:hover{background:var(--bg-surface)}
-
-.feat-num{
-  font-family:'Cormorant Garamond',serif;
-  font-style:italic;font-weight:300;
-  font-size:48px;line-height:1;
-  color:rgba(201,117,82,.4);
-  margin-bottom:20px;
-  display:block;
-}
-.feat-title{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:400;
-  font-size:28px;line-height:1.1;
-  letter-spacing:-.01em;
-  color:var(--text-primary);
-  margin-bottom:14px;
-}
-.feat-title em{font-style:italic;color:var(--terra)}
-.feat-body{
-  font-family:'Raleway',sans-serif;
-  font-weight:300;font-size:15px;line-height:1.75;
-  color:var(--text-secondary);
-  letter-spacing:.01em;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   CTA SECTION
-═══════════════════════════════════════════════════════════════ */
-.cta-section{
-  text-align:center;
-  padding:100px 52px 120px;
-  position:relative;
-  background:var(--bg-elevated);
-  border-top:1px solid var(--border);
-}
-
-/* Faint terracotta warmth — barely visible radial on parchment */
-.cta-section::before{
-  content:"";position:absolute;inset:0;
-  background:
-    radial-gradient(ellipse 60% 70% at 50% 50%, rgba(201,117,82,.05), transparent 70%);
-  pointer-events:none;
-}
-
-.cta-eyebrow{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:9.5px;letter-spacing:.38em;text-transform:uppercase;
-  color:var(--text-secondary);
-  margin-bottom:28px;
-}
-
-/* Giant Cormorant headline — the centrepiece */
-.cta-h2{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:300;
-  font-size:clamp(60px,10vw,140px);
-  line-height:.88;
-  letter-spacing:-.03em;
-  color:var(--text-primary);
-  max-width:1000px;
-  margin:0 auto;
-}
-.cta-h2 em{font-style:italic;color:var(--terra)}
-
-.cta-sub{
-  font-family:'Raleway',sans-serif;
-  font-weight:300;font-size:17px;line-height:1.7;
-  color:var(--text-secondary);
-  max-width:440px;margin:32px auto 0;
-  letter-spacing:.01em;
-}
-
-.cta-row{
-  display:flex;gap:14px;justify-content:center;flex-wrap:wrap;
-  margin-top:44px;
-}
-
-.cta-fine{
-  margin-top:28px;
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:9px;letter-spacing:.3em;text-transform:uppercase;
-  color:rgba(107,95,84,.4);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   FOOTER
-═══════════════════════════════════════════════════════════════ */
-footer{
-  border-top:1px solid var(--border);
-  padding:28px 52px;
-  display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:9px;letter-spacing:.26em;text-transform:uppercase;
-  color:var(--text-secondary);
-  background:var(--bg-primary);
-}
-@media(max-width:720px){footer{padding:24px;flex-direction:column;gap:10px;text-align:center}}
-
-/* ─── Passenger info row ─────────────────────────────────────────────────── */
-.pass-info{
-  display:flex;gap:0;
-  border-bottom:1px solid rgba(13,31,53,.1);
-  padding-bottom:9px;
-  margin-bottom:2px;
-}
-.pass-info-cell{flex:1}
-.pass-info-cell+.pass-info-cell{border-left:1px solid rgba(13,31,53,.08);padding-left:10px}
-.pass-info-key{
-  font-family:'Josefin Sans',sans-serif;font-weight:200;
-  font-size:7px;letter-spacing:.22em;text-transform:uppercase;
-  color:rgba(13,31,53,.35);display:block;margin-bottom:3px;
-}
-.pass-info-val{
-  font-family:'Raleway',sans-serif;font-weight:600;
-  font-size:10px;letter-spacing:.04em;color:rgba(13,31,53,.65);
-}
-
-/* ─── Compass watermark ──────────────────────────────────────────────────── */
-.pass-compass{
-  position:absolute;
-  right:8px;top:50%;
-  transform:translateY(-46%);
-  width:170px;height:170px;
-  pointer-events:none;
-}
-
-/* ─── Pass header – stronger ─────────────────────────────────────────────── */
-.pass-header{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:10px;
-}
-.pass-header-label{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:300;font-size:8px;letter-spacing:.28em;text-transform:uppercase;
-  color:rgba(13,31,53,.4);
-}
-.pass-airline{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:500;font-style:italic;
-  font-size:17px;letter-spacing:.06em;
-  color:rgba(13,31,53,.6);
-}
-
-/* ─── Stats section – bolder ─────────────────────────────────────────────── */
-.stats{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
-  padding-top:10px;
-}
-.stat-label{
-  font-family:'Josefin Sans',sans-serif;
-  font-weight:200;font-size:7px;letter-spacing:.22em;text-transform:uppercase;
-  color:rgba(13,31,53,.38);display:block;margin-bottom:4px;
-}
-.stat-value{
-  font-family:'Cormorant Garamond',serif;
-  font-weight:500;
-  font-size:17px;line-height:1;letter-spacing:-.01em;
-  color:var(--ink);
-}
-
-/* ─── Gem score strip ────────────────────────────────────────────────────── */
-.gem-strip{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:40px;flex-wrap:wrap;
-  padding:52px;max-width:1400px;margin:0 auto;
-}
-@media(max-width:720px){.gem-strip{padding:40px 24px;gap:28px}}
-.gem-strip-headline{
-  font-family:'Cormorant Garamond',serif;font-weight:400;
-  font-size:clamp(24px,3vw,34px);line-height:1.15;letter-spacing:-.01em;
-  color:var(--text-primary);flex:1;min-width:200px;
-}
-.gem-strip-headline em{font-style:italic;color:var(--terra)}
-.gem-scale{
-  display:flex;flex-direction:column;gap:10px;
-  flex-shrink:0;
-}
-.gem-row{
-  display:flex;align-items:center;gap:12px;
-}
-.gem-dots{
-  display:flex;gap:4px;width:80px;flex-shrink:0;
-}
-.gem-dot{
-  width:8px;height:8px;border-radius:50%;flex-shrink:0;
-}
-.gem-dot.on{background:#C97552}
-.gem-dot.off{background:var(--border)}
-.gem-row-label{
-  font-family:'Josefin Sans',sans-serif;font-weight:300;
-  font-size:12px;letter-spacing:.06em;
-  color:var(--text-secondary);
-  white-space:nowrap;
-}
-
-/* ─── How it works ───────────────────────────────────────────────────────── */
-.steps-grid{
-  display:grid;
-  grid-template-columns:1fr 36px 1fr 36px 1fr;
-  align-items:start;
-}
-@media(max-width:860px){.steps-grid{grid-template-columns:1fr;gap:40px}.step-arrow{display:none}}
-.step-num{
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
-  font-size:72px;line-height:1;color:rgba(201,117,82,.18);
-  display:block;margin-bottom:10px;
-}
-.step-title{
-  font-family:'Cormorant Garamond',serif;font-weight:400;
-  font-size:26px;line-height:1.15;letter-spacing:-.01em;
-  color:var(--text-primary);margin-bottom:12px;
-}
-.step-title em{font-style:italic;color:var(--terra)}
-.step-body{
-  font-family:'Raleway',sans-serif;font-weight:300;
-  font-size:15px;line-height:1.78;color:var(--text-secondary);letter-spacing:.01em;
-}
-.step-arrow{
-  display:flex;align-items:flex-start;justify-content:center;
-  padding-top:72px;
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:28px;
-  color:rgba(201,117,82,.32);
-}
-
-/* ─── Stats bar ──────────────────────────────────────────────────────────── */
-.stat-bar{
-  display:flex;justify-content:center;flex-wrap:wrap;gap:0;
-  border-top:1px solid var(--border);
-  border-bottom:1px solid var(--border);
-  background:var(--bg-elevated);
-}
-.stat-bar-item{
-  flex:1;min-width:160px;
-  padding:32px 28px;
-  text-align:center;
-  border-right:1px solid var(--border);
-}
-.stat-bar-item:last-child{border-right:none}
-.stat-bar-num{
-  font-family:'Cormorant Garamond',serif;font-weight:300;font-style:italic;
-  font-size:42px;line-height:1;letter-spacing:-.02em;
-  color:var(--terra);display:block;margin-bottom:6px;
-}
-.stat-bar-label{
-  font-family:'Josefin Sans',sans-serif;font-weight:200;
-  font-size:9px;letter-spacing:.28em;text-transform:uppercase;
-  color:var(--text-secondary);
-}
-
-/* ─── Pricing ────────────────────────────────────────────────────────────── */
-.pricing-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
-  background:var(--border);
-  border:1px solid var(--border);border-radius:14px;overflow:hidden;
-  max-width:1060px;margin:0 auto;
-  box-shadow:0 2px 24px rgba(26,20,16,.06),0 1px 4px rgba(26,20,16,.04);
-}
-@media(max-width:860px){.pricing-grid{grid-template-columns:1fr}}
-.pricing-card{padding:44px 38px;background:var(--bg-elevated)}
-.pricing-card.pro{background:var(--bg-surface);border-top:2px solid var(--terra)}
-.pricing-tier{
-  font-family:'Josefin Sans',sans-serif;font-weight:200;
-  font-size:8px;letter-spacing:.32em;text-transform:uppercase;
-  color:var(--text-secondary);display:block;margin-bottom:8px;
-}
-.pricing-plan{
-  font-family:'Cormorant Garamond',serif;font-weight:400;
-  font-size:28px;letter-spacing:-.01em;color:var(--text-primary);margin-bottom:4px;
-}
-.pricing-price{
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
-  font-size:54px;line-height:1.1;letter-spacing:-.02em;
-  color:var(--terra);margin:14px 0 22px;display:block;
-}
-.pricing-price small{font-size:16px;font-style:normal;color:var(--text-secondary);letter-spacing:0}
-.pricing-features{list-style:none;display:flex;flex-direction:column;gap:11px}
-.pricing-features li{
-  font-family:'Raleway',sans-serif;font-weight:300;font-size:14px;
-  color:var(--text-secondary);display:flex;align-items:center;gap:10px;
-  letter-spacing:.01em;
-}
-.pricing-features li::before{content:"—";color:var(--terra);opacity:.7;flex-shrink:0}
-.pricing-cta-btn{
-  display:inline-flex;align-items:center;gap:8px;
-  margin-top:30px;padding:13px 26px;border-radius:999px;
-  font-family:'Josefin Sans',sans-serif;font-weight:300;
-  font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;
-  text-decoration:none;cursor:pointer;
-  border:1px solid var(--border);color:var(--text-primary);
-  background:transparent;transition:background .3s,border-color .3s;
-}
-.pricing-cta-btn:hover{background:var(--bg-surface);border-color:var(--text-secondary)}
-.pro .pricing-cta-btn{
-  background:var(--terra);border-color:var(--terra);color:#faf8f5;
-}
-.pro .pricing-cta-btn:hover{background:#b86642;border-color:#b86642}
-
-/* ─── Scroll reveal ──────────────────────────────────────────────────────── */
-.reveal{opacity:0;transform:translateY(28px);transition:opacity 1s ease,transform 1s cubic-bezier(.2,.8,.2,1)}
-.reveal.on{opacity:1;transform:none}
-
-/* Hero stagger */
-.fade{opacity:0;transform:translateY(18px);animation:fadeUp 1s cubic-bezier(.2,.8,.2,1) forwards}
-.fade.d1{animation-delay:.1s}
-.fade.d2{animation-delay:.28s}
-.fade.d3{animation-delay:.46s}
-.fade.d4{animation-delay:.60s}
-.fade.d5{animation-delay:.75s}
-@keyframes fadeUp{to{opacity:1;transform:none}}
-</style>
+    /* ── Marquee strip ── */
+    .marquee-strip {
+      background: #F2EDE8;
+      border-top: 1px solid #E8E0D6;
+      border-bottom: 1px solid #E8E0D6;
+      overflow: hidden;
+    }
+    .marquee-track {
+      display: flex; gap: 48px; padding: 13px 0;
+      font-family: 'Outfit', sans-serif; font-weight: 300;
+      font-size: 9.5px; letter-spacing: .3em; text-transform: uppercase;
+      white-space: nowrap;
+      animation: marquee 50s linear infinite;
+      color: #6b5f54;
+    }
+    .marquee-track span { display: inline-flex; align-items: center; gap: 48px; }
+    .marquee-track span::after {
+      content: "·"; color: #C97552; opacity: .7; font-size: 16px;
+      line-height: 0; vertical-align: -.1em;
+    }
+    @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  </style>
 </head>
-<body>
-<div class="grain" aria-hidden="true"></div>
+<body class="bg-[#FAF8F5] text-[#1A1A1A] overflow-x-hidden">
 
-<!-- ═══════════════════════════════════════════════════════════════
-     HERO
-═══════════════════════════════════════════════════════════════ -->
-<section class="hero">
-  <div class="hero-bg"></div>
-
-  <nav class="nav">
-    <a href="#" class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      Voya
-    </a>
-    <div class="nav-links">
-      <a href="#how">Method</a>
-      <a href="#features">Features</a>
-      <a href="/login" style="color:rgba(248,245,240,0.55);font-size:13px;letter-spacing:0.06em;text-decoration:none;margin-right:4px;transition:color 0.2s" onmouseover="this.style.color='rgba(248,245,240,0.9)'" onmouseout="this.style.color='rgba(248,245,240,0.55)'">Sign in</a>
-      <a href="/signup" class="nav-cta">Begin →</a>
+  <!-- Navbar -->
+  <nav class="fixed top-0 left-0 w-full z-50 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-[#E8E4DC]">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="font-serif text-2xl italic font-semibold tracking-tight text-[#1A1A1A]">voya</div>
+      <div class="hidden md:flex items-center gap-8 text-sm font-medium text-[#4A4744]">
+        <a href="#how-it-works" class="hover:text-[#1A1A1A] transition-colors">How it works</a>
+        <a href="#features" class="hover:text-[#1A1A1A] transition-colors">Features</a>
+        <a href="#pricing" class="hover:text-[#1A1A1A] transition-colors">Pricing</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/login" class="text-sm font-medium text-[#4A4744] hover:text-[#1A1A1A] transition-colors hidden md:block">Log in</a>
+        <a href="/signup" class="bg-[#1A1A1A] text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#333] transition-colors">Get started</a>
+      </div>
     </div>
   </nav>
 
-  <div class="hero-body">
+  <!-- Hero -->
+  <section id="hero" class="relative min-h-screen flex items-center overflow-hidden pt-16">
+    <div class="absolute inset-0 z-0">
+      <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961643686_0.jpg?imageMogr2/format/webp" alt="Mediterranean coastal view" class="w-full h-full object-cover object-center">
+      <div class="absolute inset-0 bg-gradient-to-r from-[#FAF8F5]/95 via-[#FAF8F5]/70 to-transparent"></div>
+    </div>
 
-    <!-- Left: copy -->
-    <div>
-      <div class="hero-eyebrow fade d1">
-        <span class="eyebrow-dot"></span>
-        <span class="eyebrow-line"></span>
-        Now boarding · Hidden Atlas
+    <div class="relative z-10 max-w-6xl mx-auto px-6 w-full py-24">
+      <!-- Two-column: copy left, boarding pass right -->
+      <div class="flex flex-col xl:flex-row items-center gap-12 xl:gap-16">
+
+        <!-- Left: copy -->
+        <div class="flex-1 max-w-xl">
+          <p class="text-xs font-medium uppercase tracking-[0.2em] text-[#8A7E6E] mb-6">AI Travel Intelligence</p>
+          <h1 class="font-serif text-6xl md:text-7xl leading-[1.05] mb-5 text-[#1A1A1A]">
+            Not the top 10.<br>
+            <em class="text-[#C97552] not-italic font-serif italic">Your top 1.</em>
+          </h1>
+          <p class="text-base text-[#5C564E] mb-6 leading-relaxed">
+            7 questions. 15–20 destinations matched to you.<br>
+            Not the algorithm. Not paid placements. Just you.
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <a href="/signup" class="inline-flex items-center gap-2.5 bg-[#1A1A1A] text-white px-7 py-3.5 rounded-full text-sm font-medium hover:bg-[#333] transition-all hover:scale-[1.02]">
+              Start exploring
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+            <a href="#how-it-works" class="inline-flex items-center gap-2 text-sm font-medium text-[#4A4744] hover:text-[#1A1A1A] transition-colors px-4 py-3.5">
+              See how it works
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </a>
+          </div>
+          <p class="text-xs text-[#9B948A] mt-3">Free · No app needed · getvoya.net</p>
+
+          <div class="flex flex-wrap items-center gap-8 mt-12 pt-8 border-t border-[#DDD8CF]">
+            <div>
+              <span class="font-semibold text-[#1A1A1A] text-2xl font-serif">15–20</span>
+              <p class="text-xs text-[#9B948A] mt-0.5">personalized matches</p>
+            </div>
+            <div>
+              <span class="font-semibold text-[#1A1A1A] text-2xl font-serif">190+</span>
+              <p class="text-xs text-[#9B948A] mt-0.5">countries covered</p>
+            </div>
+            <div>
+              <span class="font-semibold text-[#1A1A1A] text-2xl font-serif">100%</span>
+              <p class="text-xs text-[#9B948A] mt-0.5">unbiased</p>
+            </div>
+            <div>
+              <span class="font-semibold text-[#1A1A1A] text-2xl font-serif">7 qs</span>
+              <p class="text-xs text-[#9B948A] mt-0.5">under 2 min</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: boarding pass — landscape -->
+        <div class="flex-shrink-0 hidden xl:flex items-center justify-center">
+          <div class="pass-float">
+            <div class="pass-card" id="boardingPass">
+
+              <!-- Hidden gem stamp -->
+              <div class="pass-stamp" id="passStamp">
+                Hidden<br>Gem
+                <small>Voya · Verified</small>
+              </div>
+
+              <!-- ═══ LEFT / MAIN BODY ═══ -->
+              <div class="pass-body">
+
+                <!-- Compass watermark behind content -->
+                <svg style="position:absolute;right:20px;top:50%;transform:translateY(-50%);width:190px;height:190px;pointer-events:none;z-index:1;opacity:.5;" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="100" cy="100" r="96" fill="none" stroke="rgba(13,31,53,.08)" stroke-width="0.75"/>
+                  <circle cx="100" cy="100" r="70" fill="none" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
+                  <circle cx="100" cy="100" r="44" fill="none" stroke="rgba(13,31,53,.05)" stroke-width="0.5"/>
+                  <line x1="100" y1="4"   x2="100" y2="16"  stroke="rgba(13,31,53,.2)"  stroke-width="1.5"/>
+                  <line x1="100" y1="184" x2="100" y2="196" stroke="rgba(13,31,53,.12)" stroke-width="1"/>
+                  <line x1="4"   y1="100" x2="16"  y2="100" stroke="rgba(13,31,53,.12)" stroke-width="1"/>
+                  <line x1="184" y1="100" x2="196" y2="100" stroke="rgba(13,31,53,.12)" stroke-width="1"/>
+                  <polygon points="100,18 103.5,96 100,100 96.5,96"   fill="rgba(201,117,82,.28)"/>
+                  <polygon points="100,182 103.5,104 100,100 96.5,104" fill="rgba(13,31,53,.14)"/>
+                  <polygon points="182,100 104,96.5 100,100 104,103.5" fill="rgba(13,31,53,.10)"/>
+                  <polygon points="18,100 96,96.5 100,100 96,103.5"   fill="rgba(13,31,53,.10)"/>
+                  <circle cx="100" cy="100" r="7"   fill="none" stroke="rgba(13,31,53,.12)" stroke-width="0.75"/>
+                  <circle cx="100" cy="100" r="3.5" fill="rgba(13,31,53,.16)"/>
+                  <circle cx="100" cy="100" r="1.5" fill="rgba(201,117,82,.5)"/>
+                  <text x="100" y="2"   text-anchor="middle" dominant-baseline="hanging" font-size="8" font-family="Outfit,sans-serif" letter-spacing="0.18em" fill="rgba(201,117,82,.5)">N</text>
+                  <text x="100" y="198" text-anchor="middle" font-size="8" font-family="Outfit,sans-serif" letter-spacing="0.18em" fill="rgba(13,31,53,.25)">S</text>
+                  <text x="197" y="103" text-anchor="end"    font-size="8" font-family="Outfit,sans-serif" letter-spacing="0.18em" fill="rgba(13,31,53,.25)">E</text>
+                  <text x="3"   y="103"                      font-size="8" font-family="Outfit,sans-serif" letter-spacing="0.18em" fill="rgba(13,31,53,.25)">W</text>
+                </svg>
+
+                <!-- Header -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;position:relative;z-index:3;">
+                  <span class="pass-header-lbl">Voya · Boarding Pass · No. <span id="passNum">2847</span></span>
+                  <span class="pass-airline">Voya</span>
+                </div>
+
+                <!-- Passenger / Class -->
+                <div style="display:flex;gap:0;border-bottom:1px solid rgba(13,31,53,.1);padding-bottom:8px;margin-bottom:8px;position:relative;z-index:3;">
+                  <div style="flex:1.2;">
+                    <span class="f-lbl">Passenger</span>
+                    <span class="f-val dest-el" id="passPassenger">Solo Wanderer</span>
+                  </div>
+                  <div style="flex:1;border-left:1px solid rgba(13,31,53,.09);padding-left:12px;">
+                    <span class="f-lbl">Class</span>
+                    <span class="f-val dest-el" id="passClass">Economy</span>
+                  </div>
+                  <div style="flex:1;border-left:1px solid rgba(13,31,53,.09);padding-left:12px;">
+                    <span class="f-lbl">Flight</span>
+                    <span class="f-val dest-el" id="passGate">VY<span id="passNum2">2847</span></span>
+                  </div>
+                </div>
+
+                <!-- BIG OD route -->
+                <div style="display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:1px solid rgba(13,31,53,.1);position:relative;z-index:3;">
+                  <div>
+                    <div class="od-code dest-el" id="origCode">YOU</div>
+                    <div class="od-place dest-el" id="origPlace">Wherever you are</div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:0;flex:1;">
+                    <div style="flex:1;height:1px;background:rgba(13,31,53,.15);"></div>
+                    <span class="dest-el" id="transportIcon" style="font-size:15px;margin:0 6px;line-height:1;">✈️</span>
+                    <div style="flex:1;height:1px;background:rgba(13,31,53,.15);"></div>
+                  </div>
+                  <div style="text-align:right;">
+                    <div class="od-code dest-el" id="destCode" style="text-align:right;">KTM</div>
+                    <div class="od-place dest-el" id="destSub" style="text-align:right;">Kathmandu, Nepal</div>
+                  </div>
+                </div>
+
+                <!-- Gate / Departs / Boarding -->
+                <div style="display:flex;gap:0;padding-top:8px;position:relative;z-index:3;">
+                  <div style="flex:1;">
+                    <span class="f-lbl">Gate</span>
+                    <span class="f-val dest-el" id="passGateVal">B12</span>
+                  </div>
+                  <div style="flex:1;border-left:1px solid rgba(13,31,53,.09);padding-left:12px;">
+                    <span class="f-lbl">Departs</span>
+                    <span class="f-val dest-el" id="passDep">08:40</span>
+                  </div>
+                  <div style="flex:1;border-left:1px solid rgba(13,31,53,.09);padding-left:12px;">
+                    <span class="f-lbl">Boarding</span>
+                    <span class="f-val dest-el" id="passBoarding">08:10</span>
+                  </div>
+                  <div style="flex:1;border-left:1px solid rgba(13,31,53,.09);padding-left:12px;">
+                    <span class="f-lbl">Gem Score</span>
+                    <span class="f-val dest-el" id="stat3">Hidden 💎</span>
+                  </div>
+                </div>
+
+              </div><!-- /pass-body -->
+
+              <!-- Vertical tear -->
+              <div class="pass-vtear"></div>
+
+              <!-- ═══ RIGHT STUB ═══ -->
+              <div class="pass-stub" style="position:relative;z-index:2;">
+                <div>
+                  <span class="f-lbl">Seat</span>
+                  <div class="stub-seat dest-el" id="passSeat">14A</div>
+                </div>
+                <hr class="pass-rule" style="margin:10px 0;">
+                <div>
+                  <span class="f-lbl">Budget</span>
+                  <span class="f-val dest-el" id="stat1" style="font-size:13px;">$40/day</span>
+                </div>
+                <hr class="pass-rule" style="margin:10px 0;">
+                <div style="display:flex;flex-direction:row;flex:1;gap:8px;min-height:0;">
+                  <div class="barcode-v dest-el"></div>
+                  <div class="barcode-num dest-el" id="barcodeNum" style="font-size:6px;writing-mode:vertical-rl;color:rgba(13,31,53,.28);align-self:center;letter-spacing:.12em;">VY2847·KTM·14A</div>
+                </div>
+              </div>
+
+            </div><!-- /pass-card -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Marquee strip -->
+  <div class="marquee-strip" aria-hidden="true">
+    <div class="marquee-track">
+      <span>DISCOVER HIDDEN GEMS</span>
+      <span>PLAN YOUR ITINERARY</span>
+      <span>EARN YOUR PASSPORT STAMPS</span>
+      <span>15–20 PERSONALIZED MATCHES</span>
+      <span>NO ALGORITHMS · NO ADS</span>
+      <span>TRIP ASK · ON THE GROUND</span>
+      <span>GOLDEN HOUR PHOTO SPOTS</span>
+      <span>GEM SCORE FOR EVERY DESTINATION</span>
+      <span>WORKS ANYWHERE IN THE WORLD</span>
+      <span>DISCOVER HIDDEN GEMS</span>
+      <span>PLAN YOUR ITINERARY</span>
+      <span>EARN YOUR PASSPORT STAMPS</span>
+      <span>15–20 PERSONALIZED MATCHES</span>
+      <span>NO ALGORITHMS · NO ADS</span>
+      <span>TRIP ASK · ON THE GROUND</span>
+      <span>GOLDEN HOUR PHOTO SPOTS</span>
+      <span>GEM SCORE FOR EVERY DESTINATION</span>
+      <span>WORKS ANYWHERE IN THE WORLD</span>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <section id="features" class="bg-white py-24 px-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="font-serif text-4xl md:text-5xl text-[#1A1A1A] leading-tight">
+          Everything you need.<br>
+          <em class="italic text-[#C97552]">Intelligently built.</em>
+        </h2>
       </div>
 
-      <h1 class="hero-h1">
-        <span class="fade d2">Find places</span>
-        <span class="italic-line fade d3">most apps will</span>
-        <span class="fade d4"><span class="accent">never</span> show you.</span>
-      </h1>
+      <div class="grid md:grid-cols-3 gap-8">
+        <!-- Card 1 -->
+        <div class="group">
+          <div class="relative overflow-hidden rounded-2xl aspect-[4/5] mb-6">
+            <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961644789_0.jpg?imageMogr2/format/webp" alt="Find your destination" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+            <div class="absolute bottom-4 left-4 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+          </div>
+          <h3 class="font-serif text-xl mb-2 text-[#1A1A1A]">Find your destination</h3>
+          <p class="text-sm text-[#7A746D] leading-relaxed">Answer 7 quick questions about your travel style. Get 15–20 destinations ranked just for you — no ads, no noise.</p>
+        </div>
 
-      <p class="hero-sub fade d5">
-        From the $52 overnight train to the cliffside suite — Voya reads your budget, your pace,
-        your version of <em>beautiful</em>, and finds the places that actually fit.
+        <!-- Card 2 -->
+        <div class="group">
+          <div class="relative overflow-hidden rounded-2xl aspect-[4/5] mb-6">
+            <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961660818_0.jpg?imageMogr2/format/webp" alt="Plan your complete trip" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+            <div class="absolute bottom-4 left-4 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+          </div>
+          <h3 class="font-serif text-xl mb-2 text-[#1A1A1A]">Plan your complete trip</h3>
+          <p class="text-sm text-[#7A746D] leading-relaxed">Get a day-by-day itinerary, handpicked experiences, smart routes, and local tips tailored to you.</p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="group">
+          <div class="relative overflow-hidden rounded-2xl aspect-[4/5] mb-6">
+            <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961660820_0.jpg?imageMogr2/format/webp" alt="Ask anything, anywhere" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+            <div class="absolute bottom-4 left-4 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+          <h3 class="font-serif text-xl mb-2 text-[#1A1A1A]">Ask anything, anywhere</h3>
+          <p class="text-sm text-[#7A746D] leading-relaxed">Trip Ask gives you real answers on the ground — best photo spots, golden hour timing, hidden gems, and local intel. 24/7.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gem Score Strip -->
+  <section class="bg-[#FAF8F5] py-20 px-6 border-t border-[#F0EDE7]">
+    <div class="max-w-4xl mx-auto text-center">
+      <p class="text-xs font-medium uppercase tracking-[0.2em] text-[#C97552] mb-4">Introducing</p>
+      <h2 class="font-serif text-4xl md:text-5xl text-[#1A1A1A] leading-tight mb-5">
+        The Gem Score
+      </h2>
+      <p class="text-base text-[#5C564E] leading-relaxed max-w-xl mx-auto mb-10">
+        Every destination gets a hidden gem score — how off-the-beaten-path is it, really? We weigh crowd levels, tourism saturation, and local authenticity so you can find places that still feel like discoveries.
       </p>
-
-      <div class="hero-cta fade d5">
-        <a href="/signup" class="btn">Start your journey <span class="arr">→</span></a>
-        <a href="#how" class="btn ghost">See the method</a>
-      </div>
-
-      <div class="hero-footnote fade d5">
-        Free · No app needed · getvoya.net
+      <div class="flex justify-center gap-3 flex-wrap">
+        <div class="flex items-center gap-2 bg-white border border-[#E8E4DC] rounded-full px-5 py-2.5 text-sm text-[#4A4744]">
+          <span class="text-base">💎</span> Hidden gem
+        </div>
+        <div class="flex items-center gap-2 bg-white border border-[#E8E4DC] rounded-full px-5 py-2.5 text-sm text-[#4A4744]">
+          <span class="text-base">✨</span> Rising
+        </div>
+        <div class="flex items-center gap-2 bg-white border border-[#E8E4DC] rounded-full px-5 py-2.5 text-sm text-[#4A4744]">
+          <span class="text-base">🌍</span> Well-known
+        </div>
+        <div class="flex items-center gap-2 bg-white border border-[#E8E4DC] rounded-full px-5 py-2.5 text-sm text-[#4A4744]">
+          <span class="text-base">📸</span> Tourist favourite
+        </div>
       </div>
     </div>
+  </section>
 
-    <!-- Right: boarding pass -->
-    <div class="hero-right fade d4">
-      <div class="boarding-wrap">
-        <div class="pass" id="boardingPass">
-
-          <!-- Hidden gem stamp -->
-          <div class="pass-stamp">
-            Hidden<br>Gem
-            <small>Voya · Verified</small>
+  <!-- Photo Spots / Golden Hour -->
+  <section class="bg-[#1A1A1A] py-24 px-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="grid md:grid-cols-2 gap-16 items-center">
+        <div>
+          <p class="text-xs font-medium uppercase tracking-[0.2em] text-[#C97552] mb-4">Live on the ground</p>
+          <h2 class="font-serif text-4xl md:text-5xl text-white leading-tight mb-5">
+            Golden hour.<br>
+            <em class="italic text-[#C97552]">Nailed every time.</em>
+          </h2>
+          <p class="text-base text-white/60 leading-relaxed mb-6">
+            Voya calculates sunrise, sunset, and golden hour for every destination — and maps the best photo spots to catch them. No guesswork, no generic tips.
+          </p>
+          <ul class="space-y-3 text-sm text-white/70">
+            <li class="flex items-center gap-3">
+              <span class="text-[#C97552]">→</span> Exact golden hour windows for your travel dates
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="text-[#C97552]">→</span> Best local photo spots (not the obvious ones)
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="text-[#C97552]">→</span> Ask Trip Ask for real-time local intel
+            </li>
+          </ul>
+        </div>
+        <div class="rounded-2xl overflow-hidden aspect-[4/3] relative">
+          <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961681292_0.jpg?imageMogr2/format/webp" alt="Photo spots at golden hour" class="w-full h-full object-cover opacity-80">
+          <div class="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm rounded-xl px-3 py-2 text-xs text-white/90">
+            📷 Golden hour: 6:42–7:18 PM · 3 spots nearby
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-          <!-- Compass watermark — early in DOM so text renders above it -->
-          <svg class="pass-compass" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <!-- Rings -->
-            <circle cx="100" cy="100" r="96" fill="none" stroke="rgba(13,31,53,.1)" stroke-width="0.75"/>
-            <circle cx="100" cy="100" r="76" fill="none" stroke="rgba(13,31,53,.07)" stroke-width="0.5"/>
-            <circle cx="100" cy="100" r="56" fill="none" stroke="rgba(13,31,53,.05)" stroke-width="0.5"/>
-            <!-- Cardinal tick marks -->
-            <line x1="100" y1="4" x2="100" y2="15" stroke="rgba(13,31,53,.22)" stroke-width="1.5"/>
-            <line x1="100" y1="185" x2="100" y2="196" stroke="rgba(13,31,53,.14)" stroke-width="1"/>
-            <line x1="4" y1="100" x2="15" y2="100" stroke="rgba(13,31,53,.14)" stroke-width="1"/>
-            <line x1="185" y1="100" x2="196" y2="100" stroke="rgba(13,31,53,.14)" stroke-width="1"/>
-            <!-- 45° minor ticks -->
-            <line x1="168" y1="32" x2="160" y2="40" stroke="rgba(13,31,53,.09)" stroke-width="0.75"/>
-            <line x1="168" y1="168" x2="160" y2="160" stroke="rgba(13,31,53,.09)" stroke-width="0.75"/>
-            <line x1="32" y1="168" x2="40" y2="160" stroke="rgba(13,31,53,.09)" stroke-width="0.75"/>
-            <line x1="32" y1="32" x2="40" y2="40" stroke="rgba(13,31,53,.09)" stroke-width="0.75"/>
-            <!-- 22.5° micro ticks -->
-            <line x1="137" y1="11" x2="133" y2="18" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
-            <line x1="63" y1="11" x2="67" y2="18" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
-            <line x1="189" y1="63" x2="182" y2="67" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
-            <line x1="189" y1="137" x2="182" y2="133" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
-            <line x1="137" y1="189" x2="133" y2="182" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
-            <line x1="63" y1="189" x2="67" y2="182" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
-            <line x1="11" y1="63" x2="18" y2="67" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
-            <line x1="11" y1="137" x2="18" y2="133" stroke="rgba(13,31,53,.06)" stroke-width="0.5"/>
-            <!-- N needle (terracotta) -->
-            <polygon points="100,20 104,96 100,100 96,96" fill="rgba(201,117,82,.32)"/>
-            <!-- S needle -->
-            <polygon points="100,180 104,104 100,100 96,104" fill="rgba(13,31,53,.16)"/>
-            <!-- E needle -->
-            <polygon points="180,100 104,96 100,100 104,104" fill="rgba(13,31,53,.11)"/>
-            <!-- W needle -->
-            <polygon points="20,100 96,96 100,100 96,104" fill="rgba(13,31,53,.11)"/>
-            <!-- Center rings -->
-            <circle cx="100" cy="100" r="8" fill="none" stroke="rgba(13,31,53,.14)" stroke-width="0.75"/>
-            <circle cx="100" cy="100" r="4" fill="rgba(13,31,53,.18)"/>
-            <circle cx="100" cy="100" r="1.5" fill="rgba(201,117,82,.55)"/>
-            <!-- Cardinal labels -->
-            <text x="100" y="3" text-anchor="middle" dominant-baseline="hanging" font-size="9" font-family="Josefin Sans,sans-serif" letter-spacing="0.18em" fill="rgba(201,117,82,.52)">N</text>
-            <text x="100" y="197" text-anchor="middle" font-size="9" font-family="Josefin Sans,sans-serif" letter-spacing="0.18em" fill="rgba(13,31,53,.28)">S</text>
-            <text x="198" y="104" text-anchor="end" font-size="9" font-family="Josefin Sans,sans-serif" letter-spacing="0.18em" fill="rgba(13,31,53,.28)">E</text>
-            <text x="2" y="104" font-size="9" font-family="Josefin Sans,sans-serif" letter-spacing="0.18em" fill="rgba(13,31,53,.28)">W</text>
-          </svg>
+  <!-- How It Works -->
+  <section id="how-it-works" class="bg-white py-24 px-6 border-t border-[#F0EDE7]">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-4">
+        <h2 class="font-serif text-4xl text-[#1A1A1A]">How Voya works</h2>
+        <p class="text-sm text-[#9B948A] mt-2">3 steps from blank page to booked trip</p>
+      </div>
 
-          <!-- Header -->
-          <div class="pass-header">
-            <span class="pass-header-label">Voya · Boarding Pass · No. <span id="passNum">1847</span></span>
-            <span class="pass-airline">Voya</span>
+      <div class="flex items-center justify-center gap-0 mt-10 mb-12 max-w-xl mx-auto">
+        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-[#1A1A1A] text-white text-xs font-bold shrink-0">1</div>
+        <div class="flex-1 h-px bg-[#DEDAD4]"></div>
+        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-[#1A1A1A] text-white text-xs font-bold shrink-0">2</div>
+        <div class="flex-1 h-px bg-[#DEDAD4]"></div>
+        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-[#1A1A1A] text-white text-xs font-bold shrink-0">3</div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-10">
+        <div>
+          <h3 class="font-serif text-xl mb-2 text-[#1A1A1A]">Tell us who you are</h3>
+          <p class="text-sm text-[#7A746D] leading-relaxed mb-5">7 questions. Budget, vibe, group, how offbeat you want to go. Takes under 2 minutes.</p>
+          <div class="rounded-2xl overflow-hidden aspect-[4/3]">
+            <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961663222_0.jpg?imageMogr2/format/webp" alt="Answer questions" class="w-full h-full object-cover">
           </div>
-
-          <!-- Passenger info row -->
-          <div class="pass-info">
-            <div class="pass-info-cell">
-              <span class="pass-info-key">Passenger</span>
-              <span class="pass-info-val">Explorer</span>
-            </div>
-            <div class="pass-info-cell">
-              <span class="pass-info-key">Class</span>
-              <span class="pass-info-val">Discovery</span>
-            </div>
-            <div class="pass-info-cell">
-              <span class="pass-info-key">Seat</span>
-              <span class="pass-info-val">14A</span>
-            </div>
+        </div>
+        <div>
+          <h3 class="font-serif text-xl mb-2 text-[#1A1A1A]">We find what fits you</h3>
+          <p class="text-sm text-[#7A746D] leading-relaxed mb-5">Your answers are matched against destinations worldwide — ranked by fit, not by who paid more.</p>
+          <div class="rounded-2xl overflow-hidden aspect-[4/3] relative">
+            <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961681290_0.jpg?imageMogr2/format/webp" alt="Get matches" class="w-full h-full object-cover">
+            <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-1.5 text-xs font-medium text-[#1A1A1A] shadow">18 matches found</div>
           </div>
-
-          <!-- OD row -->
-          <div class="od">
-            <div>
-              <div class="od-code dest-el" id="origCode">ATL</div>
-              <div class="od-place dest-el" id="origPlace">Atlanta, Georgia</div>
-            </div>
-            <div class="od-arrow">
-              <div class="line"></div>
-              <div class="plane dest-el" id="transportIcon">🚌</div>
-              <div class="line"></div>
-            </div>
-            <div>
-              <div class="od-code dest dest-el" id="destCode">MSY</div>
-              <div class="od-place dest dest-el" id="destSub">New Orleans, Louisiana</div>
+        </div>
+        <div>
+          <h3 class="font-serif text-xl mb-2 text-[#1A1A1A]">Plan it. Book it. Go.</h3>
+          <p class="text-sm text-[#7A746D] leading-relaxed mb-5">Build your itinerary, get smart day plans, and take Trip Ask with you on the ground.</p>
+          <div class="rounded-2xl overflow-hidden aspect-[4/3] relative bg-[#1A1A1A]">
+            <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961681292_0.jpg?imageMogr2/format/webp" alt="Plan and travel" class="w-full h-full object-cover opacity-60">
+            <div class="absolute inset-0 flex flex-col justify-end p-4 gap-2">
+              <div class="bg-white/90 rounded-xl px-3 py-2 text-xs text-[#1A1A1A] max-w-[80%] self-end shadow">What are some great sunset spots nearby?</div>
+              <div class="bg-[#C97552]/90 rounded-xl px-3 py-2 text-xs text-white max-w-[80%] shadow">Here are 3 incredible sunset spots close to you...</div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-          <!-- Dashed tear line -->
-          <div class="pass-tear"></div>
+  <!-- Pricing -->
+  <section id="pricing" class="bg-white py-24 px-6 border-t border-[#F0EDE7]">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="font-serif text-4xl md:text-5xl text-[#1A1A1A] leading-tight">
+          Simple pricing.<br>
+          <em class="italic text-[#C97552]">Choose your plan.</em>
+        </h2>
+      </div>
 
-          <!-- Stats -->
-          <div class="stats">
-            <div>
-              <span class="stat-label dest-el" id="label1">Budget</span>
-              <span class="stat-value dest-el" id="stat1">$80/wknd</span>
-            </div>
-            <div>
-              <span class="stat-label dest-el" id="label2">Getting there</span>
-              <span class="stat-value dest-el" id="stat2">Bus · 6hr</span>
-            </div>
-            <div>
-              <span class="stat-label dest-el" id="label3">Crowd level</span>
-              <span class="stat-value dest-el" id="stat3">Very High</span>
-            </div>
+      <div class="grid md:grid-cols-3 gap-6 items-start">
+        <!-- Explorer (Free) -->
+        <div class="border border-[#E8E4DC] rounded-2xl p-8 bg-white">
+          <h3 class="font-serif text-xl text-[#1A1A1A] mb-1">Explorer</h3>
+          <p class="text-xs text-[#9B948A] mb-6">For dreamers &amp; planners</p>
+          <div class="mb-1">
+            <span class="font-serif text-5xl text-[#1A1A1A]">Free</span>
           </div>
+          <p class="text-xs text-[#9B948A] mt-1">Forever free. No card needed.</p>
+          <div class="h-px bg-[#F0EDE7] my-6"></div>
+          <ul class="space-y-3 mb-8 text-sm text-[#4A4744]">
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              3 destination matches
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Gem score for every destination
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Transport options
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Travel deals board
+            </li>
+          </ul>
+          <a href="/signup" class="block w-full py-3.5 rounded-full border border-[#1A1A1A] text-sm font-medium text-[#1A1A1A] hover:bg-[#F5F3EF] transition-colors text-center">Get started free</a>
+        </div>
 
-          <div class="barcode"></div>
+        <!-- Traveller (Featured) -->
+        <div class="bg-[#1A1A1A] rounded-2xl p-8 text-white relative">
+          <div class="absolute -top-3.5 left-1/2 -translate-x-1/2">
+            <span class="bg-[#1A1A1A] border border-white/20 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full">Most Popular</span>
+          </div>
+          <h3 class="font-serif text-xl text-white mb-1">Traveller</h3>
+          <p class="text-xs text-white/50 mb-6">For regular travelers</p>
+          <div class="mb-1 flex items-end gap-1">
+            <span class="font-serif text-5xl text-white">$4.99</span>
+            <span class="text-white/50 text-sm mb-2">one time</span>
+          </div>
+          <p class="text-xs text-white/40 mt-1">Pay once. No subscription.</p>
+          <div class="h-px bg-white/10 my-6"></div>
+          <p class="text-xs font-medium text-white/60 mb-3">Everything in Explorer, plus:</p>
+          <ul class="space-y-3 mb-8 text-sm text-white/80">
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              All 15–20 destination matches
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Full filter controls (budget, vibe, group)
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              30 days access
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              No subscription
+            </li>
+          </ul>
+          <a href="/signup" class="block w-full py-3.5 rounded-full bg-white text-[#1A1A1A] text-sm font-medium hover:bg-white/90 transition-colors text-center">Unlock all matches</a>
+        </div>
 
+        <!-- Pro -->
+        <div class="border border-[#E8E4DC] rounded-2xl p-8 bg-white">
+          <h3 class="font-serif text-xl text-[#1A1A1A] mb-1">Pro</h3>
+          <p class="text-xs text-[#9B948A] mb-6">For power travelers</p>
+          <div class="mb-1 flex items-end gap-1">
+            <span class="font-serif text-5xl text-[#1A1A1A]">$29</span>
+            <span class="text-[#9B948A] text-sm mb-2">/year</span>
+          </div>
+          <p class="text-xs text-[#9B948A] mt-1">Best for frequent travelers.</p>
+          <div class="h-px bg-[#F0EDE7] my-6"></div>
+          <p class="text-xs font-medium text-[#9B948A] mb-3">Everything in Traveller, plus:</p>
+          <ul class="space-y-3 mb-8 text-sm text-[#4A4744]">
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Full day-by-day itinerary
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Hotel &amp; flight recommendations
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Smart booking advice
+            </li>
+            <li class="flex items-center gap-2.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Voya Passport stamps
+            </li>
+          </ul>
+          <a href="/signup" class="block w-full py-3.5 rounded-full border border-[#1A1A1A] text-sm font-medium text-[#1A1A1A] hover:bg-[#F5F3EF] transition-colors text-center">Go Pro</a>
         </div>
       </div>
     </div>
+  </section>
 
-  </div>
-
-  <div class="scroll-hint" aria-hidden="true">
-    <div class="scroll-hint-line"></div>
-    <span class="scroll-hint-text">Scroll</span>
-  </div>
-</section>
-
-<!-- Marquee -->
-<div class="strip" aria-hidden="true">
-  <div class="strip-track" id="strip">
-    <span>DISCOVER HIDDEN GEMS</span>
-    <span>PLAN YOUR ITINERARY</span>
-    <span>FIND THE BEST DEALS</span>
-    <span>EARN YOUR PASSPORT STAMPS</span>
-    <span>15-20 PERSONALIZED MATCHES</span>
-    <span>NO ALGORITHMS · NO ADS</span>
-    <span>TRANSPORT OPTIONS INCLUDED</span>
-    <span>WORKS ANYWHERE IN THE WORLD</span>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     STATS BAR
-═══════════════════════════════════════════════════════════════ -->
-<div class="stat-bar">
-  <div class="stat-bar-item reveal">
-    <span class="stat-bar-num">15–20</span>
-    <span class="stat-bar-label">Matches per search</span>
-  </div>
-  <div class="stat-bar-item reveal">
-    <span class="stat-bar-num">190+</span>
-    <span class="stat-bar-label">Countries covered</span>
-  </div>
-  <div class="stat-bar-item reveal">
-    <span class="stat-bar-num">100%</span>
-    <span class="stat-bar-label">Unbiased · no ads</span>
-  </div>
-  <div class="stat-bar-item reveal">
-    <span class="stat-bar-num">5</span>
-    <span class="stat-bar-label">Questions · 60 seconds</span>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     FEATURES
-═══════════════════════════════════════════════════════════════ -->
-<div id="how" style="background:var(--ink)">
-  <div class="section" id="features">
-
-    <div class="section-eyebrow reveal">The field notes</div>
-
-    <h2 class="section-title reveal">
-      What Voya<br>
-      <em>actually does.</em>
-    </h2>
-
-    <div class="feat-grid">
-      <div class="feat-card reveal">
-        <span class="feat-num">i.</span>
-        <h3 class="feat-title">Destinations the <em>algorithm forgot.</em></h3>
-        <p class="feat-body">While other apps loop the same twelve cities, Voya scouts the towns one bus stop further — each with a reason why now, why you, what to skip.</p>
-      </div>
-      <div class="feat-card reveal">
-        <span class="feat-num">ii.</span>
-        <h3 class="feat-title">Photo spots, with <em>timing.</em></h3>
-        <p class="feat-body">Exact viewpoints. Golden hour to the minute. Where the locals stand vs. where the tour bus stops. The light at 6:42 PM, and which lens to bring.</p>
-      </div>
-      <div class="feat-card reveal">
-        <span class="feat-num">iii.</span>
-        <h3 class="feat-title">Travel deals, <em>updated daily.</em></h3>
-        <p class="feat-body">Voya shows you travel deals happening right now — flight promotions, hotel offers, credit card bonuses — specific to your country. Updated daily. Free for every user.</p>
-      </div>
+  <!-- Final CTA -->
+  <section id="cta" class="relative py-36 flex items-center justify-start overflow-hidden">
+    <div class="absolute inset-0 z-0">
+      <img src="https://cdn.wegic.ai/assets/onepage/agent/images/1778961677059_0.jpg?imageMogr2/format/webp" alt="Epic landscape" class="w-full h-full object-cover">
+      <div class="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
     </div>
-
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     GEM SCORE STRIP
-═══════════════════════════════════════════════════════════════ -->
-<div style="border-top:1px solid rgba(248,245,240,.06);border-bottom:1px solid rgba(248,245,240,.06)">
-  <div class="gem-strip reveal">
-    <div class="gem-strip-headline">
-      Every destination gets<br>
-      a <em>gem score</em> — so you always<br>
-      know how far off the map<br>
-      you're going.
+    <div class="relative z-10 max-w-6xl mx-auto px-6 text-white">
+      <h2 class="font-serif text-5xl md:text-6xl leading-tight mb-4 max-w-lg">
+        Pack light.<br>
+        <em class="italic">Wander far.</em>
+      </h2>
+      <p class="text-base text-white/75 mb-8 max-w-md leading-relaxed">Your first 3 matches are free forever. No card. No catch. Just the trip you actually want.</p>
+      <a href="/signup" class="inline-flex items-center gap-2.5 bg-white text-[#1A1A1A] px-7 py-3.5 rounded-full text-sm font-medium hover:bg-white/90 transition-all hover:scale-[1.02] shadow-xl">
+        Start exploring free
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
     </div>
-    <div class="gem-scale">
-      <div class="gem-row">
-        <div class="gem-dots">
-          <div class="gem-dot on"></div><div class="gem-dot off"></div><div class="gem-dot off"></div><div class="gem-dot off"></div><div class="gem-dot off"></div>
-        </div>
-        <span class="gem-row-label">Known to some travellers</span>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-[#1A1A1A] text-white py-12 px-6">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="font-serif text-2xl italic font-semibold">voya</div>
+      <div class="flex flex-wrap justify-center gap-8 text-sm text-white/50">
+        <a href="#" class="hover:text-white transition-colors">Instagram</a>
+        <a href="#" class="hover:text-white transition-colors">TikTok</a>
+        <a href="#" class="hover:text-white transition-colors">Privacy</a>
+        <a href="#" class="hover:text-white transition-colors">Terms</a>
       </div>
-      <div class="gem-row">
-        <div class="gem-dots">
-          <div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot off"></div><div class="gem-dot off"></div><div class="gem-dot off"></div>
-        </div>
-        <span class="gem-row-label">Off the beaten path</span>
-      </div>
-      <div class="gem-row">
-        <div class="gem-dots">
-          <div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot off"></div><div class="gem-dot off"></div>
-        </div>
-        <span class="gem-row-label">Genuinely local</span>
-      </div>
-      <div class="gem-row">
-        <div class="gem-dots">
-          <div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot off"></div>
-        </div>
-        <span class="gem-row-label">Rarely visited</span>
-      </div>
-      <div class="gem-row">
-        <div class="gem-dots">
-          <div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div><div class="gem-dot on"></div>
-        </div>
-        <span class="gem-row-label">Truly undiscovered</span>
-      </div>
+      <div class="text-sm text-white/30 font-mono">© 2026 Voya</div>
     </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     HOW IT WORKS
-═══════════════════════════════════════════════════════════════ -->
-<div style="background:rgba(248,245,240,.025);border-top:1px solid rgba(248,245,240,.06)">
-  <div class="section">
-
-    <div class="section-eyebrow reveal">The method</div>
-    <h2 class="section-title reveal">
-      Three steps to<br>
-      <em>somewhere real.</em>
-    </h2>
-
-    <div class="steps-grid">
-      <div class="reveal">
-        <span class="step-num">01</span>
-        <h3 class="step-title">Tell us who <em>you are.</em></h3>
-        <p class="step-body">Five questions. Your budget, your pace, what kind of beauty moves you. Delhi on ₹800 a day or a private camp under Wadi Rum stars — Voya doesn't judge. It listens.</p>
-      </div>
-      <div class="step-arrow reveal">→</div>
-      <div class="reveal">
-        <span class="step-num">02</span>
-        <h3 class="step-title">We find what <em>fits you.</em></h3>
-        <p class="step-body">Not the top 10. Not paid placements. 15–20 destinations matched to you — ranked by how well they fit your exact travel style, budget, and how far off the map you want to go.</p>
-      </div>
-      <div class="step-arrow reveal">→</div>
-      <div class="reveal">
-        <span class="step-num">03</span>
-        <h3 class="step-title">Plan it. Book it. <em>Go.</em></h3>
-        <p class="step-body">Pick your destination, build your itinerary day by day, find hotels and flights, see which credit card deals are running right now. Everything in one place.</p>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     PRICING
-═══════════════════════════════════════════════════════════════ -->
-<div style="background:var(--ink);border-top:1px solid rgba(248,245,240,.06)">
-  <div class="section">
-
-    <div class="section-eyebrow reveal">Simple pricing</div>
-    <h2 class="section-title reveal">
-      Start free.<br>
-      <em>Go unlimited.</em>
-    </h2>
-
-    <div class="pricing-grid">
-
-      <div class="pricing-card">
-        <span class="pricing-tier">Free forever</span>
-        <div class="pricing-plan">Explorer</div>
-        <span class="pricing-price">$0</span>
-        <ul class="pricing-features">
-          <li>3 destination matches</li>
-          <li>Gem score for every destination</li>
-          <li>Transport options</li>
-          <li>Travel deals board</li>
-        </ul>
-        <a href="/signup" class="pricing-cta-btn">Get started →</a>
-      </div>
-
-      <div class="pricing-card">
-        <span class="pricing-tier">Unlock your trip</span>
-        <div class="pricing-plan">Traveller</div>
-        <span class="pricing-price">$4.99 <small>one time</small></span>
-        <ul class="pricing-features">
-          <li>All 15–20 destination matches</li>
-          <li>Full filters</li>
-          <li>30 days access</li>
-          <li>No subscription</li>
-        </ul>
-        <a href="/signup" class="pricing-cta-btn">Unlock a trip →</a>
-      </div>
-
-      <div class="pricing-card pro">
-        <span class="pricing-tier">Plan everything</span>
-        <div class="pricing-plan">Pro</div>
-        <span class="pricing-price">$29 <small>/ year</small></span>
-        <ul class="pricing-features">
-          <li>Everything in Traveller</li>
-          <li>Day-by-day itinerary</li>
-          <li>Hotel recommendations</li>
-          <li>Smart booking advice</li>
-          <li>Voya Passport stamps</li>
-          <li>Less than $2.50 / month</li>
-        </ul>
-        <a href="/signup" class="pricing-cta-btn">Start Pro →</a>
-      </div>
-
-    </div>
-
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
-     CTA
-═══════════════════════════════════════════════════════════════ -->
-<div style="background:var(--ink)">
-  <div class="cta-section">
-    <div class="cta-eyebrow reveal">Five questions · A whole atlas</div>
-    <h2 class="cta-h2 reveal">
-      Pack <em>light.</em><br>
-      Wander <em>far.</em>
-    </h2>
-    <p class="cta-sub reveal">Your first 3 matches are free forever. No app needed — works in any browser.</p>
-    <div class="cta-row reveal">
-      <a href="/signup" class="btn">Start exploring <span class="arr">→</span></a>
-    </div>
-    <div class="cta-fine reveal">getvoya.net</div>
-  </div>
-
-  <footer>
-    <span>© 2026 Voya · getvoya.net</span>
-    <span>No stock photos were harmed</span>
-    <span>Privacy · Terms</span>
   </footer>
-</div>
 
-<script>
-(function(){
+  <!-- Boarding pass rotation script -->
+  <script>
+    // Random pools — generated fresh each rotation
+    const PASSENGERS = ['Solo Wanderer','Weekend Couple','Family of 4','Digital Nomad','Food Explorer','Budget Explorer','Adventure Seeker','Culture Hunter','Slow Traveller','Road Tripper'];
+    const SEATS      = ['2A','3C','5F','7B','8A','11C','14A','17F','22C','24B','28E','31A','4D','6C','9F','12B','19A','33C'];
+    const GATES      = ['A2','A4','A11','B3','B7','B12','C1','C3','C9','D4','D7','D12','E2','E6','F5','F9','G1'];
+    const DEPS       = ['06:10','06:55','07:30','08:05','08:40','09:15','10:00','10:50','11:25','12:10','13:40','14:20','15:05','16:30','17:45','18:20','19:55','21:10','22:40','23:50'];
 
-  // Scroll reveal
-  var io = new IntersectionObserver(function(entries){
-    entries.forEach(function(e){
-      if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); }
-    });
-  },{threshold:.12, rootMargin:"0px 0px -36px 0px"});
-  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+    function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function subMins(t, m) {
+      const [h, min] = t.split(':').map(Number);
+      const tot = h * 60 + min - m;
+      return `${String(Math.floor(((tot % 1440) + 1440) % 1440 / 60)).padStart(2,'0')}:${String(((tot % 60) + 60) % 60).padStart(2,'0')}`;
+    }
 
-  // Marquee duplicate
-  var s = document.getElementById('strip');
-  if(s) s.innerHTML = s.innerHTML + s.innerHTML;
+    const G = true, P = false;
 
-  // ── Boarding pass: rotating destinations ───────────────────────────────
-  //
-  // Shows real origin cities + real budgets + transport modes.
-  // gem: false → popular destination (stamp hidden)
-  // gem: true  → Voya hidden gem (stamp appears)
-  //
-  // Mixed sequence: budget trips, luxury trips, train rides, bus routes —
-  // everyone should see themselves somewhere in here.
+    const DESTINATIONS = [
+      // ── North America ──────────────────────────────────────────────────────
+      { code:'MSY', sub:'New Orleans · NYE bus',           gem:P, transport:'🚌', budget:'$80/wknd'     },
+      { code:'MSY', sub:'New Orleans · overnight train',   gem:G, transport:'🚂', budget:'$52/wknd'     },
+      { code:'HSV', sub:'Huntsville · NASA & trails',      gem:G, transport:'🚗', budget:'$74/nt'       },
+      { code:'CHA', sub:'Chattanooga · canyon & rails',    gem:G, transport:'🚗', budget:'$68/nt'       },
+      { code:'BOS', sub:'Boston · harbour & history',      gem:P, transport:'🚂', budget:'$180/nt'      },
+      { code:'MTL', sub:'Montréal · french weekend',       gem:P, transport:'🚂', budget:'C$150/nt'     },
+      { code:'PVD', sub:'Providence · secret food city',   gem:G, transport:'🚂', budget:'$95/nt'       },
+      { code:'BUF', sub:'Buffalo · Niagara off-season',    gem:G, transport:'🚂', budget:'$89/nt'       },
+      { code:'LAS', sub:'Las Vegas · weekend flash',       gem:P, transport:'🚗', budget:'$180/nt'      },
+      { code:'PSP', sub:'Palm Springs · desert calm',      gem:G, transport:'🚗', budget:'$85/nt'       },
+      { code:'PDX', sub:'Portland · weird & beautiful',    gem:G, transport:'✈',  budget:'$96/nt'       },
+      { code:'MKE', sub:'Milwaukee · underrated gem',      gem:G, transport:'🚂', budget:'$79/nt'       },
+      { code:'GGT', sub:'Exuma · the secret Bahamas',      gem:G, transport:'✈',  budget:'$165/nt'      },
+      { code:'QUE', sub:'Québec City · winter carnival',   gem:G, transport:'🚂', budget:'C$130/nt'     },
+      { code:'HAV', sub:'Havana · classic cars & music',   gem:G, transport:'✈',  budget:'$95/nt'       },
+      // ── Latin America ───────────────────────────────────────────────────────
+      { code:'OAX', sub:'Oaxaca · mole & mezcal',          gem:G, transport:'✈',  budget:'MX$800/nt'    },
+      { code:'MID', sub:'Mérida · Yucatán heat',           gem:G, transport:'🚌', budget:'MX$550/nt'    },
+      { code:'FLN', sub:'Florianópolis · island life',     gem:G, transport:'✈',  budget:'R$220/nt'     },
+      { code:'IGU', sub:'Iguazú · falls & jungle',         gem:P, transport:'✈',  budget:'R$280/nt'     },
+      { code:'BRC', sub:'Bariloche · Andes & lakes',       gem:G, transport:'✈',  budget:'$110/nt'      },
+      { code:'CTG', sub:'Cartagena · colonial coast',      gem:P, transport:'✈',  budget:'$95/nt'       },
+      { code:'SMR', sub:'Santa Marta · Sierra gem',        gem:G, transport:'🚌', budget:'$55/nt'       },
+      { code:'CUZ', sub:'Cusco · gateway to Machu Picchu', gem:P, transport:'✈',  budget:'$85/nt'       },
+      { code:'IQT', sub:'Iquitos · Amazon deep cut',       gem:G, transport:'✈',  budget:'$70/nt'       },
+      { code:'PMC', sub:'Puerto Montt · lake district',    gem:G, transport:'✈',  budget:'$90/nt'       },
+      // ── Europe ──────────────────────────────────────────────────────────────
+      { code:'LJU', sub:'Ljubljana · before everyone',     gem:G, transport:'✈',  budget:'£44/day'      },
+      { code:'PRN', sub:'Pristina · Kosovo uncovered',     gem:G, transport:'✈',  budget:'£38/day'      },
+      { code:'BEG', sub:'Belgrade · late nights & art',    gem:G, transport:'✈',  budget:'£42/day'      },
+      { code:'MRS', sub:'Marseille · raw & vibrant',       gem:G, transport:'🚂', budget:'€65/day'      },
+      { code:'VIE', sub:'Vienna · imperial weekend',       gem:P, transport:'🚂', budget:'€85/day'      },
+      { code:'GRX', sub:'Granada · Alhambra & tapas',      gem:G, transport:'🚌', budget:'€45/day'      },
+      { code:'SVQ', sub:'Seville · flamenco & heat',       gem:P, transport:'🚂', budget:'€60/day'      },
+      { code:'NAP', sub:'Naples · pizza & chaos',          gem:P, transport:'🚂', budget:'€60/day'      },
+      { code:'TAR', sub:'Taranto · Puglia hidden coast',   gem:G, transport:'🚂', budget:'€45/day'      },
+      { code:'LUX', sub:'Luxembourg · most underrated',    gem:G, transport:'🚂', budget:'€60/day'      },
+      { code:'TRD', sub:'Trondheim · fjords & calm',       gem:G, transport:'✈',  budget:'€65/day'      },
+      { code:'TLL', sub:'Tallinn · medieval fairy tale',   gem:G, transport:'⛴',  budget:'€50/day'      },
+      { code:'SKG', sub:'Thessaloniki · real Greece',      gem:G, transport:'🚌', budget:'€45/day'      },
+      { code:'KYA', sub:'Konya · Rumi\'s city',            gem:G, transport:'🚌', budget:'₺180/day'     },
+      { code:'SKP', sub:'Skopje · Balkans surprise',       gem:G, transport:'🚌', budget:'€38/day'      },
+      { code:'BRQ', sub:'Brno · students & galleries',     gem:G, transport:'🚂', budget:'€35/day'      },
+      { code:'CVU', sub:'Corvo · world\'s end island',     gem:G, transport:'✈',  budget:'€55/day'      },
+      { code:'BCN', sub:'Barcelona · high season',         gem:P, transport:'✈',  budget:'€90/day'      },
+      { code:'OPO', sub:'Porto · before it peaks',         gem:P, transport:'✈',  budget:'€70/day'      },
+      { code:'KRK', sub:'Kraków · old town weekend',       gem:P, transport:'🚂', budget:'PLN 190/nt'   },
+      { code:'DBV', sub:'Dubrovnik · game of thrones',     gem:P, transport:'🚌', budget:'€90/day'      },
+      { code:'PRG', sub:'Prague · bridges & old town',     gem:P, transport:'✈',  budget:'€75/day'      },
+      // ── Africa ──────────────────────────────────────────────────────────────
+      { code:'ZNZ', sub:'Zanzibar · spice & white sand',   gem:G, transport:'✈',  budget:'$110/nt'      },
+      { code:'ASW', sub:'Aswan · Nile & Nubian villages',  gem:G, transport:'🚂', budget:'E£850/nt'     },
+      { code:'GRJ', sub:'George · Garden Route gem',       gem:G, transport:'🚗', budget:'R880/nt'      },
+      { code:'PLZ', sub:'Plettenberg Bay · beaches',       gem:G, transport:'🚗', budget:'R750/nt'      },
+      { code:'CLQ', sub:'Calabar · nature & culture',      gem:G, transport:'✈',  budget:'₦28,000/nt'   },
+      { code:'FEZ', sub:'Fez · ancient medina',            gem:G, transport:'🚂', budget:'MAD 280/nt'   },
+      { code:'MRK', sub:'Marrakech · the souk maze',       gem:P, transport:'🚂', budget:'MAD 400/nt'   },
+      { code:'KMS', sub:'Kumasi · Ashanti heritage',       gem:G, transport:'🚌', budget:'GH₵ 280/nt'   },
+      { code:'TOE', sub:'Tozeur · Sahara oasis',           gem:G, transport:'🚌', budget:'TND 85/nt'    },
+      { code:'DIR', sub:'Dire Dawa · hidden Harar near',   gem:G, transport:'✈',  budget:'$45/nt'       },
+      { code:'LXR', sub:'Luxor · Valley of Kings',         gem:P, transport:'🚂', budget:'E£1,200/nt'   },
+      // ── Middle East & Central Asia ──────────────────────────────────────────
+      { code:'MCT', sub:'Muscat · old Arabia, real',       gem:G, transport:'✈',  budget:'$95/nt'       },
+      { code:'GYD', sub:'Baku · fire & silk road',         gem:G, transport:'✈',  budget:'$80/nt'       },
+      { code:'AQJ', sub:'Aqaba · Red Sea diving',          gem:G, transport:'🚗', budget:'$70/nt'       },
+      { code:'HFA', sub:'Haifa · Bahá\'í gardens',         gem:G, transport:'🚂', budget:'₪380/nt'      },
+      { code:'ULH', sub:'AlUla · ancient Nabataean city',  gem:G, transport:'✈',  budget:'SAR 450/nt'   },
+      { code:'PET', sub:'Petra · rose-red city',           gem:P, transport:'🚗', budget:'$55/nt'       },
+      { code:'SMQ', sub:'Samarkand · blue domes',          gem:G, transport:'🚂', budget:'$35/day'      },
+      { code:'BHK', sub:'Bukhara · ancient oasis',         gem:G, transport:'🚂', budget:'$28/day'      },
+      { code:'TSE', sub:'Astana · futurist capital',       gem:G, transport:'✈',  budget:'₸8,500/nt'    },
+      // ── South Asia ──────────────────────────────────────────────────────────
+      { code:'GOI', sub:'Goa · long weekend',              gem:P, transport:'🚂', budget:'₹2,200/nt'    },
+      { code:'VNS', sub:'Varanasi · sacred & ancient',     gem:P, transport:'🚂', budget:'₹950/day'     },
+      { code:'UDR', sub:'Udaipur · lakes off-season',      gem:G, transport:'🚂', budget:'₹1,100/day'   },
+      { code:'MCL', sub:'McLeod Ganj · Himalayas',         gem:G, transport:'🚌', budget:'₹800/day'     },
+      { code:'LEH', sub:'Ladakh · roof of the world',      gem:G, transport:'✈',  budget:'₹1,800/day'   },
+      { code:'SXR', sub:'Srinagar · Dal Lake & houseboats',gem:G, transport:'✈',  budget:'₹1,400/day'   },
+      { code:'COK', sub:'Kochi · backwaters & spice',      gem:G, transport:'🚂', budget:'₹850/day'     },
+      { code:'IXZ', sub:'Port Blair · Andaman Islands',    gem:G, transport:'✈',  budget:'₹2,100/nt'    },
+      { code:'TRZ', sub:'Trincomalee · secret coast',      gem:G, transport:'🚂', budget:'LKR 4,500/nt' },
+      { code:'KCT', sub:'Koggala · southern secret',       gem:G, transport:'🚂', budget:'LKR 3,800/nt' },
+      { code:'KTM', sub:'Kathmandu · mountain gateway',    gem:G, transport:'✈',  budget:'$40/day'      },
+      { code:'PKR', sub:'Pokhara · Himalaya gateway',      gem:G, transport:'🚌', budget:'$35/day'      },
+      { code:'CGP', sub:'Cox\'s Bazar · world\'s longest', gem:G, transport:'✈',  budget:'BDT 2,800/nt' },
+      // ── Southeast Asia ──────────────────────────────────────────────────────
+      { code:'HKT', sub:'Phuket · Thai beach classic',     gem:P, transport:'✈',  budget:'฿1,800/nt'    },
+      { code:'CNX', sub:'Chiang Mai · slow north',         gem:G, transport:'🚂', budget:'฿650/day'     },
+      { code:'LPQ', sub:'Luang Prabang · monks at dawn',   gem:G, transport:'✈',  budget:'$55/day'      },
+      { code:'VTE', sub:'Vientiane · most peaceful capital',gem:G,transport:'🚌', budget:'$35/day'      },
+      { code:'PEN', sub:'Penang · street food capital',    gem:P, transport:'🚌', budget:'RM 150/nt'    },
+      { code:'KCH', sub:'Kuching · orangutans & Borneo',   gem:G, transport:'✈',  budget:'RM 180/nt'    },
+      { code:'BTH', sub:'Batam · the ferry escape',        gem:G, transport:'⛴',  budget:'RM 95/nt'     },
+      { code:'BKI', sub:'Kota Kinabalu · Mt Kinabalu',     gem:G, transport:'✈',  budget:'RM 160/nt'    },
+      { code:'DPS', sub:'Bali · the classic',              gem:P, transport:'✈',  budget:'Rp 800k/nt'   },
+      { code:'YOG', sub:'Yogyakarta · temples & batik',    gem:G, transport:'🚂', budget:'Rp 450k/nt'   },
+      { code:'MDC', sub:'Manado · Bunaken diving',         gem:G, transport:'✈',  budget:'Rp 380k/nt'   },
+      { code:'CEB', sub:'Cebu · beach & diving',           gem:P, transport:'✈',  budget:'₱2,800/nt'    },
+      { code:'PPS', sub:'Puerto Princesa · last frontier', gem:G, transport:'✈',  budget:'₱2,200/nt'    },
+      { code:'DAD', sub:'Đà Nẵng · marble & coast',       gem:P, transport:'✈',  budget:'$45/day'      },
+      { code:'DLI', sub:'Đà Lạt · cool & misty',          gem:G, transport:'🚌', budget:'$38/day'      },
+      { code:'CXR', sub:'Nha Trang · secret beach town',   gem:G, transport:'🚂', budget:'$28/day'      },
+      { code:'MDL', sub:'Mandalay · golden pagodas',       gem:G, transport:'🚂', budget:'$22/day'      },
+      { code:'KOS', sub:'Koh Kong · wild coast',           gem:G, transport:'🚌', budget:'$18/day'      },
+      // ── East Asia ───────────────────────────────────────────────────────────
+      { code:'KIX', sub:'Osaka · food & street life',      gem:P, transport:'🚂', budget:'¥10,000/nt'   },
+      { code:'KMJ', sub:'Kumamoto · feudal castle',        gem:G, transport:'🚂', budget:'¥8,500/nt'    },
+      { code:'SDJ', sub:'Sendai · Tohoku & silence',       gem:G, transport:'🚂', budget:'¥7,800/nt'    },
+      { code:'XIY', sub:'Xi\'an · silk road dumplings',    gem:P, transport:'🚂', budget:'¥380/day'     },
+      { code:'CSX', sub:'Changsha · Mao & street food',    gem:G, transport:'🚂', budget:'¥280/day'     },
+      { code:'HGH', sub:'Hangzhou · West Lake serenity',   gem:G, transport:'🚂', budget:'¥260/day'     },
+      { code:'XMN', sub:'Xiamen · coffee & coastline',     gem:G, transport:'🚂', budget:'¥220/day'     },
+      { code:'PUS', sub:'Busan · beach city bustle',       gem:P, transport:'🚂', budget:'₩85,000/nt'   },
+      { code:'YNY', sub:'Yangyang · surf & pine forest',   gem:G, transport:'🚌', budget:'₩70,000/nt'   },
+      { code:'KHH', sub:'Kaohsiung · port city charm',     gem:G, transport:'🚂', budget:'NT$1,200/nt'  },
+      { code:'ZUH', sub:'Zhuhai · the quieter side',       gem:G, transport:'⛴',  budget:'HK$380/nt'    },
+      { code:'HVD', sub:'Khovd · western steppe',          gem:G, transport:'✈',  budget:'$42/day'      },
+      // ── Oceania ─────────────────────────────────────────────────────────────
+      { code:'MEL', sub:'Melbourne · culture & coffee',    gem:P, transport:'✈',  budget:'A$180/nt'     },
+      { code:'HBA', sub:'Hobart · wilderness edge',        gem:G, transport:'✈',  budget:'A$110/nt'     },
+      { code:'CBR', sub:'Canberra · underrated capital',   gem:G, transport:'🚗', budget:'A$95/nt'      },
+      { code:'ADL', sub:'Adelaide · wine & festivals',     gem:G, transport:'✈',  budget:'A$120/nt'     },
+      { code:'ZQN', sub:'Queenstown · adventure HQ',       gem:P, transport:'✈',  budget:'NZ$130/nt'    },
+      { code:'NPE', sub:'Napier · art deco wine town',     gem:G, transport:'✈',  budget:'NZ$85/nt'     },
+      { code:'SVU', sub:'Savusavu · hidden gem islands',   gem:G, transport:'✈',  budget:'$95/nt'       },
+      { code:'FAV', sub:'Fakarava · UNESCO atoll',         gem:G, transport:'✈',  budget:'XPF 8,500/nt' },
+    ];
 
-  // P = popular (no stamp)  G = hidden gem (stamp appears)
-  var P = false, G = true;
-  var C = "Crowd level", M = "Voya match", B = "Budget", T = "Getting there";
+    // Shuffle on load so every visitor sees a different starting sequence
+    for (let i = DESTINATIONS.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [DESTINATIONS[i], DESTINATIONS[j]] = [DESTINATIONS[j], DESTINATIONS[i]];
+    }
 
-  var dests = [
-    // ─── North America ─────────────────────────────────────────────────────
-    { orig:"ATL", origPlace:"Atlanta, Georgia",       code:"MSY", sub:"New Orleans · NYE bus",         gem:P, transport:"🚌", s1:"$80/wknd",    s2:"Bus · 6hr",      s3:"Very High", l1:B,l2:T,l3:C },
-    { orig:"ATL", origPlace:"Atlanta, Georgia",       code:"MSY", sub:"New Orleans · road trip",        gem:P, transport:"🚗", s1:"$90/wknd",    s2:"Car · 4h30m",    s3:"Very High", l1:B,l2:T,l3:C },
-    { orig:"ATL", origPlace:"Atlanta, Georgia",       code:"MSY", sub:"New Orleans · quick flight",     gem:P, transport:"✈",  s1:"$164/rt",     s2:"Flight · 1h10m", s3:"Very High", l1:B,l2:T,l3:C },
-    { orig:"ATL", origPlace:"Atlanta, Georgia",       code:"MSY", sub:"New Orleans · overnight train",  gem:G, transport:"🚂", s1:"$52/wknd",    s2:"Train · 11hr",   s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"ATL", origPlace:"Atlanta, Georgia",       code:"HSV", sub:"Huntsville · NASA & trails",     gem:G, transport:"🚗", s1:"$74/nt",      s2:"Car · 2h30m",    s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"ATL", origPlace:"Atlanta, Georgia",       code:"CHA", sub:"Chattanooga · canyon & rails",   gem:G, transport:"🚗", s1:"$68/nt",      s2:"Car · 1h45m",    s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"NYC", origPlace:"New York City",          code:"BOS", sub:"Boston · harbour & history",     gem:P, transport:"🚂", s1:"$180/nt",     s2:"Train · 3h30m",  s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"NYC", origPlace:"New York City",          code:"MTL", sub:"Montréal · french weekend",      gem:P, transport:"🚂", s1:"C$150/nt",    s2:"Train · 10hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"NYC", origPlace:"New York City",          code:"PVD", sub:"Providence · secret food city",  gem:G, transport:"🚂", s1:"$95/nt",      s2:"Train · 1h15m",  s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"NYC", origPlace:"New York City",          code:"BUF", sub:"Buffalo · Niagara off-season",   gem:G, transport:"🚂", s1:"$89/nt",      s2:"Train · 5hr",    s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"LAX", origPlace:"Los Angeles, CA",        code:"LAS", sub:"Las Vegas · weekend flash",      gem:P, transport:"🚗", s1:"$180/nt",     s2:"Car · 4hr",      s3:"Very High", l1:B,l2:T,l3:C },
-    { orig:"LAX", origPlace:"Los Angeles, CA",        code:"SFO", sub:"San Francisco · the Bay",        gem:P, transport:"🚂", s1:"$145/nt",     s2:"Train · 9hr",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"LAX", origPlace:"Los Angeles, CA",        code:"PSP", sub:"Palm Springs · desert calm",     gem:G, transport:"🚗", s1:"$85/nt",      s2:"Car · 2hr",      s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"SFO", origPlace:"San Francisco, CA",      code:"PDX", sub:"Portland · weird & beautiful",   gem:G, transport:"✈",  s1:"$96/nt",      s2:"Flight · 2hr",   s3:"90%",       l1:B,l2:T,l3:M },
-    { orig:"CHI", origPlace:"Chicago, Illinois",      code:"MKE", sub:"Milwaukee · underrated gem",     gem:G, transport:"🚂", s1:"$79/nt",      s2:"Train · 1h30m",  s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"MIA", origPlace:"Miami, Florida",         code:"HAV", sub:"Havana · classic cars & music",  gem:P, transport:"✈",  s1:"$220/nt",     s2:"Flight · 55min", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"MIA", origPlace:"Miami, Florida",         code:"GGT", sub:"Exuma · the secret Bahamas",     gem:G, transport:"✈",  s1:"$165/nt",     s2:"Flight · 1h20m", s3:"96%",       l1:B,l2:T,l3:M },
-    { orig:"YYZ", origPlace:"Toronto, Canada",        code:"QUE", sub:"Québec City · winter carnival",  gem:G, transport:"🚂", s1:"C$130/nt",    s2:"Train · 5hr",    s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"YYZ", origPlace:"Toronto, Canada",        code:"YOW", sub:"Ottawa · parliament & art",      gem:P, transport:"🚂", s1:"C$110/nt",    s2:"Train · 4h30m",  s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"MEX", origPlace:"Mexico City",            code:"OAX", sub:"Oaxaca · mole & mezcal",         gem:P, transport:"✈",  s1:"MX$800/nt",   s2:"Flight · 1hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"MEX", origPlace:"Mexico City",            code:"MID", sub:"Mérida · Yucatán heat",          gem:G, transport:"🚌", s1:"MX$550/nt",   s2:"Bus · 19hr",     s3:"96%",       l1:B,l2:T,l3:M },
-    { orig:"GRU", origPlace:"São Paulo, Brazil",      code:"FLN", sub:"Florianópolis · island life",    gem:G, transport:"✈",  s1:"R$220/nt",    s2:"Flight · 1h30m", s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"GRU", origPlace:"São Paulo, Brazil",      code:"IGU", sub:"Iguazú · falls & jungle",        gem:P, transport:"✈",  s1:"R$280/nt",    s2:"Flight · 2hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"EZE", origPlace:"Buenos Aires",           code:"BRC", sub:"Bariloche · Andes & lakes",      gem:G, transport:"✈",  s1:"$110/nt",     s2:"Flight · 2hr",   s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"BOG", origPlace:"Bogotá, Colombia",       code:"CTG", sub:"Cartagena · colonial coast",     gem:P, transport:"✈",  s1:"$95/nt",      s2:"Flight · 1hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"BOG", origPlace:"Bogotá, Colombia",       code:"SMR", sub:"Santa Marta · Sierra gem",       gem:G, transport:"🚌", s1:"$55/nt",      s2:"Bus · 14hr",     s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"LIM", origPlace:"Lima, Peru",             code:"CUZ", sub:"Cusco · gateway to Machu Picchu",gem:P, transport:"✈",  s1:"$85/nt",      s2:"Flight · 1h20m", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"LIM", origPlace:"Lima, Peru",             code:"IQT", sub:"Iquitos · Amazon deep cut",      gem:G, transport:"✈",  s1:"$70/nt",      s2:"Flight · 1h45m", s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"SCL", origPlace:"Santiago, Chile",        code:"PMC", sub:"Puerto Montt · lake district",   gem:G, transport:"✈",  s1:"$90/nt",      s2:"Flight · 1h30m", s3:"94%",       l1:B,l2:T,l3:M },
+    let currentIdx = 0;
 
-    // ─── Europe ────────────────────────────────────────────────────────────
-    { orig:"LHR", origPlace:"London, England",        code:"BCN", sub:"Barcelona · high season",        gem:P, transport:"✈",  s1:"£85/day",     s2:"Flight · 2h20m", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"LHR", origPlace:"London, England",        code:"LJU", sub:"Ljubljana · before everyone",    gem:G, transport:"✈",  s1:"£44/day",     s2:"Flight · 2h10m", s3:"97%",       l1:B,l2:T,l3:M },
-    { orig:"LHR", origPlace:"London, England",        code:"PRN", sub:"Pristina · Kosovo uncovered",    gem:G, transport:"✈",  s1:"£38/day",     s2:"Flight · 2h45m", s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"LHR", origPlace:"London, England",        code:"BEG", sub:"Belgrade · late nights & art",   gem:G, transport:"✈",  s1:"£42/day",     s2:"Flight · 2h30m", s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"CDG", origPlace:"Paris, France",          code:"MAD", sub:"Madrid · siesta culture",        gem:P, transport:"✈",  s1:"€80/day",     s2:"Flight · 2hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"CDG", origPlace:"Paris, France",          code:"MRS", sub:"Marseille · raw & vibrant",      gem:G, transport:"🚂", s1:"€65/day",     s2:"Train · 3h20m",  s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"FRA", origPlace:"Frankfurt, Germany",     code:"VIE", sub:"Vienna · imperial weekend",      gem:P, transport:"🚂", s1:"€85/day",     s2:"Train · 7hr",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"FRA", origPlace:"Frankfurt, Germany",     code:"LJU", sub:"Ljubljana · café & cobblestones",gem:G, transport:"🚂", s1:"€50/day",     s2:"Train · 8hr",    s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"MAD", origPlace:"Madrid, Spain",          code:"GRX", sub:"Granada · Alhambra & tapas",     gem:G, transport:"🚌", s1:"€45/day",     s2:"Bus · 5hr",      s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"MAD", origPlace:"Madrid, Spain",          code:"SVQ", sub:"Seville · flamenco & heat",      gem:P, transport:"🚂", s1:"€60/day",     s2:"Train · 2h30m",  s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"FCO", origPlace:"Rome, Italy",            code:"NAP", sub:"Naples · pizza & chaos",         gem:P, transport:"🚂", s1:"€60/day",     s2:"Train · 1h10m",  s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"FCO", origPlace:"Rome, Italy",            code:"TAR", sub:"Taranto · Puglia hidden coast",  gem:G, transport:"🚂", s1:"€45/day",     s2:"Train · 3h30m",  s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"AMS", origPlace:"Amsterdam",              code:"BRU", sub:"Brussels · beer & comics",       gem:P, transport:"🚂", s1:"€75/day",     s2:"Train · 2hr",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"AMS", origPlace:"Amsterdam",              code:"LUX", sub:"Luxembourg · most underrated",   gem:G, transport:"🚂", s1:"€60/day",     s2:"Train · 3h30m",  s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"ARN", origPlace:"Stockholm, Sweden",      code:"CPH", sub:"Copenhagen · Nordic cool",       gem:P, transport:"🚂", s1:"€90/day",     s2:"Train · 5hr",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"ARN", origPlace:"Stockholm, Sweden",      code:"TRD", sub:"Trondheim · fjords & calm",      gem:G, transport:"✈",  s1:"€65/day",     s2:"Flight · 1h15m", s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"HEL", origPlace:"Helsinki, Finland",      code:"TLL", sub:"Tallinn · medieval fairy tale",  gem:G, transport:"⛴",  s1:"€50/day",     s2:"Ferry · 2h30m",  s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"ATH", origPlace:"Athens, Greece",         code:"SKG", sub:"Thessaloniki · real Greece",     gem:G, transport:"🚌", s1:"€45/day",     s2:"Bus · 6hr",      s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"ATH", origPlace:"Athens, Greece",         code:"HER", sub:"Heraklion · Crete &  ruins",     gem:P, transport:"✈",  s1:"€55/day",     s2:"Flight · 55min", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"IST", origPlace:"Istanbul, Turkey",       code:"AYT", sub:"Antalya · Turkish riviera",      gem:P, transport:"✈",  s1:"₺280/day",    s2:"Flight · 1hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"IST", origPlace:"Istanbul, Turkey",       code:"KYA", sub:"Konya · Rumi's city",            gem:G, transport:"🚌", s1:"₺180/day",    s2:"Bus · 11hr",     s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"WAW", origPlace:"Warsaw, Poland",         code:"KRK", sub:"Kraków · old town weekend",      gem:P, transport:"🚂", s1:"PLN 190/nt",  s2:"Train · 2h30m",  s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"BUD", origPlace:"Budapest, Hungary",      code:"DBV", sub:"Dubrovnik · game of thrones",    gem:P, transport:"🚌", s1:"€90/day",     s2:"Bus · 9hr",      s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"BUD", origPlace:"Budapest, Hungary",      code:"SKP", sub:"Skopje · Balkans surprise",      gem:G, transport:"🚌", s1:"€38/day",     s2:"Bus · 8hr",      s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"PRG", origPlace:"Prague, Czech Republic", code:"BRQ", sub:"Brno · students & galleries",   gem:G, transport:"🚂", s1:"€35/day",     s2:"Train · 2h30m",  s3:"90%",       l1:B,l2:T,l3:M },
-    { orig:"LIS", origPlace:"Lisbon, Portugal",       code:"FAO", sub:"Algarve · dramatic cliffs",      gem:P, transport:"🚌", s1:"€70/day",     s2:"Bus · 3h30m",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"LIS", origPlace:"Lisbon, Portugal",       code:"CVU", sub:"Corvo · world's end island",     gem:G, transport:"✈",  s1:"€55/day",     s2:"Flight · 2h30m", s3:"97%",       l1:B,l2:T,l3:M },
+    function rotateDest() {
+      currentIdx = (currentIdx + 1) % DESTINATIONS.length;
+      const d     = DESTINATIONS[currentIdx];
+      const els   = document.querySelectorAll('.dest-el');
+      const stamp = document.getElementById('passStamp');
 
-    // ─── Africa ────────────────────────────────────────────────────────────
-    { orig:"NBO", origPlace:"Nairobi, Kenya",         code:"ZNZ", sub:"Zanzibar · spice & white sand",  gem:G, transport:"✈",  s1:"$110/nt",     s2:"Flight · 1h30m", s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"NBO", origPlace:"Nairobi, Kenya",         code:"MBA", sub:"Mombasa · coast road",           gem:P, transport:"🚂", s1:"KSh 4,500/nt",s2:"Train · 9hr",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"CAI", origPlace:"Cairo, Egypt",           code:"LXR", sub:"Luxor · Valley of Kings",        gem:P, transport:"🚂", s1:"E£1,200/nt",  s2:"Train · 10hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"CAI", origPlace:"Cairo, Egypt",           code:"ASW", sub:"Aswan · Nile & Nubian villages", gem:G, transport:"🚂", s1:"E£850/nt",    s2:"Train · 13hr",   s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"CPT", origPlace:"Cape Town, S. Africa",   code:"GRJ", sub:"George · Garden Route gem",      gem:G, transport:"🚗", s1:"R880/nt",     s2:"Car · 6h30m",    s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"CPT", origPlace:"Cape Town, S. Africa",   code:"PLZ", sub:"Plettenberg Bay · beaches",      gem:G, transport:"🚗", s1:"R750/nt",     s2:"Car · 5hr",      s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"JNB", origPlace:"Johannesburg, S. Africa",code:"VFA", sub:"Victoria Falls · thunder",       gem:P, transport:"✈",  s1:"$210/nt",     s2:"Flight · 1h30m", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"LOS", origPlace:"Lagos, Nigeria",         code:"CLQ", sub:"Calabar · nature & culture",     gem:G, transport:"✈",  s1:"₦28,000/nt",  s2:"Flight · 1h45m", s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"CMN", origPlace:"Casablanca, Morocco",    code:"FEZ", sub:"Fez · ancient medina",           gem:G, transport:"🚂", s1:"MAD 280/nt",  s2:"Train · 4hr",    s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"CMN", origPlace:"Casablanca, Morocco",    code:"MRK", sub:"Marrakech · the souk maze",      gem:P, transport:"🚂", s1:"MAD 400/nt",  s2:"Train · 3hr",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"DAR", origPlace:"Dar es Salaam, Tanzania",code:"ZNZ", sub:"Zanzibar · ferry crossing",      gem:P, transport:"⛴",  s1:"$65/nt",      s2:"Ferry · 2hr",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"ACC", origPlace:"Accra, Ghana",           code:"KMS", sub:"Kumasi · Ashanti heritage",      gem:G, transport:"🚌", s1:"GH₵ 280/nt",  s2:"Bus · 4hr",      s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"ADD", origPlace:"Addis Ababa, Ethiopia",  code:"DIR", sub:"Dire Dawa · hidden Harar near",  gem:G, transport:"✈",  s1:"$45/nt",      s2:"Flight · 1h30m", s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"TUN", origPlace:"Tunis, Tunisia",         code:"TOE", sub:"Tozeur · Sahara oasis",          gem:G, transport:"🚌", s1:"TND 85/nt",   s2:"Bus · 8hr",      s3:"94%",       l1:B,l2:T,l3:M },
+      els.forEach(el => el.classList.add('out'));
+      stamp.classList.remove('visible');
 
-    // ─── Middle East ───────────────────────────────────────────────────────
-    { orig:"DXB", origPlace:"Dubai, UAE",             code:"MCT", sub:"Muscat · old Arabia, real",      gem:G, transport:"✈",  s1:"$95/nt",      s2:"Flight · 1hr",   s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"DXB", origPlace:"Dubai, UAE",             code:"AMM", sub:"Amman · Middle East gateway",    gem:P, transport:"✈",  s1:"$120/nt",     s2:"Flight · 2h30m", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"DXB", origPlace:"Dubai, UAE",             code:"GYD", sub:"Baku · fire & silk road",        gem:G, transport:"✈",  s1:"$80/nt",      s2:"Flight · 2hr",   s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"AMM", origPlace:"Amman, Jordan",          code:"PET", sub:"Petra · rose-red city",          gem:P, transport:"🚗", s1:"$55/nt",      s2:"Car · 3hr",      s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"AMM", origPlace:"Amman, Jordan",          code:"AQJ", sub:"Aqaba · Red Sea diving",         gem:G, transport:"🚗", s1:"$70/nt",      s2:"Car · 4hr",      s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"TLV", origPlace:"Tel Aviv, Israel",       code:"HFA", sub:"Haifa · Bahá'í gardens",         gem:G, transport:"🚂", s1:"₪380/nt",     s2:"Train · 1hr",    s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"RUH", origPlace:"Riyadh, Saudi Arabia",   code:"ULH", sub:"AlUla · ancient Nabataean city", gem:G, transport:"✈",  s1:"SAR 450/nt",  s2:"Flight · 2hr",   s3:"96%",       l1:B,l2:T,l3:M },
+      setTimeout(() => {
+        const passNum = parseInt(document.getElementById('passNum').textContent, 10);
+        const newNum  = passNum + Math.floor(Math.random() * 12 + 3);
+        const seat    = rnd(SEATS);
+        const dep     = rnd(DEPS);
+        const board   = subMins(dep, 30);
+        const gate    = rnd(GATES);
+        const pax     = rnd(PASSENGERS);
+        const cls     = (Math.random() > .85) ? 'Business' : 'Economy';
+        const gemTxt  = d.gem ? 'Hidden 💎' : 'Well-known 🌍';
 
-    // ─── South & Central Asia ──────────────────────────────────────────────
-    { orig:"DEL", origPlace:"New Delhi, India",       code:"GOI", sub:"Goa · beach season",             gem:P, transport:"✈",  s1:"₹3,200/nt",   s2:"Flight · 2h30m", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"DEL", origPlace:"New Delhi, India",       code:"VNS", sub:"Varanasi · sacred & ancient",    gem:P, transport:"🚂", s1:"₹950/day",    s2:"Train · 7hr",    s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"DEL", origPlace:"New Delhi, India",       code:"UDR", sub:"Udaipur · lakes off-season",     gem:G, transport:"🚂", s1:"₹1,100/day",  s2:"Train · 13hr",   s3:"96%",       l1:B,l2:T,l3:M },
-    { orig:"DEL", origPlace:"New Delhi, India",       code:"MCL", sub:"McLeod Ganj · Himalayas",        gem:G, transport:"🚌", s1:"₹800/day",    s2:"Bus · 10hr",     s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"DEL", origPlace:"New Delhi, India",       code:"LEH", sub:"Ladakh · roof of the world",     gem:G, transport:"✈",  s1:"₹1,800/day",  s2:"Flight · 1h10m", s3:"97%",       l1:B,l2:T,l3:M },
-    { orig:"DEL", origPlace:"New Delhi, India",       code:"SXR", sub:"Srinagar · Dal Lake & houseboats",gem:G,transport:"✈",  s1:"₹1,400/day",  s2:"Flight · 1h20m", s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"BOM", origPlace:"Mumbai, India",          code:"GOI", sub:"Goa · long weekend",             gem:P, transport:"🚂", s1:"₹2,200/nt",   s2:"Train · 10hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"BOM", origPlace:"Mumbai, India",          code:"COK", sub:"Kochi · backwaters & spice",     gem:G, transport:"🚂", s1:"₹850/day",    s2:"Train · 22hr",   s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"BOM", origPlace:"Mumbai, India",          code:"HYD", sub:"Hyderabad · biryani & tech",     gem:P, transport:"✈",  s1:"₹1,600/nt",   s2:"Flight · 1h20m", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"CCU", origPlace:"Kolkata, India",         code:"IXZ", sub:"Port Blair · Andaman Islands",   gem:G, transport:"✈",  s1:"₹2,100/nt",   s2:"Flight · 2hr",   s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"CMB", origPlace:"Colombo, Sri Lanka",     code:"TRZ", sub:"Trincomalee · secret coast",     gem:G, transport:"🚂", s1:"LKR 4,500/nt",s2:"Train · 5hr",    s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"CMB", origPlace:"Colombo, Sri Lanka",     code:"KCT", sub:"Koggala · southern secret",      gem:G, transport:"🚂", s1:"LKR 3,800/nt",s2:"Train · 3h30m",  s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"KTM", origPlace:"Kathmandu, Nepal",       code:"PKR", sub:"Pokhara · Himalaya gateway",     gem:G, transport:"🚌", s1:"$35/day",     s2:"Bus · 7hr",      s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"KTM", origPlace:"Kathmandu, Nepal",       code:"BHR", sub:"Bharatpur · jungle & rhinos",    gem:G, transport:"🚌", s1:"$28/day",     s2:"Bus · 5hr",      s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"DAC", origPlace:"Dhaka, Bangladesh",      code:"CGP", sub:"Cox's Bazar · world's longest beach",gem:G,transport:"✈",s1:"BDT 2,800/nt",s2:"Flight · 1hr", s3:"90%",      l1:B,l2:T,l3:M },
-    { orig:"TAS", origPlace:"Tashkent, Uzbekistan",   code:"SMR", sub:"Samarkand · blue domes",         gem:G, transport:"🚂", s1:"$35/day",     s2:"Train · 3hr",    s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"TAS", origPlace:"Tashkent, Uzbekistan",   code:"BHK", sub:"Bukhara · ancient oasis",        gem:G, transport:"🚂", s1:"$28/day",     s2:"Train · 5hr",    s3:"96%",       l1:B,l2:T,l3:M },
-    { orig:"ALA", origPlace:"Almaty, Kazakhstan",     code:"TSE", sub:"Astana · futurist capital",       gem:G, transport:"✈",  s1:"₸8,500/nt",   s2:"Flight · 2hr",   s3:"90%",       l1:B,l2:T,l3:M },
+        document.getElementById('origCode').textContent      = 'YOU';
+        document.getElementById('origPlace').textContent     = 'Wherever you are';
+        document.getElementById('destCode').textContent      = d.code;
+        document.getElementById('destSub').textContent       = d.sub;
+        document.getElementById('transportIcon').textContent = d.transport;
+        document.getElementById('passPassenger').textContent = pax;
+        document.getElementById('passClass').textContent     = cls;
+        document.getElementById('passSeat').textContent      = seat;
+        document.getElementById('passGateVal').textContent   = gate;
+        document.getElementById('passDep').textContent       = dep;
+        document.getElementById('passBoarding').textContent  = board;
+        document.getElementById('stat1').textContent         = d.budget;
+        document.getElementById('stat3').textContent         = gemTxt;
+        document.getElementById('passNum').textContent       = newNum;
+        document.getElementById('passNum2').textContent      = newNum;
+        document.getElementById('barcodeNum').textContent    = `VY${newNum}·${d.code}·${seat}`;
 
-    // ─── Southeast Asia ────────────────────────────────────────────────────
-    { orig:"BKK", origPlace:"Bangkok, Thailand",      code:"HKT", sub:"Phuket · Thai beach classic",    gem:P, transport:"✈",  s1:"฿1,800/nt",   s2:"Flight · 1h20m", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"BKK", origPlace:"Bangkok, Thailand",      code:"CNX", sub:"Chiang Mai · slow north",        gem:G, transport:"🚂", s1:"฿650/day",    s2:"Train · 13hr",   s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"BKK", origPlace:"Bangkok, Thailand",      code:"LPQ", sub:"Luang Prabang · monks at dawn",  gem:G, transport:"✈",  s1:"$55/day",     s2:"Flight · 1h30m", s3:"96%",       l1:B,l2:T,l3:M },
-    { orig:"BKK", origPlace:"Bangkok, Thailand",      code:"VTE", sub:"Vientiane · most peaceful capital",gem:G,transport:"🚌",s1:"$35/day",     s2:"Bus · 11hr",     s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"SIN", origPlace:"Singapore",              code:"PEN", sub:"Penang · street food capital",   gem:P, transport:"🚌", s1:"RM 150/nt",   s2:"Bus · 6hr",      s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"SIN", origPlace:"Singapore",              code:"KCH", sub:"Kuching · orangutans & Borneo",  gem:G, transport:"✈",  s1:"RM 180/nt",   s2:"Flight · 1h40m", s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"SIN", origPlace:"Singapore",              code:"BTH", sub:"Batam · the ferry escape",       gem:G, transport:"⛴",  s1:"RM 95/nt",    s2:"Ferry · 40min",  s3:"90%",       l1:B,l2:T,l3:M },
-    { orig:"KUL", origPlace:"Kuala Lumpur",           code:"BKI", sub:"Kota Kinabalu · Mt Kinabalu",    gem:G, transport:"✈",  s1:"RM 160/nt",   s2:"Flight · 2h30m", s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"CGK", origPlace:"Jakarta, Indonesia",     code:"DPS", sub:"Bali · the classic",             gem:P, transport:"✈",  s1:"Rp 800k/nt",  s2:"Flight · 1h50m", s3:"Very High", l1:B,l2:T,l3:C },
-    { orig:"CGK", origPlace:"Jakarta, Indonesia",     code:"YOG", sub:"Yogyakarta · temples & batik",   gem:G, transport:"🚂", s1:"Rp 450k/nt",  s2:"Train · 7hr",    s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"CGK", origPlace:"Jakarta, Indonesia",     code:"MDC", sub:"Manado · Bunaken diving",        gem:G, transport:"✈",  s1:"Rp 380k/nt",  s2:"Flight · 3h30m", s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"MNL", origPlace:"Manila, Philippines",    code:"CEB", sub:"Cebu · beach & diving",          gem:P, transport:"✈",  s1:"₱2,800/nt",   s2:"Flight · 1hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"MNL", origPlace:"Manila, Philippines",    code:"PPS", sub:"Puerto Princesa · last frontier",gem:G, transport:"✈",  s1:"₱2,200/nt",   s2:"Flight · 1h30m", s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"SGN", origPlace:"Ho Chi Minh City",       code:"DAD", sub:"Đà Nẵng · marble & coast",      gem:P, transport:"✈",  s1:"$45/day",     s2:"Flight · 1hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"SGN", origPlace:"Ho Chi Minh City",       code:"DLI", sub:"Đà Lạt · cool & misty",         gem:G, transport:"🚌", s1:"$38/day",     s2:"Bus · 7hr",      s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"HAN", origPlace:"Hanoi, Vietnam",         code:"CXR", sub:"Nha Trang · secret beach town",  gem:G, transport:"🚂", s1:"$28/day",     s2:"Train · 8hr",    s3:"90%",       l1:B,l2:T,l3:M },
-    { orig:"RGN", origPlace:"Yangon, Myanmar",        code:"MDL", sub:"Mandalay · golden pagodas",      gem:G, transport:"🚂", s1:"$22/day",     s2:"Train · 15hr",   s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"PNH", origPlace:"Phnom Penh, Cambodia",   code:"KOS", sub:"Koh Kong · wild coast",          gem:G, transport:"🚌", s1:"$18/day",     s2:"Bus · 4hr",      s3:"92%",       l1:B,l2:T,l3:M },
+        els.forEach(el => el.classList.remove('out'));
+        if (d.gem) stamp.classList.add('visible');
+      }, 420);
+    }
 
-    // ─── East Asia ─────────────────────────────────────────────────────────
-    { orig:"NRT", origPlace:"Tokyo, Japan",           code:"KIX", sub:"Osaka · food & street life",     gem:P, transport:"🚂", s1:"¥10,000/nt",  s2:"Train · 2h30m",  s3:"Very High", l1:B,l2:T,l3:C },
-    { orig:"NRT", origPlace:"Tokyo, Japan",           code:"KMJ", sub:"Kumamoto · feudal castle",       gem:G, transport:"🚂", s1:"¥8,500/nt",   s2:"Train · 5hr",    s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"NRT", origPlace:"Tokyo, Japan",           code:"SDJ", sub:"Sendai · Tohoku & silence",      gem:G, transport:"🚂", s1:"¥7,800/nt",   s2:"Train · 1h30m",  s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"PEK", origPlace:"Beijing, China",         code:"XIY", sub:"Xi'an · silk road dumplings",    gem:P, transport:"🚂", s1:"¥380/day",    s2:"Train · 4h30m",  s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"PEK", origPlace:"Beijing, China",         code:"CSX", sub:"Changsha · Mao & street food",   gem:G, transport:"🚂", s1:"¥280/day",    s2:"Train · 5h30m",  s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"PVG", origPlace:"Shanghai, China",        code:"HGH", sub:"Hangzhou · West Lake serenity",  gem:G, transport:"🚂", s1:"¥260/day",    s2:"Train · 1hr",    s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"PVG", origPlace:"Shanghai, China",        code:"XMN", sub:"Xiamen · coffee & coastline",    gem:G, transport:"🚂", s1:"¥220/day",    s2:"Train · 3hr",    s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"ICN", origPlace:"Seoul, South Korea",     code:"PUS", sub:"Busan · beach city bustle",      gem:P, transport:"🚂", s1:"₩85,000/nt",  s2:"Train · 2h30m",  s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"ICN", origPlace:"Seoul, South Korea",     code:"YNY", sub:"Yangyang · surf & pine forest",  gem:G, transport:"🚌", s1:"₩70,000/nt",  s2:"Bus · 2hr",      s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"ICN", origPlace:"Seoul, South Korea",     code:"CJU", sub:"Jeju · volcanic island",         gem:P, transport:"✈",  s1:"₩95,000/nt",  s2:"Flight · 1hr",   s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"TPE", origPlace:"Taipei, Taiwan",         code:"KHH", sub:"Kaohsiung · port city charm",    gem:G, transport:"🚂", s1:"NT$1,200/nt", s2:"Train · 1h30m",  s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"HKG", origPlace:"Hong Kong",              code:"ZUH", sub:"Zhuhai · the quieter side",      gem:G, transport:"⛴",  s1:"HK$380/nt",   s2:"Ferry · 1hr",    s3:"91%",       l1:B,l2:T,l3:M },
-    { orig:"ULN", origPlace:"Ulaanbaatar, Mongolia",  code:"HVD", sub:"Khovd · western steppe",         gem:G, transport:"✈",  s1:"$42/day",     s2:"Flight · 2h30m", s3:"95%",       l1:B,l2:T,l3:M },
+    // Rotate every 3 seconds
+    setInterval(rotateDest, 3000);
+  </script>
 
-    // ─── Oceania ───────────────────────────────────────────────────────────
-    { orig:"SYD", origPlace:"Sydney, Australia",      code:"MEL", sub:"Melbourne · culture & coffee",   gem:P, transport:"✈",  s1:"A$180/nt",    s2:"Flight · 1h30m", s3:"High",      l1:B,l2:T,l3:C },
-    { orig:"SYD", origPlace:"Sydney, Australia",      code:"HBA", sub:"Hobart · wilderness edge",       gem:G, transport:"✈",  s1:"A$110/nt",    s2:"Flight · 1h30m", s3:"94%",       l1:B,l2:T,l3:M },
-    { orig:"SYD", origPlace:"Sydney, Australia",      code:"CBR", sub:"Canberra · underrated capital",  gem:G, transport:"🚗", s1:"A$95/nt",     s2:"Car · 3hr",      s3:"90%",       l1:B,l2:T,l3:M },
-    { orig:"MEL", origPlace:"Melbourne, Australia",   code:"ADL", sub:"Adelaide · wine & festivals",    gem:G, transport:"✈",  s1:"A$120/nt",    s2:"Flight · 1h15m", s3:"92%",       l1:B,l2:T,l3:M },
-    { orig:"AKL", origPlace:"Auckland, New Zealand",  code:"ZQN", sub:"Queenstown · adventure HQ",      gem:P, transport:"✈",  s1:"NZ$130/nt",   s2:"Flight · 1h30m", s3:"Very High", l1:B,l2:T,l3:C },
-    { orig:"AKL", origPlace:"Auckland, New Zealand",  code:"NPE", sub:"Napier · art deco wine town",    gem:G, transport:"✈",  s1:"NZ$85/nt",    s2:"Flight · 1hr",   s3:"93%",       l1:B,l2:T,l3:M },
-    { orig:"NAN", origPlace:"Nadi, Fiji",             code:"SVU", sub:"Savusavu · hidden gem islands",  gem:G, transport:"✈",  s1:"$95/nt",      s2:"Flight · 1hr",   s3:"95%",       l1:B,l2:T,l3:M },
-    { orig:"PPT", origPlace:"Papeete, French Polynesia",code:"FAV",sub:"Fakarava · UNESCO atoll",       gem:G, transport:"✈",  s1:"XPF 8,500/nt",s2:"Flight · 1h30m", s3:"96%",       l1:B,l2:T,l3:M },
-  ];
-
-  var origCode      = document.getElementById('origCode');
-  var origPlace     = document.getElementById('origPlace');
-  var transportIcon = document.getElementById('transportIcon');
-  var destCode      = document.getElementById('destCode');
-  var destSub       = document.getElementById('destSub');
-  var stat1         = document.getElementById('stat1');
-  var stat2         = document.getElementById('stat2');
-  var stat3         = document.getElementById('stat3');
-  var label1        = document.getElementById('label1');
-  var label2        = document.getElementById('label2');
-  var label3        = document.getElementById('label3');
-  var passNum       = document.getElementById('passNum');
-  var stamp         = document.querySelector('.pass-stamp');
-  var faders        = [origCode, origPlace, transportIcon, destCode, destSub, stat1, stat2, stat3, label1, label2, label3];
-
-  // Precompute a unique-looking boarding pass number per destination
-  // Uses a simple scatter so consecutive entries look very different
-  var passNums = dests.map(function(_, idx) {
-    return String(1000 + (idx * 479 + idx * idx * 137 + 847) % 8000).padStart(4, '0');
-  });
-
-  var i = 0;
-
-  setInterval(function(){
-    i = (i + 1) % dests.length;
-    var d = dests[i];
-
-    // Fade everything out
-    faders.forEach(function(el){ el.classList.add('out'); });
-    if (!d.gem) stamp.classList.remove('gem-on');
-
-    setTimeout(function(){
-      // Update all fields
-      origCode.textContent      = d.orig;
-      origPlace.textContent     = d.origPlace;
-      transportIcon.textContent = d.transport;
-      destCode.textContent      = d.code;
-      destSub.textContent       = d.sub;
-      label1.textContent        = d.l1;
-      label2.textContent        = d.l2;
-      label3.textContent        = d.l3;
-      stat1.textContent         = d.s1;
-      stat2.textContent         = d.s2;
-      stat3.textContent         = d.s3;
-      passNum.textContent       = passNums[i];
-
-      faders.forEach(function(el){ el.classList.remove('out'); });
-
-      // Stamp: appear with slight delay after text for gem
-      if (d.gem) {
-        setTimeout(function(){ stamp.classList.add('gem-on'); }, 180);
-      } else {
-        stamp.classList.remove('gem-on');
-      }
-    }, 420);
-
-  }, 3800);
-
-  // Smooth anchor scroll
-  document.querySelectorAll('a[href^="#"]').forEach(function(a){
-    a.addEventListener('click', function(e){
-      var id = a.getAttribute('href');
-      if(id.length > 1){
-        var el = document.querySelector(id);
-        if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth'}); }
-      }
-    });
-  });
-
-})();
-</script>
 </body>
 </html>

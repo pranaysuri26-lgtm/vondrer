@@ -740,7 +740,7 @@ function getFallbackGradient(dest: RecommendedDestination): string {
 // Session-level URL cache — persists across card expand/collapse within the session
 const imgSessionCache = new Map<string, string[]>()
 
-function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
+function ImageCarousel({ dest, compact = false }: { dest: RecommendedDestination; compact?: boolean }) {
   const [images,    setImages]    = useState<string[]>([])
   const [activeIdx, setActiveIdx] = useState(0)
   const [loaded,    setLoaded]    = useState<boolean[]>([])
@@ -805,7 +805,7 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
 
   return (
     <div
-      className="relative h-52 overflow-hidden"
+      className={`relative ${compact ? 'h-36' : 'h-52'} overflow-hidden`}
       style={images.length === 0 ? { background: fallback } : undefined}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -858,7 +858,7 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
   )
 }
 
-// ─── Destination card (dark grid card) ────────────────────────────────────────
+// ─── Destination card (dark grid card, expandable) ────────────────────────────
 
 function DestinationCard({
   dest, rank, locked, currency, gemEmphasis = false, dietaryPrefs = [], homeCity = '',
@@ -875,18 +875,23 @@ function DestinationCard({
   isSaving?:     boolean
   onSave?:       (dest: RecommendedDestination) => void
 }) {
+  const [expanded, setExpanded] = useState(false)
   const displayScore  = effectiveScore(dest)
   const timingPenalty = dest.timing_warning ? dest.match_score - displayScore : 0
   const country       = dest.state_province ? `${dest.state_province}, ${dest.country}` : dest.country
-  const primaryTransport = dest.transport?.[0]
 
   return (
-    <div className="rounded-3xl overflow-hidden bg-[#1C1C1E] border border-[#2A2A2E] flex flex-col shadow-xl shadow-black/20">
+    <div
+      onClick={() => !locked && setExpanded(e => !e)}
+      className={`rounded-3xl overflow-hidden bg-[#1C1C1E] border flex flex-col shadow-xl shadow-black/20 transition-all duration-200 ${
+        locked ? 'border-[#2A2A2E]' : expanded ? 'border-[#C97552]/40 cursor-pointer' : 'border-[#2A2A2E] cursor-pointer hover:border-[#444]'
+      }`}
+    >
 
-      {/* ── Photo / carousel ── */}
+      {/* ── Photo ── */}
       <div className="relative flex-shrink-0">
         {locked ? (
-          <div className="relative h-52 overflow-hidden" style={{ background: 'linear-gradient(135deg,#252525,#1C1C1E)' }}>
+          <div className="relative h-36 overflow-hidden" style={{ background: 'linear-gradient(135deg,#252525,#1C1C1E)' }}>
             <div className="absolute inset-0 flex items-center justify-center">
               <svg className="w-10 h-10 text-white/8" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
@@ -894,7 +899,7 @@ function DestinationCard({
             </div>
           </div>
         ) : (
-          <ImageCarousel dest={dest} />
+          <ImageCarousel dest={dest} compact={!expanded} />
         )}
 
         {/* Rank badge — top left */}
@@ -922,12 +927,17 @@ function DestinationCard({
             )}
           </button>
         )}
+
+        {/* Expand chevron — bottom right (unlocked only) */}
+        {!locked && (
+          <div className="absolute bottom-2 right-3 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
+            <span className="text-[10px] text-white/60">{expanded ? '▲' : '▼ details'}</span>
+          </div>
+        )}
       </div>
 
-      {/* ── Card body ── */}
-      <div className="flex-1 flex flex-col px-5 pt-4 pb-5 gap-3">
-
-        {/* Destination name + match% pill */}
+      {/* ── Collapsed: name + score + first reason ── */}
+      <div className="px-4 pt-3 pb-4 flex flex-col gap-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             {locked ? (
@@ -942,11 +952,12 @@ function DestinationCard({
               </>
             ) : (
               <>
-                <h2 className="font-serif italic text-2xl text-white leading-tight mb-0.5 truncate">{dest.name}</h2>
+                <h2 className="font-serif italic text-xl text-white leading-tight mb-0.5 truncate">{dest.name}</h2>
                 <p className="text-sm text-[#888]">{country}</p>
               </>
             )}
           </div>
+
           {/* Match % pill */}
           {locked && gemEmphasis ? (
             <div className="flex-shrink-0 flex items-center gap-2 bg-[#2A2A2E] border border-[#333] rounded-full px-3 py-1.5">
@@ -955,27 +966,30 @@ function DestinationCard({
             </div>
           ) : (
             <div className={`flex-shrink-0 rounded-full px-3 py-1.5 ${
-              locked
-                ? 'bg-[#2A2A2E]'
-                : timingPenalty > 0
-                  ? 'bg-amber-500/20 border border-amber-500/30'
-                  : 'bg-[#C97552]'
+              locked ? 'bg-[#2A2A2E]'
+              : timingPenalty > 0 ? 'bg-amber-500/20 border border-amber-500/30'
+              : 'bg-[#C97552]'
             }`}>
-              <span className={`text-xs font-bold ${
-                locked ? 'text-[#666]' : timingPenalty > 0 ? 'text-amber-400' : 'text-white'
-              }`}>
+              <span className={`text-xs font-bold ${locked ? 'text-[#666]' : timingPenalty > 0 ? 'text-amber-400' : 'text-white'}`}>
                 {displayScore}% match
               </span>
             </div>
           )}
         </div>
 
-        {/* Gem dots (unlocked) */}
-        {!locked && !(locked && gemEmphasis) && dest.hidden_gem_score && (
-          <GemDots score={dest.hidden_gem_score} />
+        {/* Gem dots + first reason tag (always visible) */}
+        {!locked && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {dest.hidden_gem_score && <GemDots score={dest.hidden_gem_score} />}
+            {dest.reasons?.[0] && (
+              <span className="text-xs text-[#AAA] bg-[#2A2A2E] border border-[#333] px-2.5 py-0.5 rounded-full leading-none">
+                {dest.reasons[0]}
+              </span>
+            )}
+          </div>
         )}
 
-        {/* Timing + event badges */}
+        {/* Timing + event badges (always visible) */}
         {!locked && (dest.timing_warning || dest.upcoming_event) && (
           <div className="flex flex-wrap gap-1.5">
             {dest.timing_warning && (
@@ -991,95 +1005,118 @@ function DestinationCard({
           </div>
         )}
 
-        {/* Reason tags — up to 3 dark pills */}
-        {!locked && dest.reasons?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {dest.reasons.slice(0, 3).map((r, i) => (
-              <span key={i} className="text-xs text-[#AAA] bg-[#2A2A2E] border border-[#333] px-2.5 py-1 rounded-full leading-none">
-                {r}
-              </span>
-            ))}
+        {/* Locked CTA */}
+        {locked && (
+          <div className="w-full py-2.5 rounded-full border border-[#333] flex items-center justify-center gap-2 mt-1">
+            <svg className="w-3.5 h-3.5 text-[#555]" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+            </svg>
+            <span className="text-[#555] text-sm">Unlock to reveal</span>
           </div>
         )}
+      </div>
 
-        {/* Personalization note */}
-        {!locked && dest.personalization_note && (
-          <p className="text-xs text-[#777] italic leading-snug line-clamp-2">
-            {dest.personalization_note}
-          </p>
-        )}
+      {/* ── Expanded details ── */}
+      {expanded && !locked && (
+        <div onClick={e => e.stopPropagation()} className="border-t border-[#2A2A2E] px-4 pt-4 pb-5 flex flex-col gap-3">
 
-        {/* Dietary badges */}
-        {!locked && <DietaryBadges dest={dest} userPrefs={dietaryPrefs} />}
+          {/* All reason tags */}
+          {dest.reasons?.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              {dest.reasons.slice(1).map((r, i) => (
+                <span key={i} className="text-xs text-[#AAA] bg-[#2A2A2E] border border-[#333] px-2.5 py-1 rounded-full leading-none">
+                  {r}
+                </span>
+              ))}
+            </div>
+          )}
 
-        {/* Timing note */}
-        {!locked && dest.timing_note && (
-          <p className={`text-xs leading-snug ${dest.timing_note.startsWith('⚠️') ? 'text-amber-400/80' : 'text-[#777]'}`}>
-            {dest.timing_note.startsWith('⚠️') ? '' : '📅 '}{dest.timing_note}
-          </p>
-        )}
+          {/* Personalization note */}
+          {dest.personalization_note && (
+            <p className="text-xs text-[#777] italic leading-snug">{dest.personalization_note}</p>
+          )}
 
-        {/* HOW TO GET THERE — abbreviated (first mode only) */}
-        {!locked && primaryTransport && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-[#555] font-label tracking-widest uppercase flex-shrink-0">Getting there</span>
-            <span className="text-base leading-none">{TRANSPORT_ICONS[primaryTransport.mode] ?? '✈️'}</span>
-            <span className="text-xs text-[#888] truncate">
-              {primaryTransport.duration_note ?? primaryTransport.mode}
-            </span>
-          </div>
-        )}
+          {/* Dietary badges */}
+          <DietaryBadges dest={dest} userPrefs={dietaryPrefs} />
 
-        {/* Budget + Best time */}
-        {!locked && (dest.budget_per_day_usd || dest.best_time_to_visit) && (
-          <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-[#2A2A2E] pt-3 mt-auto">
-            {dest.budget_per_day_usd && (
-              <div>
-                <p className="text-[10px] text-[#555] font-label tracking-widest uppercase mb-0.5">Budget / day</p>
-                <p className="text-sm text-white font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
-                <p className="text-[10px] text-[#555] mt-0.5">excl. flights</p>
+          {/* Timing note */}
+          {dest.timing_note && (
+            <p className={`text-xs leading-snug ${dest.timing_note.startsWith('⚠️') ? 'text-amber-400/80' : 'text-[#777]'}`}>
+              {dest.timing_note.startsWith('⚠️') ? '' : '📅 '}{dest.timing_note}
+            </p>
+          )}
+
+          {/* Upcoming event box */}
+          {dest.upcoming_event && (
+            <div className="rounded-xl border border-[#C97552]/20 bg-[#C97552]/8 px-4 py-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-base leading-none">🎪</span>
+                <span className="text-sm text-white font-medium">{dest.upcoming_event.name}</span>
               </div>
-            )}
-            {dest.best_time_to_visit && (
-              <div>
-                <p className="text-[10px] text-[#555] font-label tracking-widest uppercase mb-0.5">Best time</p>
-                <p className="text-sm text-[#AAA]">{dest.best_time_to_visit}</p>
-              </div>
-            )}
-          </div>
-        )}
+              <p className="text-[11px] text-[#888] mb-1">
+                {dest.upcoming_event.when} · {crowdLabel(dest.upcoming_event.crowd_level)}
+              </p>
+              <p className="text-xs text-[#AAA] leading-snug">{dest.upcoming_event.what}</p>
+            </div>
+          )}
 
-        {/* CTAs */}
-        {!locked && (
-          <div className="space-y-2 mt-1">
+          {/* Full Transport block */}
+          <TransportBlock dest={dest} homeCity={homeCity} />
+
+          {/* Accommodation block */}
+          {dest.accommodation && (
+            <AccommodationBlock acc={dest.accommodation} destName={dest.name} />
+          )}
+
+          {/* Budget + Best time */}
+          {(dest.budget_per_day_usd || dest.best_time_to_visit) && (
+            <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-[#2A2A2E] pt-3">
+              {dest.budget_per_day_usd && (
+                <div>
+                  <p className="text-[10px] text-[#555] font-label tracking-widest uppercase mb-0.5">Budget / day</p>
+                  <p className="text-sm text-white font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
+                  <p className="text-[10px] text-[#555] mt-0.5">excl. flights</p>
+                  {(!dest.transport || dest.transport.length === 0) && (
+                    <a
+                      href={`https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(dest.name + ', ' + dest.country)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-xs text-[#C97552]/70 hover:text-[#C97552] transition-colors mt-1 inline-block"
+                    >
+                      Search flights →
+                    </a>
+                  )}
+                </div>
+              )}
+              {dest.best_time_to_visit && (
+                <div>
+                  <p className="text-[10px] text-[#555] font-label tracking-widest uppercase mb-0.5">Best time</p>
+                  <p className="text-sm text-[#AAA]">{dest.best_time_to_visit}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CTAs */}
+          <div className="space-y-2">
             <a
               href={`/plan/ai/${encodeURIComponent(dest.name)}?country=${encodeURIComponent(dest.country)}${dest.state_province ? `&state=${encodeURIComponent(dest.state_province)}` : ''}&from=discover`}
+              onClick={e => e.stopPropagation()}
               className="block w-full text-center bg-[#C97552] text-white font-semibold text-sm py-3 rounded-full hover:bg-[#b86644] transition-colors"
             >
               Plan this trip →
             </a>
             <a
               href={`/guide?q=${encodeURIComponent(dest.name)}&c=${encodeURIComponent(dest.country)}${dest.state_province ? `&s=${encodeURIComponent(dest.state_province)}` : ''}`}
+              onClick={e => e.stopPropagation()}
               className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-full border border-[#333] text-[#888] text-sm hover:border-[#555] hover:text-white transition-all"
             >
               <span>🗺</span>
               <span>Local guide</span>
             </a>
           </div>
-        )}
-
-        {/* Locked CTA */}
-        {locked && (
-          <div className="mt-auto pt-2">
-            <div className="w-full py-3 rounded-full border border-[#333] flex items-center justify-center gap-2">
-              <svg className="w-3.5 h-3.5 text-[#555]" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-              </svg>
-              <span className="text-[#555] text-sm">Unlock to reveal</span>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -103,7 +103,7 @@ export interface RecommendationResponse {
 // It is stored alongside cached results so stale-version rows get a background
 // refresh — users are never forced to stare at a loading screen just because
 // we tweaked the prompt.
-export const PROMPT_VERSION = 25
+export const PROMPT_VERSION = 26
 
 // Normalize a string: lowercase + collapse whitespace. Null/undefined → ''.
 function norm(s: string | null | undefined): string {
@@ -337,27 +337,49 @@ Only exclude the handful of places every local already knows as their default we
   const city = homeCity.toLowerCase().trim()
 
   const exclusions: Record<string, string[]> = {
-    atlanta:       ['Asheville', 'Savannah', 'Nashville', 'Charleston', 'New Orleans', 'Blue Ridge', 'Helen', 'Chattanooga', 'Charlotte', 'Memphis'],
-    'new york':    ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills', 'Cape Cod', 'Providence'],
-    'new york city': ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills', 'Cape Cod'],
-    nyc:           ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills'],
-    london:        ['Paris', 'Amsterdam', 'Dublin', 'Edinburgh', 'Bath', 'Brighton', 'Cotswolds', 'Cambridge', 'Oxford', 'Brussels'],
-    sydney:        ['Melbourne', 'Gold Coast', 'Byron Bay', 'Blue Mountains', 'Hunter Valley', 'Cairns', 'Uluru'],
-    melbourne:     ['Sydney', 'Gold Coast', 'Byron Bay', 'Grampians', 'Mornington Peninsula', 'Great Ocean Road'],
-    delhi:         ['Agra', 'Jaipur', 'Rishikesh', 'Shimla', 'Manali', 'Haridwar', 'Amritsar', 'Chandigarh', 'Mussoorie'],
-    mumbai:        ['Goa', 'Pune', 'Lonavala', 'Mahabaleshwar', 'Alibaug', 'Nashik'],
-    dubai:         ['Abu Dhabi', 'Muscat', 'Doha', 'Bahrain'],
-    singapore:     ['Kuala Lumpur', 'Batam', 'Bintan', 'Bangkok', 'Bali', 'Phuket'],
-    toronto:       ['Montreal', 'Niagara Falls', 'Ottawa', 'Quebec City', 'Muskoka'],
-    chicago:       ['Milwaukee', 'Indianapolis', 'Detroit', 'St Louis', 'Minneapolis'],
-    'los angeles': ['San Diego', 'Santa Barbara', 'Palm Springs', 'Las Vegas', 'San Francisco'],
-    la:            ['San Diego', 'Santa Barbara', 'Palm Springs', 'Las Vegas'],
-    sf:            ['Napa', 'Sonoma', 'Monterey', 'Lake Tahoe', 'Los Angeles'],
-    'san francisco': ['Napa', 'Sonoma', 'Monterey', 'Lake Tahoe', 'Los Angeles'],
-    berlin:        ['Prague', 'Warsaw', 'Amsterdam', 'Copenhagen', 'Hamburg'],
-    paris:         ['London', 'Amsterdam', 'Brussels', 'Lyon', 'Bordeaux', 'Nice'],
-    beijing:       ['Shanghai', 'Chengdu', 'Xian', 'Tianjin'],
-    shanghai:      ['Beijing', 'Hangzhou', 'Suzhou', 'Nanjing'],
+    // ── United States — East / Southeast ─────────────────────────────────────
+    atlanta:         ['Asheville', 'Savannah', 'Nashville', 'Charleston', 'New Orleans', 'Blue Ridge', 'Helen', 'Chattanooga', 'Charlotte', 'Memphis', 'Great Smoky Mountains', 'Gatlinburg', 'Myrtle Beach'],
+    charlotte:       ['Asheville', 'Savannah', 'Charleston', 'Great Smoky Mountains', 'Gatlinburg', 'Blue Ridge Parkway', 'Myrtle Beach', 'Wilmington', 'Columbia', 'Greenville', 'Brevard'],
+    raleigh:         ['Asheville', 'Great Smoky Mountains', 'Charlotte', 'Outer Banks', 'Wilmington', 'Virginia Beach', 'Myrtle Beach', 'Winston-Salem'],
+    richmond:        ['Washington DC', 'Virginia Beach', 'Outer Banks', 'Charlottesville', 'Shenandoah Valley', 'Williamsburg', 'Annapolis'],
+    'washington dc': ['Baltimore', 'Philadelphia', 'Richmond', 'Virginia Beach', 'Shenandoah Valley', 'Annapolis', 'Charlottesville'],
+    dc:              ['Baltimore', 'Philadelphia', 'Richmond', 'Virginia Beach', 'Shenandoah Valley', 'Annapolis'],
+    baltimore:       ['Washington DC', 'Philadelphia', 'Annapolis', 'Ocean City', 'Virginia Beach'],
+    philadelphia:    ['New York City', 'Washington DC', 'Baltimore', 'Atlantic City', 'Cape May', 'Wilmington Delaware'],
+    'new york':      ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills', 'Cape Cod', 'Providence', 'Newport'],
+    'new york city': ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills', 'Cape Cod', 'Providence'],
+    nyc:             ['Boston', 'Philadelphia', 'Washington DC', 'Hamptons', 'Hudson Valley', 'Catskills'],
+    boston:          ['Providence', 'Cape Cod', 'Newport', 'Portland Maine', 'Berkshires', 'White Mountains', 'Acadia'],
+    nashville:       ['Memphis', 'Chattanooga', 'Great Smoky Mountains', 'Gatlinburg', 'Pigeon Forge', 'Knoxville', 'Louisville', 'Franklin'],
+    knoxville:       ['Great Smoky Mountains', 'Gatlinburg', 'Pigeon Forge', 'Chattanooga', 'Nashville', 'Asheville'],
+    miami:           ['Fort Lauderdale', 'West Palm Beach', 'Key West', 'Orlando', 'Tampa', 'Naples'],
+    orlando:         ['Miami', 'Tampa', 'Sarasota', 'St Augustine', 'Gainesville'],
+    tampa:           ['Orlando', 'Sarasota', 'St Petersburg', 'Naples', 'Miami'],
+    // ── United States — Midwest ──────────────────────────────────────────────
+    chicago:         ['Milwaukee', 'Indianapolis', 'Detroit', 'St Louis', 'Minneapolis', 'Madison', 'Galena'],
+    minneapolis:     ['Milwaukee', 'Chicago', 'Madison', 'Duluth', 'Des Moines'],
+    detroit:         ['Chicago', 'Cleveland', 'Ann Arbor', 'Grand Rapids', 'Toronto'],
+    cleveland:       ['Pittsburgh', 'Columbus', 'Detroit', 'Buffalo', 'Erie'],
+    // ── United States — West Coast ─────────────────────────────────────────
+    'los angeles':   ['San Diego', 'Santa Barbara', 'Palm Springs', 'Las Vegas', 'San Francisco', 'Joshua Tree', 'Ojai'],
+    la:              ['San Diego', 'Santa Barbara', 'Palm Springs', 'Las Vegas', 'Joshua Tree'],
+    sf:              ['Napa', 'Sonoma', 'Monterey', 'Lake Tahoe', 'Los Angeles', 'Muir Woods', 'Carmel'],
+    'san francisco': ['Napa', 'Sonoma', 'Monterey', 'Lake Tahoe', 'Los Angeles', 'Santa Cruz'],
+    seattle:         ['Portland', 'Vancouver BC', 'Whistler', 'Olympic Peninsula', 'San Juan Islands', 'Leavenworth'],
+    portland:        ['Seattle', 'Bend', 'Hood River', 'Astoria', 'Eugene', 'Willamette Valley'],
+    // ── International ─────────────────────────────────────────────────────────
+    london:          ['Paris', 'Amsterdam', 'Dublin', 'Edinburgh', 'Bath', 'Brighton', 'Cotswolds', 'Cambridge', 'Oxford', 'Brussels'],
+    sydney:          ['Melbourne', 'Gold Coast', 'Byron Bay', 'Blue Mountains', 'Hunter Valley', 'Cairns', 'Uluru'],
+    melbourne:       ['Sydney', 'Gold Coast', 'Byron Bay', 'Grampians', 'Mornington Peninsula', 'Great Ocean Road'],
+    delhi:           ['Agra', 'Jaipur', 'Rishikesh', 'Shimla', 'Manali', 'Haridwar', 'Amritsar', 'Chandigarh', 'Mussoorie'],
+    mumbai:          ['Goa', 'Pune', 'Lonavala', 'Mahabaleshwar', 'Alibaug', 'Nashik'],
+    dubai:           ['Abu Dhabi', 'Muscat', 'Doha', 'Bahrain'],
+    singapore:       ['Kuala Lumpur', 'Batam', 'Bintan', 'Bangkok', 'Bali', 'Phuket'],
+    toronto:         ['Montreal', 'Niagara Falls', 'Ottawa', 'Quebec City', 'Muskoka', 'Kingston'],
+    berlin:          ['Prague', 'Warsaw', 'Amsterdam', 'Copenhagen', 'Hamburg', 'Dresden'],
+    paris:           ['London', 'Amsterdam', 'Brussels', 'Lyon', 'Bordeaux', 'Nice', 'Strasbourg'],
+    beijing:         ['Shanghai', 'Chengdu', 'Xian', 'Tianjin'],
+    shanghai:        ['Beijing', 'Hangzhou', 'Suzhou', 'Nanjing'],
   }
 
   // Find matching city
@@ -374,7 +396,8 @@ Only exclude the handful of places every local already knows as their default we
 PROXIMITY AWARENESS — SCOPE:
 Block only the handful of destinations every local from ${homeCity} already knows as obvious weekend escapes (within ~6 hours drive, heavily promoted locally).
 Do NOT block all domestic destinations — most are perfectly valid and should appear in results.
-Only ask: "Would every ${homeCity} local already know this as a weekend trip?" If no, it is fine to recommend.`
+Only ask: "Would every ${homeCity} local already know this as a weekend trip?" If yes → exclude it or assign hidden_gem_score 1–2.
+IMPORTANT: Even without a specific exclusion list, apply the regional familiarity rules from the gem score section above — never award a high gem score to a destination that is a household name in the traveller's home region.`
   }
 
   // Filter out major iconic cities from the exclusion list — they are never blocked
@@ -895,11 +918,34 @@ state_province rules:
 RULES:
 - match_score: 0–100, ranked descending
 - reasons: exactly 2–3 short strings. Specific, evocative, personal to THIS traveller.
-- hidden_gem_score: 1–10:
-    1–3 = famous everywhere (Paris, Bali, Santorini, Asheville, Queenstown, Goa, etc.)
-    4–6 = moderately known, some tourists
-    7–10 = genuinely obscure to most travellers
-  A destination well-known in its home country scores 1–3 even if less known internationally.
+- hidden_gem_score: 1–10 — ALWAYS scored relative to the traveller's home region, not globally:
+    1–3 = well-known to people from the traveller's home region (weekend trip anyone would think of)
+    4–6 = moderately known nationally, few tourists from the traveller's region
+    7–10 = genuinely obscure — most people from the traveller's home city have never heard of it
+
+  PROXIMITY PENALTY — MANDATORY:
+  Any destination within ~8 hours drive OR within the traveller's home country AND easily reachable
+  for a weekend trip CANNOT score above 3, regardless of global obscurity.
+  Ask before every score: "Would most people living in [home city] already know this as a weekend
+  or road-trip destination?" If YES → score 1–3. No exceptions.
+
+  US-SPECIFIC REGIONAL FAMILIARITY RULES (apply when home country = United States):
+  The following are extremely well-known to ALL Americans in the Eastern half of the US.
+  Score them 1–2 no matter who the traveller is:
+    Great Smoky Mountains (#1 most visited US national park — every East Coaster knows it)
+    Savannah, GA (on every Southeast road-trip list, featured in major media constantly)
+    Asheville, NC (widely promoted, mainstream travel magazine staple)
+    Myrtle Beach (mass-market resort, billboard across the Southeast)
+    Gatlinburg / Pigeon Forge (theme-park tourist corridor — opposite of hidden gem)
+    Outer Banks (NC coast — every East Coaster's beach trip)
+    Blue Ridge Parkway (standard road trip, heavily promoted by tourism boards)
+    Charleston, SC (top-10 most visited US city on Condé Nast Traveler annually)
+    Nashville (top-10 US tourist city, bachelorette capital of America)
+    New Orleans (top-5 US tourist city, famous worldwide — score 1)
+    Napa Valley (on every wine lover's list, 1M visitors/year — score 2)
+    Sedona (Yoga retreats, Instagram famous — score 2 for any US traveller)
+  These places can still appear in results as valid trip destinations — but their gem score
+  must reflect reality. A low gem score does NOT disqualify a destination.
   Never assign hidden_gem_score above 4 to any destination in mainstream travel listicles.
 ${offbeatVerificationBlock}
 - state_province: REQUIRED for every destination — always populate this field.

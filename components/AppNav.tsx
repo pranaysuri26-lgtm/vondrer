@@ -35,9 +35,8 @@ function TierBadge({ tier, daysLeft }: TierInfo) {
 const TABS = [
   { key: 'discover',  href: '/discover',  icon: '🧭', label: 'Discover'  },
   { key: 'deals',     href: '/deals',     icon: '🔥', label: 'Deals'     },
+  { key: 'plan-day',  href: '/plan/day',  icon: '☀️', label: 'Plan Day'  },
   { key: 'trips',     href: '/trips',     icon: '🗺️', label: 'Trips'     },
-  { key: 'search',    href: null,         icon: '🔍', label: 'Search'    },
-  { key: 'passport',  href: '/passport',  icon: '📔', label: 'Passport'  },
   { key: 'profile',   href: '/profile',   icon: '👤', label: 'Profile'   },
 ] as const
 
@@ -71,19 +70,13 @@ export default function AppNav() {
     fetchTier()
   }, [])
 
-  const inSearchMode = pathname === '/discover' && searchParams.get('search') === '1'
-
   function isActive(key: string): boolean {
-    if (key === 'search')   return inSearchMode
-    if (key === 'discover') return pathname === '/discover' && !inSearchMode
+    if (key === 'discover') return pathname === '/discover' && searchParams.get('search') !== '1'
+    if (key === 'plan-day') return pathname.startsWith('/plan/day')
     return pathname.startsWith(`/${key}`)
   }
 
   function handleTab(key: string, href: string | null) {
-    if (key === 'search') {
-      router.push('/discover?search=1')
-      return
-    }
     if (href) router.push(href)
   }
 

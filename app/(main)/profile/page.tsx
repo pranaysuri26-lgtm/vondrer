@@ -675,7 +675,15 @@ export default function ProfilePage() {
           {saving ? 'Saving…' : saved ? '✓ Saved — recommendations will refresh' : 'Save changes'}
         </button>
 
-        <div className="pb-8 text-center">
+        <div className="pb-8 flex flex-col items-center gap-4">
+          <a
+            href="/passport"
+            className="flex items-center gap-2 text-white/35 text-sm hover:text-white/60 transition-colors"
+          >
+            <span>📔</span>
+            <span>View your passport</span>
+            <span className="text-white/20">→</span>
+          </a>
           <button
             onClick={handleSignOut}
             className="text-white/25 text-xs hover:text-white/45 transition-colors"

@@ -1619,7 +1619,7 @@ export default function DiscoverPage() {
               </svg>
               <p className="text-xs text-[#7A6E64] uppercase tracking-widest font-label">Saved</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-start">
               {savedDestinations.map((dest, i) => {
                 const key = savedKey(dest.name, dest.country)
                 return (
@@ -1644,7 +1644,7 @@ export default function DiscoverPage() {
 
         {/* ── Destination cards (discover mode only) ────────────────────────── */}
         {mode === 'discover' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-start">
           {/* Free cards */}
           {freeCards.map((dest, i) => {
             const key = savedKey(dest.name, dest.country)

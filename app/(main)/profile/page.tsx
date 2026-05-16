@@ -80,8 +80,8 @@ const OFFBEAT_LABELS: Record<number, { label: string; sub: string; icon: string 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white/4 border border-white/8 rounded-2xl p-6">
-      <h2 className="text-xs text-white/35 uppercase tracking-widest font-label mb-5">{title}</h2>
+    <div className="bg-white border border-[#E8E0D6] rounded-2xl p-6">
+      <h2 className="text-xs text-[#7A6E64] uppercase tracking-widest font-label mb-5">{title}</h2>
       {children}
     </div>
   )
@@ -98,8 +98,8 @@ function Chip({
       onClick={onClick}
       className={`px-4 py-2 rounded-full border text-sm transition-all
         ${selected
-          ? 'border-[#C97552] bg-[#C97552]/15 text-white'
-          : 'border-white/12 bg-white/5 text-white/50 hover:border-white/25 hover:text-white/80'
+          ? 'border-[#C97552] bg-[#C97552]/15 text-[#1A1A1A]'
+          : 'border-[#E2D8CE] bg-white text-[#5C564E] hover:border-[#C8C0B4] hover:text-[#2A2420]'
         }`}
     >
       {children}
@@ -304,7 +304,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-6 h-6 rounded-full border-2 border-white/20 border-t-[#C97552]"
+        <div className="w-6 h-6 rounded-full border-2 border-[#CCC4B8] border-t-[#C97552]"
           style={{ animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -312,7 +312,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1f35]">
+    <div className="min-h-screen bg-[#FAF8F5]">
 
       {/* Atmospheric hero */}
       <div className="relative overflow-hidden mb-2">
@@ -320,11 +320,11 @@ export default function ProfilePage() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1200&q=80&auto=format')", opacity: 0.18 }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/40 to-[#0d1f35]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FAF8F5]/40 to-[#FAF8F5]" />
         <div className="relative max-w-2xl mx-auto px-4 pt-8 pb-6">
-          <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">Settings</p>
-          <h1 className="font-serif italic text-4xl text-white">Your profile</h1>
-          <p className="text-white/40 text-sm mt-2">
+          <p className="text-xs text-[#7A6E64] uppercase tracking-widest font-label mb-2">Settings</p>
+          <h1 className="font-serif italic text-4xl text-[#1A1A1A]">Your profile</h1>
+          <p className="text-[#6b5f54] text-sm mt-2">
             Changes here will refresh your destination recommendations.
           </p>
         </div>
@@ -336,23 +336,23 @@ export default function ProfilePage() {
         <Section title="Where are you based?">
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-white/35 uppercase tracking-widest mb-1.5">City</label>
+              <label className="block text-xs text-[#7A6E64] uppercase tracking-widest mb-1.5">City</label>
               <input
                 type="text"
                 value={profile.home_city}
                 onChange={e => set('home_city', e.target.value)}
                 placeholder="e.g. Sydney, Delhi, London…"
-                className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
+                className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] placeholder-[#9A8E7E] focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs text-white/35 uppercase tracking-widest mb-1.5">Country</label>
+              <label className="block text-xs text-[#7A6E64] uppercase tracking-widest mb-1.5">Country</label>
               <input
                 type="text"
                 value={profile.home_country}
                 onChange={e => set('home_country', e.target.value)}
                 placeholder="e.g. Australia, India, United States…"
-                className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
+                className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] placeholder-[#9A8E7E] focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
               />
             </div>
           </div>
@@ -361,8 +361,8 @@ export default function ProfilePage() {
               <button key={c} type="button" onClick={() => set('home_country', c)}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-all
                   ${profile.home_country === c
-                    ? 'border-[#C97552] bg-[#C97552]/15 text-white'
-                    : 'border-white/12 bg-white/5 text-white/50 hover:border-white/25 hover:text-white/80'
+                    ? 'border-[#C97552] bg-[#C97552]/15 text-[#1A1A1A]'
+                    : 'border-[#E2D8CE] bg-white text-[#5C564E] hover:border-[#C8C0B4] hover:text-[#2A2420]'
                   }`}
               >
                 {c}
@@ -382,8 +382,8 @@ export default function ProfilePage() {
                 <button key={opt.value} type="button" onClick={() => set('travel_scope', opt.value)}
                   className={`text-left px-4 py-4 rounded-xl border transition-all
                     ${profile.travel_scope === opt.value
-                      ? 'border-[#C97552] bg-[#C97552]/10 text-white'
-                      : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                      ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
+                      : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
                     }`}
                 >
                   <div className="text-xl mb-1">{opt.icon}</div>
@@ -395,8 +395,8 @@ export default function ProfilePage() {
 
             {/* Domestic sub-selector */}
             {profile.travel_scope === 'closer' && (
-              <div className="border border-white/10 bg-white/3 rounded-xl p-4 space-y-2">
-                <p className="text-xs text-white/40 uppercase tracking-widest mb-3">How far within your country?</p>
+              <div className="border border-[#E8E0D6] bg-[#F5F2ED] rounded-xl p-4 space-y-2">
+                <p className="text-xs text-[#6b5f54] uppercase tracking-widest mb-3">How far within your country?</p>
                 {[
                   { value: 'any_state',  icon: '🗺️', label: 'Any state / region',   sub: 'Explore your whole country' },
                   { value: 'same_state', icon: '📍', label: 'My state / region only', sub: `Stay close to ${profile.home_city || 'home'}` },
@@ -407,8 +407,8 @@ export default function ProfilePage() {
                     onClick={() => set('domestic_scope', opt.value)}
                     className={`w-full text-left px-4 py-3 rounded-lg border transition-all flex items-center gap-3
                       ${profile.domestic_scope === opt.value
-                        ? 'border-[#C97552]/60 bg-[#C97552]/8 text-white'
-                        : 'border-white/8 bg-white/3 text-white/60 hover:border-white/20 hover:text-white/80'
+                        ? 'border-[#C97552]/60 bg-[#C97552]/8 text-[#1A1A1A]'
+                        : 'border-[#E8E0D6] bg-[#F5F2ED] text-[#4A4440] hover:border-[#CCC4B8] hover:text-[#2A2420]'
                       }`}
                   >
                     <span className="text-lg leading-none flex-shrink-0">{opt.icon}</span>
@@ -441,8 +441,8 @@ export default function ProfilePage() {
                 onClick={() => set('trip_timing', profile.trip_timing === opt.value ? '' : opt.value)}
                 className={`w-full text-left px-5 py-4 rounded-xl border transition-all
                   ${profile.trip_timing === opt.value
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
+                    : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
                   }`}
               >
                 <div className="flex items-center gap-4">
@@ -463,23 +463,23 @@ export default function ProfilePage() {
               <div className="space-y-3 mt-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">Departure</label>
+                    <label className="block text-xs text-[#6b5f54] uppercase tracking-widest mb-2">Departure</label>
                     <input
                       type="date"
                       value={profile.trip_start_date}
                       onChange={e => set('trip_start_date', e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm [color-scheme:dark]"
+                      className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm [color-scheme:dark]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">Return</label>
+                    <label className="block text-xs text-[#6b5f54] uppercase tracking-widest mb-2">Return</label>
                     <input
                       type="date"
                       value={profile.trip_end_date}
                       onChange={e => set('trip_end_date', e.target.value)}
                       min={profile.trip_start_date || new Date().toISOString().split('T')[0]}
-                      className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm [color-scheme:dark]"
+                      className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm [color-scheme:dark]"
                     />
                   </div>
                 </div>
@@ -491,7 +491,7 @@ export default function ProfilePage() {
           })()}
 
           {!profile.trip_timing && (
-            <p className="text-xs text-white/25 mt-3">Not set — timing won&apos;t affect your recommendations.</p>
+            <p className="text-xs text-[#9A8E7E] mt-3">Not set — timing won&apos;t affect your recommendations.</p>
           )}
         </Section>
 
@@ -505,8 +505,8 @@ export default function ProfilePage() {
                 onClick={() => set('budget_per_day', opt.value)}
                 className={`w-full text-left px-5 py-4 rounded-xl border transition-all
                   ${profile.budget_per_day === opt.value
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
+                    : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
                   }`}
               >
                 <div className="flex items-center gap-4">
@@ -531,8 +531,8 @@ export default function ProfilePage() {
                 onClick={() => set('trip_duration', opt.value)}
                 className={`text-left px-4 py-4 rounded-xl border transition-all
                   ${profile.trip_duration === opt.value
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
+                    : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
                   }`}
               >
                 <div className="font-medium text-sm">{opt.label}</div>
@@ -552,8 +552,8 @@ export default function ProfilePage() {
                 onClick={() => set('group_type', opt.value)}
                 className={`w-full text-left px-5 py-4 rounded-xl border transition-all
                   ${profile.group_type === opt.value
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
+                    : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
                   }`}
               >
                 <div className="flex items-center gap-4">
@@ -578,8 +578,8 @@ export default function ProfilePage() {
                 onClick={() => toggleInterest(opt.value)}
                 className={`text-left px-4 py-4 rounded-xl border transition-all
                   ${profile.interests.includes(opt.value)
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
+                    : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
                   }`}
               >
                 <div className="text-xl mb-1">{opt.icon}</div>
@@ -599,8 +599,8 @@ export default function ProfilePage() {
                 onClick={() => toggleDietary(opt.value)}
                 className={`text-left px-4 py-4 rounded-xl border transition-all
                   ${profile.dietary_preferences.includes(opt.value)
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-white'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:text-white'
+                    ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
+                    : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
                   }`}
               >
                 <div className="text-xl mb-1">{opt.icon}</div>
@@ -609,7 +609,7 @@ export default function ProfilePage() {
             ))}
           </div>
           {profile.dietary_preferences.length === 0 && (
-            <p className="text-xs text-white/25 mt-3">Nothing selected — no dietary filters applied.</p>
+            <p className="text-xs text-[#9A8E7E] mt-3">Nothing selected — no dietary filters applied.</p>
           )}
         </Section>
 
@@ -617,8 +617,8 @@ export default function ProfilePage() {
         <Section title="How far off the beaten path?">
           <div className="text-center mb-5">
             <div className="text-3xl mb-1">{OFFBEAT_LABELS[profile.offbeat_score].icon}</div>
-            <div className="text-white font-medium">{OFFBEAT_LABELS[profile.offbeat_score].label}</div>
-            <div className="text-white/45 text-sm mt-1">{OFFBEAT_LABELS[profile.offbeat_score].sub}</div>
+            <div className="text-[#1A1A1A] font-medium">{OFFBEAT_LABELS[profile.offbeat_score].label}</div>
+            <div className="text-[#6b5f54] text-sm mt-1">{OFFBEAT_LABELS[profile.offbeat_score].sub}</div>
           </div>
           <input
             type="range" min={1} max={5} step={1}
@@ -627,8 +627,8 @@ export default function ProfilePage() {
             className="w-full accent-[#C97552] cursor-pointer"
           />
           <div className="flex justify-between mt-1">
-            <span className="text-xs text-white/25">Tourist-friendly</span>
-            <span className="text-xs text-white/25">Truly unknown</span>
+            <span className="text-xs text-[#9A8E7E]">Tourist-friendly</span>
+            <span className="text-xs text-[#9A8E7E]">Truly unknown</span>
           </div>
         </Section>
 
@@ -641,12 +641,12 @@ export default function ProfilePage() {
               onChange={e => set('past_trip_input', e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTrip() } }}
               placeholder="e.g. Thailand, Morocco, Iceland…"
-              className="flex-1 bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
+              className="flex-1 bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] placeholder-[#9A8E7E] focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
             />
             <button
               type="button"
               onClick={addTrip}
-              className="px-4 py-3 bg-white/10 border border-white/15 rounded-lg text-white hover:bg-white/15 transition-colors text-sm"
+              className="px-4 py-3 bg-[#EDE5D8] border border-[#D8D0C4] rounded-lg text-[#1A1A1A] hover:bg-[#E2D8CC] transition-colors text-sm"
             >
               Add
             </button>
@@ -654,18 +654,18 @@ export default function ProfilePage() {
           {profile.past_trips.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {profile.past_trips.map(name => (
-                <span key={name} className="flex items-center gap-1.5 bg-[#C97552]/15 border border-[#C97552]/30 text-white/80 text-sm px-3 py-1.5 rounded-full">
+                <span key={name} className="flex items-center gap-1.5 bg-[#C97552]/15 border border-[#C97552]/30 text-[#2A2420] text-sm px-3 py-1.5 rounded-full">
                   {name}
                   <button
                     type="button"
                     onClick={() => removeTrip(name)}
-                    className="text-white/40 hover:text-white/80 leading-none text-base"
+                    className="text-[#6b5f54] hover:text-[#2A2420] leading-none text-base"
                   >×</button>
                 </span>
               ))}
             </div>
           ) : (
-            <p className="text-white/25 text-sm">No trips added yet.</p>
+            <p className="text-[#9A8E7E] text-sm">No trips added yet.</p>
           )}
         </Section>
 
@@ -678,7 +678,7 @@ export default function ProfilePage() {
           className={`w-full py-4 rounded-full font-semibold text-sm transition-all
             ${saved
               ? 'bg-green-500/20 border border-green-500/40 text-green-400'
-              : 'bg-white text-[#0d1f35] hover:bg-white/90 disabled:opacity-50'
+              : 'bg-[#1A1A1A] text-white hover:bg-white/90 disabled:opacity-50'
             }`}
         >
           {saving ? 'Saving…' : saved ? '✓ Saved — recommendations will refresh' : 'Save changes'}
@@ -687,15 +687,15 @@ export default function ProfilePage() {
         <div className="pb-8 flex flex-col items-center gap-4">
           <a
             href="/passport"
-            className="flex items-center gap-2 text-white/35 text-sm hover:text-white/60 transition-colors"
+            className="flex items-center gap-2 text-[#7A6E64] text-sm hover:text-[#4A4440] transition-colors"
           >
             <span>📔</span>
             <span>View your passport</span>
-            <span className="text-white/20">→</span>
+            <span className="text-[#A8A09A]">→</span>
           </a>
           <button
             onClick={handleSignOut}
-            className="text-white/25 text-xs hover:text-white/45 transition-colors"
+            className="text-[#9A8E7E] text-xs hover:text-[#6b5f54] transition-colors"
           >
             Sign out
           </button>

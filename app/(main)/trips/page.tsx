@@ -47,8 +47,8 @@ function formatDateRange(start: string, end: string): string {
 function statusPill(status: string) {
   if (status === 'planning')  return 'bg-yellow-500/15 text-yellow-400'
   if (status === 'confirmed') return 'bg-green-500/15 text-green-400'
-  if (status === 'completed') return 'bg-white/10 text-white/40'
-  return 'bg-white/10 text-white/40'
+  if (status === 'completed') return 'bg-[#EDE5D8] text-[#6b5f54]'
+  return 'bg-[#EDE5D8] text-[#6b5f54]'
 }
 
 // ─── Trip card ────────────────────────────────────────────────────────────────
@@ -61,15 +61,15 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-white/4 hover:bg-white/8 border border-white/10 hover:border-white/20 rounded-2xl p-5 transition-all duration-200 group"
+      className="w-full text-left bg-white hover:bg-[#F0EBE3] border border-[#E8E0D6] hover:border-[#CCC4B8] rounded-2xl p-5 transition-all duration-200 group"
     >
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-white font-semibold text-sm leading-snug truncate group-hover:text-[#C97552] transition-colors">
+          <h3 className="text-[#1A1A1A] font-semibold text-sm leading-snug truncate group-hover:text-[#C97552] transition-colors">
             {trip.trip_name}
           </h3>
           {trip.start_date && trip.end_date && (
-            <p className="text-white/40 text-xs mt-0.5">
+            <p className="text-[#6b5f54] text-xs mt-0.5">
               {formatDateRange(trip.start_date, trip.end_date)}
             </p>
           )}
@@ -78,7 +78,7 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusPill(trip.status)}`}>
             {trip.status}
           </span>
-          <svg className="w-4 h-4 text-white/25 group-hover:text-[#C97552] transition-colors"
+          <svg className="w-4 h-4 text-[#9A8E7E] group-hover:text-[#C97552] transition-colors"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
           </svg>
@@ -90,11 +90,11 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
           📍 {mainDest}
         </span>
         {extras.map(d => (
-          <span key={d} className="text-xs px-2.5 py-1 rounded-full bg-white/8 text-white/50">{d}</span>
+          <span key={d} className="text-xs px-2.5 py-1 rounded-full bg-[#F0EBE3] text-[#5C564E]">{d}</span>
         ))}
       </div>
 
-      <div className="flex items-center gap-4 text-white/35 text-xs">
+      <div className="flex items-center gap-4 text-[#7A6E64] text-xs">
         <span>🌙 {trip.total_days} night{trip.total_days !== 1 ? 's' : ''}</span>
         {trip.destinations.length > 1 && (
           <span>🗺 {trip.destinations.length} destinations</span>
@@ -109,11 +109,11 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
 
 function TripSkeleton() {
   return (
-    <div className="bg-white/4 border border-white/10 rounded-2xl p-5 animate-pulse">
-      <div className="h-4 w-2/3 bg-white/10 rounded mb-2"/>
-      <div className="h-3 w-1/3 bg-white/8 rounded mb-4"/>
-      <div className="flex gap-2 mb-3"><div className="h-6 w-24 bg-white/8 rounded-full"/></div>
-      <div className="h-3 w-20 bg-white/8 rounded"/>
+    <div className="bg-white border border-[#E8E0D6] rounded-2xl p-5 animate-pulse">
+      <div className="h-4 w-2/3 bg-[#EDE5D8] rounded mb-2"/>
+      <div className="h-3 w-1/3 bg-[#F0EBE3] rounded mb-4"/>
+      <div className="flex gap-2 mb-3"><div className="h-6 w-24 bg-[#F0EBE3] rounded-full"/></div>
+      <div className="h-3 w-20 bg-[#F0EBE3] rounded"/>
     </div>
   )
 }
@@ -168,7 +168,7 @@ export default function TripsPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-[#0d1f35]">
+    <div className="min-h-screen bg-[#FAF8F5]">
 
       {/* Hero header */}
       <div className="relative overflow-hidden">
@@ -177,18 +177,18 @@ export default function TripsPage() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1200&q=80&auto=format')", opacity: 0.22 }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/60 via-[#0d1f35]/80 to-[#0d1f35]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FAF8F5]/60 via-[#FAF8F5]/80 to-[#FAF8F5]" />
 
         {/* Sticky top bar */}
         <div className="relative z-10 max-w-2xl mx-auto px-4 pt-8 pb-10">
-          <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-3">Your journeys</p>
+          <p className="text-xs text-[#7A6E64] uppercase tracking-widest font-label mb-3">Your journeys</p>
           <div className="flex items-end justify-between gap-3">
             <div>
-              <h1 className="font-serif italic text-4xl text-white leading-tight">
+              <h1 className="font-serif italic text-4xl text-[#1A1A1A] leading-tight">
                 My Trips
               </h1>
               {!loading && trips.length > 0 && (
-                <p className="text-white/40 text-sm mt-1">
+                <p className="text-[#6b5f54] text-sm mt-1">
                   {trips.length} trip{trips.length !== 1 ? 's' : ''} planned
                 </p>
               )}
@@ -210,7 +210,7 @@ export default function TripsPage() {
 
         {!loading && error && (
           <div className="text-center py-16">
-            <p className="text-white/40 text-sm">{error}</p>
+            <p className="text-[#6b5f54] text-sm">{error}</p>
             <button onClick={() => window.location.reload()} className="mt-4 text-[#C97552] text-sm">
               Retry
             </button>
@@ -234,13 +234,13 @@ export default function TripsPage() {
                 alt="Travel"
                 className="w-full h-40 object-cover opacity-40"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0d1f35] to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#FAF8F5] to-transparent" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-5xl">🗺️</span>
               </div>
             </div>
-            <h2 className="font-serif italic text-2xl text-white mb-2">No trips yet</h2>
-            <p className="text-white/40 text-sm max-w-xs mx-auto leading-relaxed mb-8">
+            <h2 className="font-serif italic text-2xl text-[#1A1A1A] mb-2">No trips yet</h2>
+            <p className="text-[#6b5f54] text-sm max-w-xs mx-auto leading-relaxed mb-8">
               Pick your destinations and we'll build a day-by-day itinerary — flights, hotels, everything.
             </p>
             <button
@@ -252,7 +252,7 @@ export default function TripsPage() {
             <div>
               <button
                 onClick={() => router.push('/discover')}
-                className="text-white/35 text-sm hover:text-white/55 transition-colors"
+                className="text-[#7A6E64] text-sm hover:text-[#5A504A] transition-colors"
               >
                 Browse destinations first →
               </button>

@@ -58,18 +58,18 @@ function timeDiff(from: string, to: string): string {
 
 function SmartWeatherStrip({ weather, location }: { weather: SmartWeather; location: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/4 px-5 py-4 mb-5">
+    <div className="rounded-2xl border border-[#E8E0D6] bg-white px-5 py-4 mb-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="text-2xl">{weather.emoji}</span>
           <div>
-            <p className="text-white text-sm font-medium">{weather.label}</p>
-            <p className="text-white/40 text-xs truncate max-w-[180px]">{location.split(',').slice(0, 2).join(',')}</p>
+            <p className="text-[#1A1A1A] text-sm font-medium">{weather.label}</p>
+            <p className="text-[#6b5f54] text-xs truncate max-w-[180px]">{location.split(',').slice(0, 2).join(',')}</p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-white text-sm font-medium">{weather.temp_high}° / {weather.temp_low}°{weather.unit}</p>
-          <p className="text-white/40 text-xs">{weather.rain_pct}% rain</p>
+          <p className="text-[#1A1A1A] text-sm font-medium">{weather.temp_high}° / {weather.temp_low}°{weather.unit}</p>
+          <p className="text-[#6b5f54] text-xs">{weather.rain_pct}% rain</p>
         </div>
       </div>
     </div>
@@ -78,21 +78,21 @@ function SmartWeatherStrip({ weather, location }: { weather: SmartWeather; locat
 
 function SimpleWeatherStrip({ weather, location }: { weather: DayWeather; location: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/4 px-5 py-4 mb-6">
+    <div className="rounded-2xl border border-[#E8E0D6] bg-white px-5 py-4 mb-6">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-2xl">{weather.emoji}</span>
           <div>
-            <p className="text-white text-sm font-medium">{weather.label}</p>
-            <p className="text-white/40 text-xs truncate max-w-[180px]">{location.split(',').slice(0, 2).join(',')}</p>
+            <p className="text-[#1A1A1A] text-sm font-medium">{weather.label}</p>
+            <p className="text-[#6b5f54] text-xs truncate max-w-[180px]">{location.split(',').slice(0, 2).join(',')}</p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-white text-sm font-medium">{weather.temp_high}° / {weather.temp_low}°C</p>
-          <p className="text-white/40 text-xs">{weather.rain_pct}% rain</p>
+          <p className="text-[#1A1A1A] text-sm font-medium">{weather.temp_high}° / {weather.temp_low}°C</p>
+          <p className="text-[#6b5f54] text-xs">{weather.rain_pct}% rain</p>
         </div>
       </div>
-      <div className="flex items-center gap-4 text-xs text-white/35">
+      <div className="flex items-center gap-4 text-xs text-[#7A6E64]">
         <span>🌅 {weather.sunrise}</span>
         <span>🌇 {weather.sunset}</span>
       </div>
@@ -119,7 +119,7 @@ function LiveStopCard({
           <span className="text-sm">{stopTypeIcon(stop.type)}</span>
         </div>
         {index < total - 1 && (
-          <div className="w-px flex-1 bg-white/8 mt-2 min-h-[24px]" />
+          <div className="w-px flex-1 bg-[#F0EBE3] mt-2 min-h-[24px]" />
         )}
       </div>
 
@@ -131,16 +131,16 @@ function LiveStopCard({
               <p className="text-[#C97552]/80 text-[11px] font-label tracking-widest uppercase mb-0.5">
                 {stop.time}{stop.time && stop.duration ? ' · ' : ''}{stop.duration}
               </p>
-              <p className="text-white text-sm font-medium leading-snug">{stop.name}</p>
+              <p className="text-[#1A1A1A] text-sm font-medium leading-snug">{stop.name}</p>
             </div>
-            <span className={`text-white/30 text-xs mt-1 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+            <span className={`text-[#8A7E6E] text-xs mt-1 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
           </div>
         </button>
 
         {open && (
           <div className="mt-3 space-y-3">
             {stop.description && (
-              <p className="text-white/60 text-sm leading-relaxed">{stop.description}</p>
+              <p className="text-[#4A4440] text-sm leading-relaxed">{stop.description}</p>
             )}
             {stop.tip && (
               <div className="flex gap-2 rounded-xl bg-[#C97552]/8 border border-[#C97552]/20 px-3 py-2.5">
@@ -157,7 +157,7 @@ function LiveStopCard({
               </button>
               <button
                 onClick={() => onRemove(stop.id)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-white/4 border border-white/10 text-white/35 hover:text-red-400/70 hover:border-red-400/20 transition-all"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-white border border-[#E8E0D6] text-[#7A6E64] hover:text-red-400/70 hover:border-red-400/20 transition-all"
               >
                 🗑️ Remove
               </button>
@@ -175,8 +175,8 @@ function CompletedRow({ name, time }: { name: string; time?: string }) {
   return (
     <div className="flex items-center gap-3 py-2.5">
       <span className="text-sm opacity-70">✅</span>
-      <p className="flex-1 text-white/35 text-sm line-through truncate">{name}</p>
-      {time && <p className="text-white/20 text-xs flex-shrink-0">{time}</p>}
+      <p className="flex-1 text-[#7A6E64] text-sm line-through truncate">{name}</p>
+      {time && <p className="text-[#A8A09A] text-xs flex-shrink-0">{time}</p>}
     </div>
   )
 }
@@ -200,7 +200,7 @@ function AddStopRow({ onAdd }: { onAdd: (name: string) => void }) {
       <div className="flex items-center gap-3 py-0.5 pl-10">
         <button
           onClick={() => setOpen(true)}
-          className="text-[11px] text-white/20 hover:text-[#C97552]/60 transition-colors flex items-center gap-1"
+          className="text-[11px] text-[#A8A09A] hover:text-[#C97552]/60 transition-colors flex items-center gap-1"
         >
           + Add stop
         </button>
@@ -216,7 +216,7 @@ function AddStopRow({ onAdd }: { onAdd: (name: string) => void }) {
         onChange={e => setName(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setOpen(false) }}
         placeholder="Place name…"
-        className="flex-1 bg-white/6 border border-white/15 rounded-xl px-3 py-2 text-white text-xs placeholder:text-white/25 focus:outline-none focus:border-[#C97552]/40 transition-colors"
+        className="flex-1 bg-[#F5F0EA] border border-[#D8D0C4] rounded-xl px-3 py-2 text-[#1A1A1A] text-xs placeholder:text-[#9A8E7E] focus:outline-none focus:border-[#C97552]/40 transition-colors"
       />
       <button
         onClick={submit}
@@ -226,7 +226,7 @@ function AddStopRow({ onAdd }: { onAdd: (name: string) => void }) {
       </button>
       <button
         onClick={() => { setOpen(false); setName('') }}
-        className="text-xs px-2 py-2 text-white/30 hover:text-white/50 transition-colors"
+        className="text-xs px-2 py-2 text-[#8A7E6E] hover:text-[#5C564E] transition-colors"
       >
         ✕
       </button>
@@ -245,7 +245,7 @@ function StopCard({ stop, index, total }: { stop: DayPlan['stops'][0]; index: nu
           <span className="text-sm">{stopTypeIcon(stop.type)}</span>
         </div>
         {index < total - 1 && (
-          <div className="w-px flex-1 bg-white/8 mt-2 mb-0 min-h-[24px]" />
+          <div className="w-px flex-1 bg-[#F0EBE3] mt-2 mb-0 min-h-[24px]" />
         )}
       </div>
       <div className="flex-1 pb-6">
@@ -255,14 +255,14 @@ function StopCard({ stop, index, total }: { stop: DayPlan['stops'][0]; index: nu
               <p className="text-[#C97552]/80 text-[11px] font-label tracking-widest uppercase mb-0.5">
                 {stop.time} · {stop.duration}
               </p>
-              <p className="text-white text-sm font-medium leading-snug">{stop.name}</p>
+              <p className="text-[#1A1A1A] text-sm font-medium leading-snug">{stop.name}</p>
             </div>
-            <span className={`text-white/30 text-xs mt-1 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+            <span className={`text-[#8A7E6E] text-xs mt-1 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
           </div>
         </button>
         {open && (
           <div className="mt-3 space-y-2">
-            <p className="text-white/60 text-sm leading-relaxed">{stop.description}</p>
+            <p className="text-[#4A4440] text-sm leading-relaxed">{stop.description}</p>
             {stop.tip && (
               <div className="flex gap-2 rounded-xl bg-[#C97552]/8 border border-[#C97552]/20 px-3 py-2.5">
                 <span className="text-xs mt-0.5">💡</span>
@@ -517,13 +517,13 @@ export default function PlanDayPage() {
 
   if (phase === 'loading') {
     return (
-      <div className="min-h-screen bg-[#0d1f35] flex flex-col items-center justify-center px-6 pb-20">
+      <div className="min-h-screen bg-[#FAF8F5] flex flex-col items-center justify-center px-6 pb-20">
         <div className="text-center">
           <div className="text-4xl mb-6 animate-pulse">☀️</div>
-          <p className="text-white/60 text-sm mb-2">
+          <p className="text-[#4A4440] text-sm mb-2">
             {context.trim() ? 'Reading your context…' : 'Checking the weather…'}
           </p>
-          <p className="text-white/30 text-xs">Building your day plan</p>
+          <p className="text-[#8A7E6E] text-xs">Building your day plan</p>
         </div>
       </div>
     )
@@ -538,7 +538,7 @@ export default function PlanDayPage() {
     const allCompletedNames = [...preCompletedNames, ...completedStops.map(s => s.name)]
 
     return (
-      <div className="min-h-screen bg-[#0d1f35] pb-24">
+      <div className="min-h-screen bg-[#FAF8F5] pb-24">
         <div className="max-w-lg mx-auto px-4 pt-8">
 
           {/* Header */}
@@ -546,7 +546,7 @@ export default function PlanDayPage() {
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setPhase('input')}
-                className="text-white/35 text-xs hover:text-white/60 transition-colors"
+                className="text-[#7A6E64] text-xs hover:text-[#4A4440] transition-colors"
               >
                 ← New plan
               </button>
@@ -561,15 +561,15 @@ export default function PlanDayPage() {
             <p className="text-[#C97552]/70 text-[11px] font-label tracking-widest uppercase mb-1">
               {formatDateLabel(date)}
             </p>
-            <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">
+            <h1 className="font-serif italic text-3xl text-[#1A1A1A] leading-tight mb-2">
               {planTitle}
             </h1>
-            <p className="text-white/50 text-sm leading-relaxed mb-3">{planSummary}</p>
+            <p className="text-[#5C564E] text-sm leading-relaxed mb-3">{planSummary}</p>
 
             {/* Chips: time budget + time left */}
             <div className="flex flex-wrap items-center gap-2">
               {timeBudget && (
-                <span className="text-xs text-white/40 bg-white/5 border border-white/8 rounded-full px-3 py-1">
+                <span className="text-xs text-[#6b5f54] bg-white border border-[#E8E0D6] rounded-full px-3 py-1">
                   ⏱ {timeBudget}
                 </span>
               )}
@@ -579,7 +579,7 @@ export default function PlanDayPage() {
                 </span>
               )}
               {smartCtx?.group && (
-                <span className="text-xs text-white/30 bg-white/4 border border-white/8 rounded-full px-3 py-1">
+                <span className="text-xs text-[#8A7E6E] bg-white border border-[#E8E0D6] rounded-full px-3 py-1">
                   👥 {smartCtx.group}
                 </span>
               )}
@@ -594,13 +594,13 @@ export default function PlanDayPage() {
             <div className="mb-5">
               <button
                 onClick={() => setShowCompleted(o => !o)}
-                className="w-full flex items-center justify-between py-2 text-xs text-white/35 hover:text-white/55 transition-colors"
+                className="w-full flex items-center justify-between py-2 text-xs text-[#7A6E64] hover:text-[#5A504A] transition-colors"
               >
                 <span>✅ Completed ({allCompletedNames.length})</span>
                 <span className={`transition-transform duration-200 ${showCompleted ? 'rotate-180' : ''}`}>▾</span>
               </button>
               {showCompleted && (
-                <div className="rounded-2xl border border-white/8 bg-white/2 px-4 divide-y divide-white/5">
+                <div className="rounded-2xl border border-[#E8E0D6] bg-[#FAF8F5] px-4 divide-y divide-white/5">
                   {preCompletedNames.map((n, i) => (
                     <CompletedRow key={`pre-${i}`} name={n} />
                   ))}
@@ -616,8 +616,8 @@ export default function PlanDayPage() {
           {stops.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-4xl mb-4">🎉</p>
-              <p className="text-white/50 text-sm mb-1">All stops complete!</p>
-              <p className="text-white/25 text-xs mb-6">Great day at {place}</p>
+              <p className="text-[#5C564E] text-sm mb-1">All stops complete!</p>
+              <p className="text-[#9A8E7E] text-xs mb-6">Great day at {place}</p>
               <button
                 onClick={() => { setPhase('input'); setPlace('') }}
                 className="text-xs text-[#C97552]/60 hover:text-[#C97552] transition-colors"
@@ -641,7 +641,7 @@ export default function PlanDayPage() {
               ))}
               <button
                 onClick={() => { setPhase('input'); setPlace('') }}
-                className="w-full mt-4 py-3.5 rounded-full border border-white/15 text-white/50 text-sm hover:border-white/25 hover:text-white/70 transition-all"
+                className="w-full mt-4 py-3.5 rounded-full border border-[#D8D0C4] text-[#5C564E] text-sm hover:border-[#C8C0B4] hover:text-[#3A3430] transition-all"
               >
                 Plan another day →
               </button>
@@ -657,14 +657,14 @@ export default function PlanDayPage() {
 
   if (phase === 'result' && !isSmartMode && simplePlan && simpleWeather) {
     return (
-      <div className="min-h-screen bg-[#0d1f35] pb-24">
+      <div className="min-h-screen bg-[#FAF8F5] pb-24">
         <div className="max-w-lg mx-auto px-4 pt-8">
 
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setPhase('input')}
-                className="text-white/35 text-xs hover:text-white/60 transition-colors"
+                className="text-[#7A6E64] text-xs hover:text-[#4A4440] transition-colors"
               >
                 ← New plan
               </button>
@@ -674,7 +674,7 @@ export default function PlanDayPage() {
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${
                   saved
                     ? 'border-[#C97552]/40 bg-[#C97552]/15 text-[#C97552]'
-                    : 'border-white/15 text-white/45 hover:border-white/30 hover:text-white/70'
+                    : 'border-[#D8D0C4] text-[#6b5f54] hover:border-[#C0B8AC] hover:text-[#3A3430]'
                 }`}
               >
                 <span>{saved ? '✓' : '🔖'}</span>
@@ -684,10 +684,10 @@ export default function PlanDayPage() {
             <p className="text-[#C97552]/70 text-[11px] font-label tracking-widest uppercase mb-1">
               {formatDateLabel(date)}
             </p>
-            <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">
+            <h1 className="font-serif italic text-3xl text-[#1A1A1A] leading-tight mb-2">
               {simplePlan.title}
             </h1>
-            <p className="text-white/50 text-sm leading-relaxed">{simplePlan.summary}</p>
+            <p className="text-[#5C564E] text-sm leading-relaxed">{simplePlan.summary}</p>
           </div>
 
           <SimpleWeatherStrip weather={simpleWeather} location={location} />
@@ -706,24 +706,24 @@ export default function PlanDayPage() {
           </div>
 
           {simplePlan.practical && (
-            <div className="rounded-2xl border border-white/8 bg-white/3 px-5 py-4 mb-6 space-y-2">
-              <p className="text-white/35 text-[10px] font-label tracking-widest uppercase mb-3">Good to know</p>
+            <div className="rounded-2xl border border-[#E8E0D6] bg-[#F5F2ED] px-5 py-4 mb-6 space-y-2">
+              <p className="text-[#7A6E64] text-[10px] font-label tracking-widest uppercase mb-3">Good to know</p>
               {simplePlan.practical.entry_fee && (
                 <div className="flex gap-2 text-sm">
-                  <span className="text-white/30 w-20 flex-shrink-0">Entry</span>
-                  <span className="text-white/65">{simplePlan.practical.entry_fee}</span>
+                  <span className="text-[#8A7E6E] w-20 flex-shrink-0">Entry</span>
+                  <span className="text-[#1A1A1A]/65">{simplePlan.practical.entry_fee}</span>
                 </div>
               )}
               {simplePlan.practical.parking && (
                 <div className="flex gap-2 text-sm">
-                  <span className="text-white/30 w-20 flex-shrink-0">Parking</span>
-                  <span className="text-white/65">{simplePlan.practical.parking}</span>
+                  <span className="text-[#8A7E6E] w-20 flex-shrink-0">Parking</span>
+                  <span className="text-[#1A1A1A]/65">{simplePlan.practical.parking}</span>
                 </div>
               )}
               {simplePlan.practical.best_time_note && (
                 <div className="flex gap-2 text-sm">
-                  <span className="text-white/30 w-20 flex-shrink-0">Timing</span>
-                  <span className="text-white/65">{simplePlan.practical.best_time_note}</span>
+                  <span className="text-[#8A7E6E] w-20 flex-shrink-0">Timing</span>
+                  <span className="text-[#1A1A1A]/65">{simplePlan.practical.best_time_note}</span>
                 </div>
               )}
             </div>
@@ -731,7 +731,7 @@ export default function PlanDayPage() {
 
           <button
             onClick={() => { setPhase('input'); setPlace('') }}
-            className="w-full py-3.5 rounded-full border border-white/15 text-white/50 text-sm hover:border-white/25 hover:text-white/70 transition-all"
+            className="w-full py-3.5 rounded-full border border-[#D8D0C4] text-[#5C564E] text-sm hover:border-[#C8C0B4] hover:text-[#3A3430] transition-all"
           >
             Plan another day →
           </button>
@@ -744,7 +744,7 @@ export default function PlanDayPage() {
   // ── Input ─────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#0d1f35] flex flex-col pb-24">
+    <div className="min-h-screen bg-[#FAF8F5] flex flex-col pb-24">
 
       {/* Atmospheric hero */}
       <div className="relative overflow-hidden">
@@ -752,13 +752,13 @@ export default function PlanDayPage() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1473163928189-364b2c4e1135?w=1200&q=80&auto=format')", opacity: 0.2 }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/50 to-[#0d1f35]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FAF8F5]/50 to-[#FAF8F5]" />
         <div className="relative max-w-lg mx-auto w-full px-4 pt-10 pb-6">
-          <p className="text-xs text-white/30 uppercase tracking-widest font-label mb-3">Plan a Day</p>
-          <h1 className="font-serif italic text-4xl text-white leading-tight mb-3">
+          <p className="text-xs text-[#8A7E6E] uppercase tracking-widest font-label mb-3">Plan a Day</p>
+          <h1 className="font-serif italic text-4xl text-[#1A1A1A] leading-tight mb-3">
             Where are you<br />heading today?
           </h1>
-          <p className="text-white/40 text-sm">
+          <p className="text-[#6b5f54] text-sm">
             Type any place — a park, a drive, a neighbourhood, a beach. We'll build your day around the weather.
           </p>
         </div>
@@ -768,7 +768,7 @@ export default function PlanDayPage() {
 
         {/* Place input */}
         <div className="mb-6">
-          <label className="text-[11px] text-white/35 font-label tracking-widest uppercase block mb-2">
+          <label className="text-[11px] text-[#7A6E64] font-label tracking-widest uppercase block mb-2">
             Place or attraction
           </label>
           <input
@@ -777,14 +777,14 @@ export default function PlanDayPage() {
             onChange={e => setPlace(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !showContext && handleGenerate()}
             placeholder="e.g. Fisherman's Wharf, Golden Gate Park, Yosemite…"
-            className="w-full bg-white/5 border border-white/12 rounded-2xl px-4 py-4 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"
+            className="w-full bg-white border border-[#E2D8CE] rounded-2xl px-4 py-4 text-[#1A1A1A] placeholder:text-[#9A8E7E] text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"
             autoFocus
           />
         </div>
 
         {/* Date selector */}
         <div className="mb-6">
-          <label className="text-[11px] text-white/35 font-label tracking-widest uppercase block mb-2">
+          <label className="text-[11px] text-[#7A6E64] font-label tracking-widest uppercase block mb-2">
             When
           </label>
           <div className="flex gap-2 mb-3">
@@ -795,7 +795,7 @@ export default function PlanDayPage() {
                 className={`flex-1 py-2.5 rounded-xl text-sm transition-all capitalize ${
                   dateMode === mode
                     ? 'bg-[#C97552]/20 border border-[#C97552]/40 text-[#C97552]'
-                    : 'bg-white/4 border border-white/10 text-white/45 hover:text-white/65'
+                    : 'bg-white border border-[#E8E0D6] text-[#6b5f54] hover:text-[#1A1A1A]/65'
                 }`}
               >
                 {mode === 'custom' ? 'Pick date' : mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -809,10 +809,10 @@ export default function PlanDayPage() {
               min={todayISO()}
               max={(() => { const d = new Date(); d.setDate(d.getDate() + 6); return d.toISOString().split('T')[0] })()}
               onChange={e => setCustomDate(e.target.value)}
-              className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"
+              className="w-full bg-white border border-[#E2D8CE] rounded-xl px-4 py-3 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"
             />
           ) : (
-            <p className="text-white/25 text-xs mt-1 pl-1">{formatDateLabel(date)}</p>
+            <p className="text-[#9A8E7E] text-xs mt-1 pl-1">{formatDateLabel(date)}</p>
           )}
         </div>
 
@@ -820,12 +820,12 @@ export default function PlanDayPage() {
         <div className="mb-8">
           <button
             onClick={() => setShowContext(o => !o)}
-            className="flex items-center gap-2 text-xs text-white/30 hover:text-white/55 transition-colors mb-3"
+            className="flex items-center gap-2 text-xs text-[#8A7E6E] hover:text-[#5A504A] transition-colors mb-3"
           >
             <span className={`transition-transform duration-200 ${showContext ? 'rotate-90' : ''}`}>▶</span>
             <span>{showContext ? 'Hide context' : 'Add context'}</span>
             {!showContext && (
-              <span className="text-white/18 ml-1">— time, completed stops, group, end time…</span>
+              <span className="text-[#1A1A1A]/18 ml-1">— time, completed stops, group, end time…</span>
             )}
           </button>
           {showContext && (
@@ -835,9 +835,9 @@ export default function PlanDayPage() {
                 onChange={e => setContext(e.target.value)}
                 placeholder={`e.g. "It's 9:51 AM. Pier 39 and Ghirardelli Square are done. Need to end at Boudin Bakery by 2:30 PM. Travelling with 1 elderly person. Want to take the cable car and see Lombard Street."`}
                 rows={4}
-                className="w-full bg-white/5 border border-white/12 rounded-2xl px-4 py-3.5 text-white placeholder:text-white/20 text-sm leading-relaxed focus:outline-none focus:border-[#C97552]/50 transition-colors resize-none"
+                className="w-full bg-white border border-[#E2D8CE] rounded-2xl px-4 py-3.5 text-[#1A1A1A] placeholder:text-[#A8A09A] text-sm leading-relaxed focus:outline-none focus:border-[#C97552]/50 transition-colors resize-none"
               />
-              <p className="text-white/20 text-[11px] mt-2 pl-1">
+              <p className="text-[#A8A09A] text-[11px] mt-2 pl-1">
                 Describe your situation naturally — current time, completed stops, group needs, must-visit places.
               </p>
             </div>
@@ -858,7 +858,7 @@ export default function PlanDayPage() {
         </button>
 
         {homeCityData?.home_city && (
-          <p className="text-center text-white/20 text-xs mt-4">
+          <p className="text-center text-[#A8A09A] text-xs mt-4">
             Starting from {homeCityData.home_city}
           </p>
         )}

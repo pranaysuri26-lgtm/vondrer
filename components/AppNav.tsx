@@ -84,8 +84,8 @@ export default function AppNav() {
 
   // ── Desktop top nav ─────────────────────────────────────────────────────────
   const DesktopNav = (
-    <nav className="hidden md:flex sticky top-0 z-30 bg-[#0d1f35]/95 backdrop-blur-md border-b border-white/8 px-8 h-14 items-center justify-between">
-      <span className="font-serif italic text-xl text-white/90 select-none tracking-wide">Voya</span>
+    <nav className="hidden md:flex sticky top-0 z-30 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E8E0D6] px-8 h-14 items-center justify-between">
+      <span className="font-serif italic text-xl text-[#1A1A1A] select-none tracking-wide">Voya</span>
 
       <div className="flex items-center gap-1">
         {TABS.map(tab => {
@@ -97,7 +97,7 @@ export default function AppNav() {
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm transition-all ${
                 active
                   ? 'text-[#C97552] bg-[#C97552]/8'
-                  : 'text-white/45 hover:text-white/80 hover:bg-white/5'
+                  : 'text-[#6b5f54] hover:text-[#2A2420] hover:bg-white'
               }`}
             >
               <span className="text-base leading-none">{tab.icon}</span>
@@ -113,7 +113,7 @@ export default function AppNav() {
 
   // ── Mobile bottom nav ───────────────────────────────────────────────────────
   const MobileNav = (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#0d1f35]/97 backdrop-blur-md border-t border-white/8 flex items-stretch h-14">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#FAF8F5]/97 backdrop-blur-md border-t border-[#E8E0D6] flex items-stretch h-14">
       {TABS.map(tab => {
         const active = isActive(tab.key)
         return (
@@ -126,7 +126,7 @@ export default function AppNav() {
               {tab.icon}
             </span>
             <span className={`text-[8px] font-label tracking-wide uppercase transition-colors ${
-              active ? 'text-[#C97552]' : 'text-white/35'
+              active ? 'text-[#C97552]' : 'text-[#7A6E64]'
             }`}>
               {tab.label}
             </span>

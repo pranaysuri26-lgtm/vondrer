@@ -54,14 +54,14 @@ function getCategoryMeta(category: string) {
     return { colour: 'text-cyan-400',    border: 'border-t-cyan-400/60',    gradFrom: 'rgba(34,211,238,0.10)'  }
   if (category.includes('Day Trip') || category.includes('Day'))
     return { colour: 'text-rose-300',    border: 'border-t-rose-300/60',    gradFrom: 'rgba(253,164,175,0.10)' }
-  return   { colour: 'text-white/50',   border: 'border-t-white/20',       gradFrom: 'rgba(255,255,255,0.05)' }
+  return   { colour: 'text-[#5C564E]',   border: 'border-t-white/20',       gradFrom: 'rgba(255,255,255,0.05)' }
 }
 
 // ─── Price badge ──────────────────────────────────────────────────────────────
 
 function PriceBadge({ price }: { price: string }) {
   if (price === 'Free') return <span className="text-xs font-semibold text-emerald-400">Free</span>
-  return <span className="text-xs text-white/45 font-medium">{price}</span>
+  return <span className="text-xs text-[#6b5f54] font-medium">{price}</span>
 }
 
 // ─── Animated checkmark ───────────────────────────────────────────────────────
@@ -190,7 +190,7 @@ function CardDetailSheet({
                 {card.category}
               </span>
               <button onClick={close}
-                className="w-7 h-7 rounded-full bg-white/8 flex items-center justify-center text-white/35 hover:bg-white/15 transition-colors">
+                className="w-7 h-7 rounded-full bg-[#F0EBE3] flex items-center justify-center text-[#7A6E64] hover:bg-[#E2D8CC] transition-colors">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -198,26 +198,26 @@ function CardDetailSheet({
             </div>
 
             {/* Name */}
-            <h2 className="text-white font-bold text-[22px] leading-tight tracking-tight mb-1">
+            <h2 className="text-[#1A1A1A] font-bold text-[22px] leading-tight tracking-tight mb-1">
               {card.name}
             </h2>
-            <p className="text-white/40 text-sm mb-4 leading-relaxed">{card.tagline}</p>
+            <p className="text-[#6b5f54] text-sm mb-4 leading-relaxed">{card.tagline}</p>
 
             <div className="h-px bg-white/[0.07] mb-4"/>
 
             {/* Why */}
-            <p className="text-white/70 text-[13px] leading-relaxed mb-5">{card.why}</p>
+            <p className="text-[#3A3430] text-[13px] leading-relaxed mb-5">{card.why}</p>
 
             {/* Metadata pills */}
             <div className="flex flex-wrap gap-2 mb-5">
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] border border-[#E8E0D6] text-xs">
                 <PriceBadge price={card.price} />
               </span>
-              <span className="px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs text-white/45">
+              <span className="px-3 py-1.5 rounded-full bg-white/[0.06] border border-[#E8E0D6] text-xs text-[#6b5f54]">
                 {card.duration}
               </span>
-              <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-xs text-white/45">
-                <svg className="w-3 h-3 text-white/25 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/[0.06] border border-[#E8E0D6] text-xs text-[#6b5f54]">
+                <svg className="w-3 h-3 text-[#9A8E7E] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                 </svg>
                 {card.neighbourhood}
@@ -236,14 +236,14 @@ function CardDetailSheet({
                   Remove ✗
                 </button>
                 <button onClick={close}
-                  className="flex-1 py-3.5 rounded-2xl bg-white/7 border border-white/12 text-white/55 text-sm font-semibold hover:bg-white/12 transition-colors">
+                  className="flex-1 py-3.5 rounded-2xl bg-[#F5F0EA] border border-[#E2D8CE] text-[#5A504A] text-sm font-semibold hover:bg-[#E8E0D4] transition-colors">
                   Keep ✓
                 </button>
               </div>
             ) : (
               <div className="flex gap-3">
                 <button onClick={close}
-                  className="py-3.5 px-5 rounded-2xl border border-white/12 text-white/35 text-sm font-semibold hover:bg-white/5 transition-colors">
+                  className="py-3.5 px-5 rounded-2xl border border-[#E2D8CE] text-[#7A6E64] text-sm font-semibold hover:bg-white transition-colors">
                   Skip ✗
                 </button>
                 <button onClick={handlePick}
@@ -318,7 +318,7 @@ function ActivityCard({
         border-t-2 ${meta.border}
         ${picked
           ? 'border border-[#C97552]/40 shadow-[0_0_24px_rgba(201,117,82,0.09)]'
-          : 'border border-white/[0.08] hover:border-white/18'
+          : 'border border-[#E8E0D6] hover:border-white/18'
         }
       `}
       style={{
@@ -330,7 +330,7 @@ function ActivityCard({
       {/* Picked badge */}
       {picked && (
         <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#C97552] flex items-center justify-center z-10 shadow-sm">
-          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+          <svg className="w-2.5 h-2.5 text-[#1A1A1A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
         </div>
@@ -343,23 +343,23 @@ function ActivityCard({
         </div>
 
         {/* Name — hero */}
-        <h3 className={`font-bold text-[15px] leading-snug mb-1.5 pr-6 transition-colors ${picked ? 'text-white' : 'text-white/88 group-hover:text-white'}`}>
+        <h3 className={`font-bold text-[15px] leading-snug mb-1.5 pr-6 transition-colors ${picked ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]/88 group-hover:text-[#1A1A1A]'}`}>
           {card.name}
         </h3>
 
         {/* Tagline */}
-        <p className="text-white/38 text-[11px] leading-relaxed mb-3 line-clamp-2">
+        <p className="text-[#1A1A1A]/38 text-[11px] leading-relaxed mb-3 line-clamp-2">
           {card.tagline}
         </p>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.07]">
+        <div className="flex items-center justify-between pt-2.5 border-t border-[#E8E0D6]">
           <div className="flex items-center gap-1.5">
             <PriceBadge price={card.price} />
-            <span className="text-white/18 text-[10px]">·</span>
-            <span className="text-white/30 text-[10px]">{card.duration}</span>
+            <span className="text-[#1A1A1A]/18 text-[10px]">·</span>
+            <span className="text-[#8A7E6E] text-[10px]">{card.duration}</span>
           </div>
-          <span className="text-white/22 text-[9px] truncate max-w-[80px]">{card.neighbourhood}</span>
+          <span className="text-[#1A1A1A]/22 text-[9px] truncate max-w-[80px]">{card.neighbourhood}</span>
         </div>
       </div>
     </button>
@@ -383,9 +383,9 @@ function AccommodationCard({ acc, budget }: { acc: PlanAccommodation; budget?: s
           <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">
             Where to stay · {BUDGET_LABELS[budget ?? ''] ?? 'mid-range'} budget
           </p>
-          <p className="text-white font-semibold text-sm mb-1">{acc.neighbourhood}</p>
-          <p className="text-white/55 text-xs leading-relaxed">{acc.why}</p>
-          <p className="text-white/30 text-xs mt-2">{acc.price_range} / night</p>
+          <p className="text-[#1A1A1A] font-semibold text-sm mb-1">{acc.neighbourhood}</p>
+          <p className="text-[#5A504A] text-xs leading-relaxed">{acc.why}</p>
+          <p className="text-[#8A7E6E] text-xs mt-2">{acc.price_range} / night</p>
         </div>
       </div>
     </div>
@@ -396,13 +396,13 @@ function AccommodationCard({ acc, budget }: { acc: PlanAccommodation; budget?: s
 
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border-t-2 border-t-white/10 bg-white/[0.04] border border-white/8 p-4 animate-pulse">
-      <div className="h-2.5 w-20 bg-white/10 rounded-full mb-3"/>
-      <div className="h-[15px] w-3/4 bg-white/10 rounded mb-2"/>
-      <div className="h-2.5 w-1/2 bg-white/8 rounded mb-3"/>
-      <div className="flex justify-between pt-2.5 border-t border-white/8">
-        <div className="h-2.5 w-16 bg-white/8 rounded"/>
-        <div className="h-2.5 w-20 bg-white/8 rounded"/>
+    <div className="rounded-2xl border-t-2 border-t-white/10 bg-white/[0.04] border border-[#E8E0D6] p-4 animate-pulse">
+      <div className="h-2.5 w-20 bg-[#EDE5D8] rounded-full mb-3"/>
+      <div className="h-[15px] w-3/4 bg-[#EDE5D8] rounded mb-2"/>
+      <div className="h-2.5 w-1/2 bg-[#F0EBE3] rounded mb-3"/>
+      <div className="flex justify-between pt-2.5 border-t border-[#E8E0D6]">
+        <div className="h-2.5 w-16 bg-[#F0EBE3] rounded"/>
+        <div className="h-2.5 w-20 bg-[#F0EBE3] rounded"/>
       </div>
     </div>
   )
@@ -504,8 +504,8 @@ function BuildModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
-      <div className="absolute inset-0 bg-[#0d1f35]/80 backdrop-blur-sm" onClick={!done ? onClose : undefined}/>
-      <div className="relative w-full max-w-md bg-[#0d1f35] rounded-t-3xl sm:rounded-3xl border border-white/12 p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div className="absolute inset-0 bg-[#FAF8F5]/80 backdrop-blur-sm" onClick={!done ? onClose : undefined}/>
+      <div className="relative w-full max-w-md bg-[#FAF8F5] rounded-t-3xl sm:rounded-3xl border border-[#E2D8CE] p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
         {done ? (
           <div className="text-center py-4">
             <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center mx-auto mb-5">
@@ -513,14 +513,14 @@ function BuildModal({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
               </svg>
             </div>
-            <h3 className="text-white font-semibold text-xl mb-1">Itinerary ready</h3>
-            <p className="text-white/40 text-sm mb-8">Your {destination} trip has been saved.</p>
+            <h3 className="text-[#1A1A1A] font-semibold text-xl mb-1">Itinerary ready</h3>
+            <p className="text-[#6b5f54] text-sm mb-8">Your {destination} trip has been saved.</p>
             <button onClick={() => router.push(`/trip/${done}`)}
               className="w-full py-4 rounded-full bg-[#C97552] text-white font-bold text-sm hover:bg-[#b86644] transition-colors mb-3">
               View my itinerary →
             </button>
             <button onClick={() => router.push('/trips')}
-              className="w-full py-3 rounded-full border border-white/12 text-white/50 text-sm hover:border-white/25 hover:text-white/70 transition-all">
+              className="w-full py-3 rounded-full border border-[#E2D8CE] text-[#5C564E] text-sm hover:border-white/25 hover:text-[#3A3430] transition-all">
               All my trips
             </button>
           </div>
@@ -528,45 +528,45 @@ function BuildModal({
           <>
             <div className="flex items-start justify-between mb-5">
               <div>
-                <h2 className="text-white font-bold text-lg">Build itinerary</h2>
-                <p className="text-white/40 text-sm mt-0.5">{picked.length} activities · {destination}</p>
+                <h2 className="text-[#1A1A1A] font-bold text-lg">Build itinerary</h2>
+                <p className="text-[#6b5f54] text-sm mt-0.5">{picked.length} activities · {destination}</p>
               </div>
-              <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/8 flex items-center justify-center text-white/50 hover:bg-white/15 transition-colors">
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-[#F0EBE3] flex items-center justify-center text-[#5C564E] hover:bg-[#E2D8CC] transition-colors">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-1.5 mb-5 p-3 bg-white/3 border border-white/8 rounded-xl">
+            <div className="flex flex-wrap gap-1.5 mb-5 p-3 bg-[#F5F2ED] border border-[#E8E0D6] rounded-xl">
               {picked.slice(0, 5).map(p => (
                 <span key={p.id} className="text-xs px-2.5 py-1 rounded-full bg-[#C97552]/15 text-[#C97552] border border-[#C97552]/25">{p.name}</span>
               ))}
-              {picked.length > 5 && <span className="text-xs px-2.5 py-1 rounded-full bg-white/8 text-white/40">+{picked.length - 5} more</span>}
+              {picked.length > 5 && <span className="text-xs px-2.5 py-1 rounded-full bg-[#F0EBE3] text-[#6b5f54]">+{picked.length - 5} more</span>}
             </div>
 
             <div className="mb-4">
-              <label className="block text-white/50 text-xs font-medium mb-1.5 uppercase tracking-wide">When are you going?</label>
+              <label className="block text-[#5C564E] text-xs font-medium mb-1.5 uppercase tracking-wide">When are you going?</label>
               <input type="date" value={startDate} min={today} onChange={e => setStartDate(e.target.value)}
-                className="w-full bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"/>
+                className="w-full bg-white border border-[#E2D8CE] rounded-xl px-4 py-3 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"/>
             </div>
 
             <div className="mb-4">
-              <label className="block text-white/50 text-xs font-medium mb-1.5 uppercase tracking-wide">How many nights?</label>
-              <div className="flex items-center gap-4 bg-white/4 border border-white/10 rounded-xl px-4 py-3">
-                <button onClick={() => setDays(d => Math.max(1, d - 1))} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">−</button>
-                <span className="text-white font-bold text-lg flex-1 text-center">{days} night{days !== 1 ? 's' : ''}</span>
-                <button onClick={() => setDays(d => Math.min(14, d + 1))} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">+</button>
+              <label className="block text-[#5C564E] text-xs font-medium mb-1.5 uppercase tracking-wide">How many nights?</label>
+              <div className="flex items-center gap-4 bg-white border border-[#E8E0D6] rounded-xl px-4 py-3">
+                <button onClick={() => setDays(d => Math.max(1, d - 1))} className="w-8 h-8 rounded-full bg-[#EDE5D8] flex items-center justify-center text-[#1A1A1A] hover:bg-white/20 transition-colors">−</button>
+                <span className="text-[#1A1A1A] font-bold text-lg flex-1 text-center">{days} night{days !== 1 ? 's' : ''}</span>
+                <button onClick={() => setDays(d => Math.min(14, d + 1))} className="w-8 h-8 rounded-full bg-[#EDE5D8] flex items-center justify-center text-[#1A1A1A] hover:bg-white/20 transition-colors">+</button>
               </div>
             </div>
 
             <div className="mb-4">
-              <label className="block text-white/50 text-xs font-medium mb-1 uppercase tracking-wide">Food preferences</label>
-              <p className="text-white/30 text-xs mb-2.5">We'll only suggest restaurants that work for you</p>
+              <label className="block text-[#5C564E] text-xs font-medium mb-1 uppercase tracking-wide">Food preferences</label>
+              <p className="text-[#8A7E6E] text-xs mb-2.5">We'll only suggest restaurants that work for you</p>
               <div className="flex flex-wrap gap-2">
                 {DIETARY_OPTIONS.map(opt => {
                   const active = dietary.includes(opt.id) || (opt.id === 'none' && dietary.length === 0)
                   return (
                     <button key={opt.id} onClick={() => toggleDietary(opt.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${active ? 'bg-[#C97552]/15 border-[#C97552]/40 text-[#C97552]' : 'bg-white/4 border-white/12 text-white/45 hover:border-white/25'}`}>
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${active ? 'bg-[#C97552]/15 border-[#C97552]/40 text-[#C97552]' : 'bg-white border-[#E2D8CE] text-[#6b5f54] hover:border-white/25'}`}>
                       {opt.label}
                     </button>
                   )
@@ -575,11 +575,11 @@ function BuildModal({
             </div>
 
             <div className="mb-5">
-              <label className="block text-white/50 text-xs font-medium mb-1.5 uppercase tracking-wide">Trip pace</label>
+              <label className="block text-[#5C564E] text-xs font-medium mb-1.5 uppercase tracking-wide">Trip pace</label>
               <div className="flex gap-2">
                 {([{ id: 'relaxed', label: '😌 Relaxed' }, { id: 'balanced', label: '⚖️ Balanced' }, { id: 'packed', label: '⚡ Packed' }] as const).map(({ id, label }) => (
                   <button key={id} onClick={() => setPace(id)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-colors ${pace === id ? 'bg-[#C97552] text-white' : 'bg-white/5 text-white/45 hover:bg-white/10 border border-white/10'}`}>
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-colors ${pace === id ? 'bg-[#C97552] text-white' : 'bg-white text-[#6b5f54] hover:bg-[#EDE5D8] border border-[#E8E0D6]'}`}>
                     {label}
                   </button>
                 ))}
@@ -594,7 +594,7 @@ function BuildModal({
                 <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Generating your itinerary…</>
               ) : 'Generate my itinerary →'}
             </button>
-            <p className="text-white/25 text-xs text-center mt-3">Takes ~15 seconds · Saved to your trips</p>
+            <p className="text-[#9A8E7E] text-xs text-center mt-3">Takes ~15 seconds · Saved to your trips</p>
           </>
         )}
       </div>
@@ -726,27 +726,27 @@ export default function AIPlanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1f35] pb-36">
+    <div className="min-h-screen bg-[#FAF8F5] pb-36">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[#0d1f35]/95 backdrop-blur border-b border-white/[0.07]">
+      <div className="sticky top-0 z-30 bg-[#FAF8F5]/95 backdrop-blur border-b border-[#E8E0D6]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
           <button onClick={() => router.back()}
-            className="w-9 h-9 rounded-full bg-white/6 flex items-center justify-center text-white/60 hover:bg-white/12 transition-colors shrink-0">
+            className="w-9 h-9 rounded-full bg-[#F5F0EA] flex items-center justify-center text-[#4A4440] hover:bg-[#E8E0D4] transition-colors shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
             </svg>
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-white/28 text-[9px] uppercase tracking-widest font-semibold mb-0.5">AI Trip Planner</p>
-            <h1 className="text-white font-semibold text-base leading-tight truncate">
+            <p className="text-[#1A1A1A]/28 text-[9px] uppercase tracking-widest font-semibold mb-0.5">AI Trip Planner</p>
+            <h1 className="text-[#1A1A1A] font-semibold text-base leading-tight truncate">
               {destination}
-              {country && <span className="text-white/38 font-normal">, {country}</span>}
+              {country && <span className="text-[#1A1A1A]/38 font-normal">, {country}</span>}
             </h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {picked.length > 0 && (
-              <span className="text-xs text-white/45 hidden sm:block">{picked.length} selected</span>
+              <span className="text-xs text-[#6b5f54] hidden sm:block">{picked.length} selected</span>
             )}
             {picked.length >= 2 && (
               <button onClick={() => setBuildOpen(true)}
@@ -760,7 +760,7 @@ export default function AIPlanPage() {
 
       {/* ── Picked chips ─────────────────────────────────────────────────────── */}
       {picked.length > 0 && (
-        <div className="border-b border-white/[0.07] bg-[#0d1f35]">
+        <div className="border-b border-[#E8E0D6] bg-[#FAF8F5]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2.5">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
               {picked.map(p => (
@@ -783,12 +783,12 @@ export default function AIPlanPage() {
         {/* Section label */}
         {(allCards.length > 0 || loading) && (
           <div className="flex items-center gap-3 mb-5">
-            <p className="text-white/28 text-[10px] uppercase tracking-widest font-semibold shrink-0">
+            <p className="text-[#1A1A1A]/28 text-[10px] uppercase tracking-widest font-semibold shrink-0">
               Suggestions for {destination}
             </p>
             <div className="h-px flex-1 bg-white/[0.07]"/>
             {allCards.length > 0 && (
-              <p className="text-white/18 text-[10px] shrink-0">{allCards.length} suggestions</p>
+              <p className="text-[#1A1A1A]/18 text-[10px] shrink-0">{allCards.length} suggestions</p>
             )}
           </div>
         )}
@@ -848,9 +848,9 @@ export default function AIPlanPage() {
       {/* ── Bottom bar ───────────────────────────────────────────────────────── */}
       {(allCards.length > 0 || loading) && (
         <div className="fixed bottom-0 inset-x-0 z-20">
-          <div className="bg-[#0d1f35]/95 backdrop-blur border-t border-white/[0.08]">
+          <div className="bg-[#FAF8F5]/95 backdrop-blur border-t border-[#E8E0D6]">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-              <p className="text-white/28 text-xs hidden sm:block flex-1">
+              <p className="text-[#1A1A1A]/28 text-xs hidden sm:block flex-1">
                 {picked.length === 0
                   ? 'Tap a card to see details and add it to your trip'
                   : picked.length === 1
@@ -861,7 +861,7 @@ export default function AIPlanPage() {
                 <button
                   onClick={handleSuggestMore}
                   disabled={loading}
-                  className="flex-1 sm:flex-none sm:px-6 py-3 rounded-full border border-white/14 text-white/45 text-sm font-medium hover:border-white/28 hover:text-white/70 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="flex-1 sm:flex-none sm:px-6 py-3 rounded-full border border-white/14 text-[#6b5f54] text-sm font-medium hover:border-white/28 hover:text-[#3A3430] transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {loading
                     ? <><svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Loading…</>

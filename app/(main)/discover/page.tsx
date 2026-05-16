@@ -79,20 +79,20 @@ function LoadingScreen({ slow }: { slow: boolean }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
       <div className="relative w-16 h-16 mb-10">
-        <div className="absolute inset-0 rounded-full border border-white/10" />
+        <div className="absolute inset-0 rounded-full border border-[#E8E0D6]" />
         <div className="absolute inset-0 rounded-full border border-[#C97552]/40"
           style={{ animation: 'spin 3s linear infinite' }} />
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-2xl" style={{ animation: 'spin 3s linear infinite reverse' }}>🧭</span>
         </div>
       </div>
-      <span className="font-serif italic text-3xl text-white/90 tracking-wide mb-8">Voya</span>
-      <p key={lineIdx} className="text-white/50 text-sm tracking-wide"
+      <span className="font-serif italic text-3xl text-[#1A1A1A] tracking-wide mb-8">Voya</span>
+      <p key={lineIdx} className="text-[#5C564E] text-sm tracking-wide"
         style={{ animation: 'fadeIn 0.4s ease' }}>
         {LOADING_LINES[lineIdx]}
       </p>
       {slow && (
-        <p className="text-white/25 text-xs mt-4 max-w-xs text-center">
+        <p className="text-[#9A8E7E] text-xs mt-4 max-w-xs text-center">
           Building your personalised shortlist — first-time results take a little longer.
         </p>
       )}
@@ -119,26 +119,26 @@ function GemLegend() {
   return (
     <div className="relative inline-block">
       <button onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors">
+        className="flex items-center gap-1.5 text-xs text-[#8A7E6E] hover:text-[#5C564E] transition-colors">
         <span>💎 Gem score — how undiscovered a place truly is</span>
-        <span className={`w-4 h-4 rounded-full border border-white/20 flex items-center justify-center text-[10px] flex-shrink-0 ${open ? 'bg-white/10 border-white/35 text-white/60' : ''}`}>?</span>
+        <span className={`w-4 h-4 rounded-full border border-[#CCC4B8] flex items-center justify-center text-[10px] flex-shrink-0 ${open ? 'bg-[#EDE5D8] border-white/35 text-[#4A4440]' : ''}`}>?</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-2 z-10 bg-[#0d1f35] border border-white/12 rounded-xl p-4 shadow-xl min-w-[220px]">
+        <div className="absolute left-0 top-full mt-2 z-10 bg-[#FAF8F5] border border-[#E2D8CE] rounded-xl p-4 shadow-xl min-w-[220px]">
           <div className="space-y-2.5">
             {GEM_LEVELS.map(({ dots, label }) => (
               <div key={dots} className="flex items-center gap-3">
                 <div className="flex gap-1 flex-shrink-0">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < dots ? 'bg-[#C97552]' : 'bg-white/15'}`} />
+                    <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < dots ? 'bg-[#C97552]' : 'bg-[#E2D8CC]'}`} />
                   ))}
                 </div>
-                <span className="text-xs text-white/45">{label}</span>
+                <span className="text-xs text-[#6b5f54]">{label}</span>
               </div>
             ))}
           </div>
           <button onClick={() => setOpen(false)}
-            className="mt-3 text-[10px] text-white/20 hover:text-white/40 transition-colors w-full text-right">close</button>
+            className="mt-3 text-[10px] text-[#A8A09A] hover:text-[#6b5f54] transition-colors w-full text-right">close</button>
         </div>
       )}
     </div>
@@ -163,7 +163,7 @@ function GemDots({ score }: { score?: number }) {
   return (
     <div className="flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < Math.round(score / 2) ? 'bg-[#C97552]' : 'bg-white/15'}`} />
+        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < Math.round(score / 2) ? 'bg-[#C97552]' : 'bg-[#E2D8CC]'}`} />
       ))}
     </div>
   )
@@ -211,7 +211,7 @@ function DietaryBadges({
     <div className="flex flex-wrap gap-1.5 mt-2">
       {badges.map(b => (
         <span key={b.matchTag}
-          className="flex items-center gap-1 text-[10px] text-white/50 bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+          className="flex items-center gap-1 text-[10px] text-[#5C564E] bg-white border border-[#E8E0D6] rounded-full px-2 py-0.5">
           <span>{b.icon}</span>
           <span>{b.label}</span>
         </span>
@@ -414,7 +414,7 @@ function TransportBlock({
 
   return (
     <div className="mt-4 mb-1">
-      <p className="text-[10px] text-white/25 uppercase tracking-widest mb-2.5 font-label">
+      <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest mb-2.5 font-label">
         How to get there
       </p>
 
@@ -426,7 +426,7 @@ function TransportBlock({
         <div className="mt-2">
           <button
             onClick={e => { e.stopPropagation(); setExpanded(v => !v) }}
-            className="text-[11px] text-white/45 hover:text-white/70 transition-colors flex items-center gap-1.5 py-1"
+            className="text-[11px] text-[#6b5f54] hover:text-[#3A3430] transition-colors flex items-center gap-1.5 py-1"
           >
             <span className="text-[10px]">{expanded ? '▾' : '▸'}</span>
             <span>{expanded ? 'Hide alternatives' : `${alternates.length} other way${alternates.length > 1 ? 's' : ''} to get there`}</span>
@@ -441,7 +441,7 @@ function TransportBlock({
         </div>
       )}
 
-      <p className="text-[10px] text-white/20 mt-2 leading-snug">
+      <p className="text-[10px] text-[#A8A09A] mt-2 leading-snug">
         Carriers and prices are AI estimates — always compare live fares before booking.
       </p>
     </div>
@@ -467,7 +467,7 @@ function PrimaryTransportCard({ m, homeCity, destName, country }: {
             {isFlight ? 'Flight' : (m.service_name || TRANSPORT_LABELS[m.mode])}
           </span>
           {isFlight && m.service_name && (
-            <span className="text-[10px] text-white/30">via {m.service_name}</span>
+            <span className="text-[10px] text-[#8A7E6E]">via {m.service_name}</span>
           )}
         </div>
         <span className="text-[9px] text-[#C97552]/70 border border-[#C97552]/25 rounded-full px-2 py-0.5 uppercase tracking-wider font-label flex-shrink-0">
@@ -475,27 +475,27 @@ function PrimaryTransportCard({ m, homeCity, destName, country }: {
         </span>
       </div>
       <div className="flex items-baseline gap-3 text-xs mb-1">
-        <span className="text-white/70 font-medium">{m.duration}</span>
-        {m.cost && <span className="text-white/45">est. {m.cost}</span>}
+        <span className="text-[#3A3430] font-medium">{m.duration}</span>
+        {m.cost && <span className="text-[#6b5f54]">est. {m.cost}</span>}
       </div>
-      <p className="text-[11px] text-white/45 leading-snug mb-1.5">{m.note}</p>
+      <p className="text-[11px] text-[#6b5f54] leading-snug mb-1.5">{m.note}</p>
       {m.booking_window && (
-        <p className="text-[11px] text-white/30 mb-2">📅 {m.booking_window}</p>
+        <p className="text-[11px] text-[#8A7E6E] mb-2">📅 {m.booking_window}</p>
       )}
 
       {/* Flight with multiple airports — show per-airport rows */}
       {isFlight && hasAirports ? (
         <div className="mt-2 space-y-2">
-          <p className="text-[10px] text-white/25 uppercase tracking-widest font-label">Where to land</p>
+          <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest font-label">Where to land</p>
           {airports.map((ap, i) => (
             <div key={ap.iata} className={`rounded-lg px-3 py-2.5 border ${
-              i === 0 ? 'border-[#C97552]/25 bg-[#C97552]/5' : 'border-white/8 bg-white/3'
+              i === 0 ? 'border-[#C97552]/25 bg-[#C97552]/5' : 'border-[#E8E0D6] bg-[#F5F2ED]'
             }`}>
               <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-xs text-white/75 font-medium">{ap.label}</span>
+                <span className="text-xs text-[#3A3430] font-medium">{ap.label}</span>
                 {i === 0 && <span className="text-[9px] text-[#C97552]/60 uppercase tracking-wider font-label">Main</span>}
               </div>
-              <p className="text-[10px] text-white/35 leading-snug mb-1.5">{ap.note}</p>
+              <p className="text-[10px] text-[#7A6E64] leading-snug mb-1.5">{ap.note}</p>
               <div className="flex gap-3">
                 <a
                   href={buildFlightSearchUrl(homeCity, ap.iata, destName, country, 'google')}
@@ -509,7 +509,7 @@ function PrimaryTransportCard({ m, homeCity, destName, country }: {
                   href={buildFlightSearchUrl(homeCity, ap.iata, destName, country, 'skyscanner')}
                   target="_blank" rel="noopener noreferrer"
                   onClick={e => e.stopPropagation()}
-                  className="text-[11px] text-white/30 hover:text-white/55 transition-colors"
+                  className="text-[11px] text-[#8A7E6E] hover:text-[#5A504A] transition-colors"
                 >
                   Skyscanner ↗
                 </a>
@@ -532,7 +532,7 @@ function PrimaryTransportCard({ m, homeCity, destName, country }: {
             href={`https://www.skyscanner.com/transport/flights/${encodeURIComponent(homeCity.toLowerCase())}/${encodeURIComponent(destName.toLowerCase())}/`}
             target="_blank" rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="text-[11px] text-white/35 hover:text-white/60 transition-colors"
+            className="text-[11px] text-[#7A6E64] hover:text-[#4A4440] transition-colors"
           >
             Skyscanner ↗
           </a>
@@ -559,23 +559,23 @@ function AlternateTransportCard({ m, homeCity, destName, country }: {
   const icon  = TRANSPORT_ICONS[m.mode] ?? '🗺️'
   const label = TRANSPORT_LABELS[m.mode] ?? 'Find options'
   return (
-    <div className="bg-white/3 border border-white/8 rounded-xl px-3 py-2.5 flex items-start gap-3">
+    <div className="bg-[#F5F2ED] border border-[#E8E0D6] rounded-xl px-3 py-2.5 flex items-start gap-3">
       <span className="text-sm leading-none pt-0.5 flex-shrink-0">{icon}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-xs text-white/55 font-medium">
+          <span className="text-xs text-[#5A504A] font-medium">
             {m.service_name || TRANSPORT_LABELS[m.mode]}
           </span>
-          <span className="text-xs text-white/35">{m.duration}</span>
-          {m.cost && <span className="text-xs text-white/25">{m.cost}</span>}
+          <span className="text-xs text-[#7A6E64]">{m.duration}</span>
+          {m.cost && <span className="text-xs text-[#9A8E7E]">{m.cost}</span>}
         </div>
-        <p className="text-[11px] text-white/35 leading-snug mt-0.5">{m.note}</p>
+        <p className="text-[11px] text-[#7A6E64] leading-snug mt-0.5">{m.note}</p>
         <a
           href={link}
           target="_blank"
           rel="noopener noreferrer"
           onClick={e => e.stopPropagation()}
-          className="text-[11px] text-white/30 hover:text-white/50 transition-colors"
+          className="text-[11px] text-[#8A7E6E] hover:text-[#5C564E] transition-colors"
         >
           {m.booking ? `${m.booking}` : label} ↗
         </a>
@@ -620,8 +620,8 @@ function PlatformBadge({ label, status }: { label: string; status: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${
       isStrong  ? 'border-emerald-500/30 text-emerald-400/70 bg-emerald-500/5' :
-      isLimited ? 'border-white/15 text-white/35 bg-white/3' :
-                  'border-white/8 text-white/20 bg-white/2 line-through'
+      isLimited ? 'border-[#D8D0C4] text-[#7A6E64] bg-[#F5F2ED]' :
+                  'border-[#E8E0D6] text-[#A8A09A] bg-[#FAF8F5] line-through'
     }`}>
       {label}
       {isStrong && <span className="text-emerald-400/60">✓</span>}
@@ -636,25 +636,25 @@ function AccommodationBlock({ acc, destName }: { acc: Accommodation; destName: s
 
   return (
     <div className="mt-4 mb-1">
-      <p className="text-[10px] text-white/25 uppercase tracking-widest mb-2.5 font-label">
+      <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest mb-2.5 font-label">
         Where to stay
       </p>
 
       {/* Primary recommendation */}
-      <div className="bg-white/4 border border-white/8 rounded-xl px-3 py-3">
+      <div className="bg-white border border-[#E8E0D6] rounded-xl px-3 py-3">
         <div className="flex items-start justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-2">
             <span className="text-base leading-none">{icon}</span>
-            <span className="text-xs font-semibold text-white/80">{rec.type}</span>
+            <span className="text-xs font-semibold text-[#2A2420]">{rec.type}</span>
           </div>
           {rec.name && (
-            <span className="text-[10px] text-white/40 text-right leading-tight flex-shrink-0 max-w-[120px]">{rec.name}</span>
+            <span className="text-[10px] text-[#6b5f54] text-right leading-tight flex-shrink-0 max-w-[120px]">{rec.name}</span>
           )}
         </div>
-        <p className="text-sm text-white/70 font-medium mb-1">{rec.price_range}</p>
-        <p className="text-[11px] text-white/45 leading-snug mb-1.5">{rec.why}</p>
+        <p className="text-sm text-[#3A3430] font-medium mb-1">{rec.price_range}</p>
+        <p className="text-[11px] text-[#6b5f54] leading-snug mb-1.5">{rec.why}</p>
         {rec.book_ahead && (
-          <p className="text-[11px] text-white/30 mb-2">📅 {rec.book_ahead}</p>
+          <p className="text-[11px] text-[#8A7E6E] mb-2">📅 {rec.book_ahead}</p>
         )}
         <a
           href={bookUrl}
@@ -676,20 +676,20 @@ function AccommodationBlock({ acc, destName }: { acc: Accommodation; destName: s
 
       {/* Alternative */}
       {acc.alternative && (
-        <div className="mt-2 bg-white/2 border border-white/6 rounded-xl px-3 py-2.5">
+        <div className="mt-2 bg-[#FAF8F5] border border-[#EDE5D8] rounded-xl px-3 py-2.5">
           <div className="flex items-baseline gap-2 flex-wrap mb-0.5">
-            <span className="text-xs text-white/50 font-medium">Alt: {acc.alternative.type}</span>
-            <span className="text-xs text-white/30">{acc.alternative.price_range}</span>
+            <span className="text-xs text-[#5C564E] font-medium">Alt: {acc.alternative.type}</span>
+            <span className="text-xs text-[#8A7E6E]">{acc.alternative.price_range}</span>
           </div>
-          <p className="text-[11px] text-white/35 leading-snug">{acc.alternative.note}</p>
-          <span className="text-[10px] text-white/25">via {acc.alternative.book_via}</span>
+          <p className="text-[11px] text-[#7A6E64] leading-snug">{acc.alternative.note}</p>
+          <span className="text-[10px] text-[#9A8E7E]">via {acc.alternative.book_via}</span>
         </div>
       )}
 
       {/* Neighbourhood advice */}
       {acc.neighbourhood_advice && (
-        <p className="text-[11px] text-white/35 mt-2 leading-snug">
-          <span className="text-white/20 uppercase tracking-wider text-[10px] font-label mr-1">Area</span>
+        <p className="text-[11px] text-[#7A6E64] mt-2 leading-snug">
+          <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] font-label mr-1">Area</span>
           {acc.neighbourhood_advice}
         </p>
       )}
@@ -815,9 +815,9 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
       {/* Shimmer while fetching */}
       {images.length === 0 && (
         <>
-          <div className="absolute inset-0 bg-white/5 animate-pulse" />
+          <div className="absolute inset-0 bg-white animate-pulse" />
           <div className="absolute inset-0 flex items-end p-4">
-            <span className="font-serif italic text-white/20 text-2xl">{dest.name}</span>
+            <span className="font-serif italic text-[#A8A09A] text-2xl">{dest.name}</span>
           </div>
         </>
       )}
@@ -848,7 +848,7 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
               key={i}
               onClick={e => { e.stopPropagation(); setActiveIdx(i) }}
               className={`rounded-full transition-all duration-300 ${
-                i === activeIdx ? 'w-3 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/35 hover:bg-white/60'
+                i === activeIdx ? 'w-3 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-[#F5F2ED]5 hover:bg-[#F5F0EA]0'
               }`}
             />
           ))}
@@ -898,9 +898,9 @@ function CardThumbnail({ dest }: { dest: RecommendedDestination }) {
           onError={() => setImgUrl(null)}
         />
       )}
-      {!imgUrl && <div className="absolute inset-0 animate-pulse bg-white/3" />}
+      {!imgUrl && <div className="absolute inset-0 animate-pulse bg-[#F5F2ED]" />}
       {/* Gradient scrim from bottom so card text reads cleanly */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#0d1f35]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#FAF8F5]" />
     </div>
   )
 }
@@ -931,22 +931,22 @@ function DestinationCard({
       onClick={() => setExpanded(e => !e)}
       className={`relative rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer
         ${locked
-          ? 'border-white/8 bg-white/3'
+          ? 'border-[#E8E0D6] bg-[#F5F2ED]'
           : expanded
-            ? 'border-[#C97552]/50 bg-white/7'
-            : 'border-white/12 bg-white/5 hover:border-[#C97552]/40 hover:bg-white/7'
+            ? 'border-[#C97552]/50 bg-[#F5F0EA]'
+            : 'border-[#E2D8CE] bg-white hover:border-[#C97552]/40 hover:bg-[#F5F0EA]'
         }`}
     >
       {/* Thumbnail — shows when collapsed; unlocked cards load real photo, locked show gradient */}
       {!expanded && !locked && <CardThumbnail dest={dest} />}
       {!expanded && locked && (
-        <div className="relative h-24 overflow-hidden" style={{ background: 'linear-gradient(135deg,#1a2535,#0d1f35)' }}>
+        <div className="relative h-24 overflow-hidden" style={{ background: 'linear-gradient(135deg,#EDE5D8,#F0EBE3)' }}>
           <div className="absolute inset-0 flex items-center justify-center">
-            <svg className="w-6 h-6 text-white/8" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-6 h-6 text-[#1A1A1A]/8" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
             </svg>
           </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d1f35]/80" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#FAF8F5]/80" />
         </div>
       )}
 
@@ -955,26 +955,26 @@ function DestinationCard({
         <div className="flex items-start justify-between gap-3">
           {/* Left: rank + name */}
           <div className="flex items-start gap-3 min-w-0">
-            <span className="text-xs text-white/25 font-label tracking-widest uppercase pt-0.5 flex-shrink-0">
+            <span className="text-xs text-[#9A8E7E] font-label tracking-widest uppercase pt-0.5 flex-shrink-0">
               #{rank}
             </span>
             <div className="min-w-0">
               {locked ? (
                 <>
                   <div className="flex items-center gap-2 mb-1">
-                    <svg className="w-3.5 h-3.5 text-white/25 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-3.5 h-3.5 text-[#9A8E7E] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
                     </svg>
-                    <span className="text-white/30 text-sm font-medium">Locked destination</span>
+                    <span className="text-[#8A7E6E] text-sm font-medium">Locked destination</span>
                   </div>
-                  <p className="text-white/20 text-xs">Upgrade to reveal full details</p>
+                  <p className="text-[#A8A09A] text-xs">Upgrade to reveal full details</p>
                 </>
               ) : (
                 <>
-                  <h2 className="font-serif italic text-xl leading-tight mb-0.5 truncate text-white">
+                  <h2 className="font-serif italic text-xl leading-tight mb-0.5 truncate text-[#1A1A1A]">
                     {dest.name}
                   </h2>
-                  <p className="text-sm text-white/50">
+                  <p className="text-sm text-[#5C564E]">
                     {dest.state_province
                       ? `${dest.state_province}, ${dest.country}`
                       : dest.country}
@@ -988,26 +988,26 @@ function DestinationCard({
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
             {locked && gemEmphasis ? (
               // Low spread — lead with gem score, not match %
-              <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-full px-3 py-1">
+              <div className="flex items-center gap-2 bg-[#F0EBE3] border border-[#D8D0C4] rounded-full px-3 py-1">
                 <GemDots score={dest.hidden_gem_score} />
-                <span className="text-xs text-white/50">{gemLabel(dest.hidden_gem_score)}</span>
+                <span className="text-xs text-[#5C564E]">{gemLabel(dest.hidden_gem_score)}</span>
               </div>
             ) : (
               // Normal — show effective (timing-adjusted) match %
               <div className={`flex items-center gap-1 rounded-full px-3 py-1 border ${
                 locked
-                  ? 'bg-white/8 border-white/15'
+                  ? 'bg-[#F0EBE3] border-[#D8D0C4]'
                   : timingPenalty > 0
                     ? 'bg-amber-400/10 border-amber-400/30'
                     : 'bg-[#C97552]/15 border-[#C97552]/30'
               }`}>
                 <span className={`text-xs font-semibold ${
-                  locked ? 'text-white/50' : timingPenalty > 0 ? 'text-amber-400' : 'text-[#C97552]'
+                  locked ? 'text-[#5C564E]' : timingPenalty > 0 ? 'text-amber-400' : 'text-[#C97552]'
                 }`}>
                   {displayScore}%
                 </span>
                 <span className={`text-xs ${
-                  locked ? 'text-white/30' : timingPenalty > 0 ? 'text-amber-400/70' : 'text-[#C97552]/70'
+                  locked ? 'text-[#8A7E6E]' : timingPenalty > 0 ? 'text-amber-400/70' : 'text-[#C97552]/70'
                 }`}>match</span>
               </div>
             )}
@@ -1035,7 +1035,7 @@ function DestinationCard({
         {/* First reason tag (unlocked collapsed preview only) */}
         {!locked && dest.reasons?.[0] && !expanded && (
           <div className="mt-3">
-            <span className="text-xs text-white/55 bg-white/6 border border-white/10 px-2.5 py-1 rounded-full">
+            <span className="text-xs text-[#5A504A] bg-[#F5F0EA] border border-[#E8E0D6] px-2.5 py-1 rounded-full">
               {dest.reasons[0]}
             </span>
           </div>
@@ -1044,7 +1044,7 @@ function DestinationCard({
         {/* Expand hint */}
         {!locked && (
           <div className="mt-3 flex justify-end">
-            <span className="text-xs text-white/20">{expanded ? '▲ collapse' : '▼ details'}</span>
+            <span className="text-xs text-[#A8A09A]">{expanded ? '▲ collapse' : '▼ details'}</span>
           </div>
         )}
       </div>
@@ -1060,7 +1060,7 @@ function DestinationCard({
             {/* All reason tags */}
             <div className="flex flex-wrap gap-2 mb-3">
               {dest.reasons.map((r, i) => (
-                <span key={i} className="text-xs text-white/60 bg-white/6 border border-white/10 px-2.5 py-1 rounded-full">
+                <span key={i} className="text-xs text-[#4A4440] bg-[#F5F0EA] border border-[#E8E0D6] px-2.5 py-1 rounded-full">
                   {r}
                 </span>
               ))}
@@ -1068,7 +1068,7 @@ function DestinationCard({
 
             {/* FIX 2 — Personalization note */}
             {!locked && dest.personalization_note && (
-              <p className="text-xs text-white/35 italic mt-2 mb-3 leading-snug">
+              <p className="text-xs text-[#7A6E64] italic mt-2 mb-3 leading-snug">
                 {dest.personalization_note}
               </p>
             )}
@@ -1079,7 +1079,7 @@ function DestinationCard({
             {/* FIX 5 — Timing note: amber when it's a shoulder season or starts with ⚠️ */}
             {!locked && dest.timing_note && (
               <div className={`flex items-start gap-2 mt-3 text-xs leading-relaxed ${
-                dest.timing_note.startsWith('⚠️') ? 'text-amber-400/80' : 'text-white/40'
+                dest.timing_note.startsWith('⚠️') ? 'text-amber-400/80' : 'text-[#6b5f54]'
               }`}>
                 <span className="flex-shrink-0">{dest.timing_note.startsWith('⚠️') ? '' : '📅'}</span>
                 <span>{dest.timing_note}</span>
@@ -1091,12 +1091,12 @@ function DestinationCard({
               <div className="mt-3 rounded-xl border border-[#C97552]/20 bg-[#C97552]/5 px-4 py-3">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-base leading-none">🎪</span>
-                  <span className="text-sm text-white/85 font-medium">{dest.upcoming_event.name}</span>
+                  <span className="text-sm text-[#1A1A1A] font-medium">{dest.upcoming_event.name}</span>
                 </div>
-                <p className="text-[11px] text-white/40 mb-1">
+                <p className="text-[11px] text-[#6b5f54] mb-1">
                   {dest.upcoming_event.when} · {crowdLabel(dest.upcoming_event.crowd_level)}
                 </p>
-                <p className="text-xs text-white/55 leading-snug">{dest.upcoming_event.what}</p>
+                <p className="text-xs text-[#5A504A] leading-snug">{dest.upcoming_event.what}</p>
               </div>
             )}
 
@@ -1109,13 +1109,13 @@ function DestinationCard({
             )}
 
             {/* Meta row */}
-            <div className="flex items-start justify-between border-t border-white/8 pt-4 mt-4 mb-4">
+            <div className="flex items-start justify-between border-t border-[#E8E0D6] pt-4 mt-4 mb-4">
               <div className="space-y-3">
                 {dest.budget_per_day_usd && (
                   <div>
-                    <p className="text-xs text-white/30 uppercase tracking-widest mb-0.5">Budget</p>
-                    <p className="text-sm text-white/80 font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
-                    <p className="text-xs text-white/30 mt-0.5">on the ground · excl. flights</p>
+                    <p className="text-xs text-[#8A7E6E] uppercase tracking-widest mb-0.5">Budget</p>
+                    <p className="text-sm text-[#2A2420] font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
+                    <p className="text-xs text-[#8A7E6E] mt-0.5">on the ground · excl. flights</p>
                     {(!dest.transport || dest.transport.length === 0) && (
                       <a
                         href={`https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(dest.name + ', ' + dest.country)}`}
@@ -1129,8 +1129,8 @@ function DestinationCard({
                 )}
                 {dest.best_time_to_visit && (
                   <div>
-                    <p className="text-xs text-white/30 uppercase tracking-widest mb-0.5">Best time</p>
-                    <p className="text-sm text-white/70">{dest.best_time_to_visit}</p>
+                    <p className="text-xs text-[#8A7E6E] uppercase tracking-widest mb-0.5">Best time</p>
+                    <p className="text-sm text-[#3A3430]">{dest.best_time_to_visit}</p>
                   </div>
                 )}
               </div>
@@ -1142,7 +1142,7 @@ function DestinationCard({
                   className={`flex items-center gap-1.5 text-xs border rounded-full px-3 py-2 transition-all flex-shrink-0 disabled:opacity-50 ${
                     isSaved
                       ? 'border-[#C97552]/50 text-[#C97552] bg-[#C97552]/10 hover:bg-[#C97552]/5'
-                      : 'border-white/12 text-white/40 hover:border-[#C97552]/40 hover:text-[#C97552]/70'
+                      : 'border-[#E2D8CE] text-[#6b5f54] hover:border-[#C97552]/40 hover:text-[#C97552]/70'
                   }`}
                 >
                   {isSaving ? (
@@ -1172,7 +1172,7 @@ function DestinationCard({
               <a
                 href={`/guide?q=${encodeURIComponent(dest.name)}&c=${encodeURIComponent(dest.country)}${dest.state_province ? `&s=${encodeURIComponent(dest.state_province)}` : ''}`}
                 onClick={e => e.stopPropagation()}
-                className="flex items-center justify-center gap-1.5 w-full py-3 rounded-full border border-white/15 text-white/55 text-sm hover:border-white/30 hover:text-white/80 transition-all"
+                className="flex items-center justify-center gap-1.5 w-full py-3 rounded-full border border-[#D8D0C4] text-[#5A504A] text-sm hover:border-[#C0B8AC] hover:text-[#2A2420] transition-all"
               >
                 <span>🗺</span>
                 <span>Local guide</span>
@@ -1184,10 +1184,10 @@ function DestinationCard({
           {locked && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm">
               <div className="text-center px-6">
-                <svg className="w-5 h-5 text-white/40 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5 text-[#6b5f54] mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                 </svg>
-                <p className="text-white/50 text-xs">Unlock to see full details</p>
+                <p className="text-[#5C564E] text-xs">Unlock to see full details</p>
               </div>
             </div>
           )}
@@ -1232,8 +1232,8 @@ function ConversionHook({ lockedCount, topScore }: { lockedCount: number; topSco
     return (
       <div className="rounded-2xl border border-[#C97552]/25 bg-[#C97552]/5 px-6 py-5 text-center">
         <p className="text-2xl mb-2">✓</p>
-        <p className="text-white/80 text-sm font-medium">You're on the list.</p>
-        <p className="text-white/40 text-xs mt-1">We'll email you the moment paid unlock goes live.</p>
+        <p className="text-[#2A2420] text-sm font-medium">You're on the list.</p>
+        <p className="text-[#6b5f54] text-xs mt-1">We'll email you the moment paid unlock goes live.</p>
       </div>
     )
   }
@@ -1241,11 +1241,11 @@ function ConversionHook({ lockedCount, topScore }: { lockedCount: number; topSco
   if (phase === 'form') {
     return (
       <div className="rounded-2xl border border-[#C97552]/25 bg-[#C97552]/5 px-6 py-5">
-        <p className="text-white/80 text-sm font-medium mb-1">
+        <p className="text-[#2A2420] text-sm font-medium mb-1">
           Your {lockedCount} best match{lockedCount !== 1 ? 'es' : ''} — up to{' '}
           <span className="text-[#C97552] font-semibold">{topScore}% match</span> — unlock soon.
         </p>
-        <p className="text-white/40 text-xs mb-4">
+        <p className="text-[#6b5f54] text-xs mb-4">
           Paid unlock is launching shortly. Join the list — be first to access.
         </p>
         <form onSubmit={submit} className="flex gap-2">
@@ -1256,7 +1256,7 @@ function ConversionHook({ lockedCount, topScore }: { lockedCount: number; topSco
             placeholder="your@email.com"
             autoFocus
             required
-            className="flex-1 bg-white/8 border border-white/15 rounded-full px-4 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-[#C97552]/60"
+            className="flex-1 bg-[#F0EBE3] border border-[#D8D0C4] rounded-full px-4 py-2.5 text-[#1A1A1A] text-sm placeholder-[#8A7E6E] focus:outline-none focus:border-[#C97552]/60"
           />
           <button
             type="submit"
@@ -1269,7 +1269,7 @@ function ConversionHook({ lockedCount, topScore }: { lockedCount: number; topSco
         {err && <p className="text-red-400/80 text-xs mt-2">{err}</p>}
         <button
           onClick={() => setPhase('cta')}
-          className="text-white/25 text-xs mt-3 hover:text-white/45 transition-colors"
+          className="text-[#9A8E7E] text-xs mt-3 hover:text-[#6b5f54] transition-colors"
         >
           ← Back
         </button>
@@ -1280,19 +1280,19 @@ function ConversionHook({ lockedCount, topScore }: { lockedCount: number; topSco
   // CTA phase
   return (
     <div className="rounded-2xl border border-[#C97552]/25 bg-[#C97552]/5 px-6 py-5">
-      <p className="text-white/80 text-sm font-medium mb-1">
+      <p className="text-[#2A2420] text-sm font-medium mb-1">
         Your {lockedCount} best match{lockedCount !== 1 ? 'es' : ''} are waiting
         {' '}— including destinations up to{' '}
         <span className="text-[#C97552] font-semibold">{topScore}% match</span> for your profile.
       </p>
-      <p className="text-white/35 text-xs mb-4">Paid unlock launching soon · one-time · 30 days access</p>
+      <p className="text-[#7A6E64] text-xs mb-4">Paid unlock launching soon · one-time · 30 days access</p>
       <button
         onClick={() => setPhase('form')}
         className="bg-[#C97552] text-white font-semibold text-sm px-6 py-2.5 rounded-full hover:bg-[#b86644] transition-colors"
       >
         Get early access — be first to unlock →
       </button>
-      <p className="text-white/20 text-xs mt-3">No spam. One email when it's live.</p>
+      <p className="text-[#A8A09A] text-xs mt-3">No spam. One email when it's live.</p>
     </div>
   )
 }
@@ -1529,13 +1529,13 @@ export default function DiscoverPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
         <span className="text-3xl mb-4">🌐</span>
-        <h1 className="text-xl font-light text-white mb-2">Couldn't load your destinations</h1>
-        <p className="text-white/45 text-sm mb-6 max-w-xs">{errorMsg}</p>
+        <h1 className="text-xl font-light text-[#1A1A1A] mb-2">Couldn't load your destinations</h1>
+        <p className="text-[#6b5f54] text-sm mb-6 max-w-xs">{errorMsg}</p>
         <button onClick={retry}
-          className="bg-white text-[#0d1f35] font-semibold text-sm px-8 py-3 rounded-full hover:bg-white/90 transition-colors mb-3">
+          className="bg-[#1A1A1A] text-white font-semibold text-sm px-8 py-3 rounded-full hover:bg-white/90 transition-colors mb-3">
           Try again
         </button>
-        <button onClick={handleLogout} className="text-white/30 text-xs hover:text-white/50 transition-colors">Sign out</button>
+        <button onClick={handleLogout} className="text-[#8A7E6E] text-xs hover:text-[#5C564E] transition-colors">Sign out</button>
       </div>
     )
   }
@@ -1554,7 +1554,7 @@ export default function DiscoverPage() {
   const gemEmphasis    = lockedCards.length > 0 && (topLockedScore - topFreeScore) < 10
 
   return (
-    <div className="min-h-screen bg-[#0d1f35]">
+    <div className="min-h-screen bg-[#FAF8F5]">
 
       {/* Atmospheric hero header */}
       <div className="relative overflow-hidden mb-2">
@@ -1562,16 +1562,16 @@ export default function DiscoverPage() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80&auto=format')", opacity: 0.35 }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/30 via-[#0d1f35]/60 to-[#0d1f35]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FAF8F5]/30 via-[#FAF8F5]/60 to-[#FAF8F5]" />
 
         <div className="relative max-w-2xl mx-auto px-4 pt-12 pb-8">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs text-white/40 uppercase tracking-widest font-label mb-3">Your results</p>
-              <h1 className="font-serif italic text-5xl text-white leading-tight">
+              <p className="text-xs text-[#6b5f54] uppercase tracking-widest font-label mb-3">Your results</p>
+              <h1 className="font-serif italic text-5xl text-[#1A1A1A] leading-tight">
                 {destinations.length} destinations
                 <br />
-                <span className="text-white/45">matched your profile</span>
+                <span className="text-[#6b5f54]">matched your profile</span>
               </h1>
             </div>
             <a
@@ -1587,12 +1587,12 @@ export default function DiscoverPage() {
       <main className="max-w-2xl mx-auto px-4 pb-10">
         {/* Sub-header */}
         <div className="mb-8">
-          <p className="text-white/40 text-sm">
+          <p className="text-[#6b5f54] text-sm">
             Ranked by how well they fit your travel style.
             {' '}Your top {FREE_TIER_LIMIT} are free forever.
           </p>
           {dietaryPrefs.length > 0 && (
-            <p className="text-white/30 text-xs mt-2">
+            <p className="text-[#8A7E6E] text-xs mt-2">
               {dietaryFilterLabel(dietaryPrefs)}
             </p>
           )}
@@ -1602,7 +1602,7 @@ export default function DiscoverPage() {
             {lockedCards.length > 0 && (
               <a
                 href="#unlock"
-                className="text-xs font-label tracking-widest uppercase transition-colors px-3 py-1 rounded-full border border-white/15 text-white/35 hover:text-white/60 hover:border-white/30 flex-shrink-0"
+                className="text-xs font-label tracking-widest uppercase transition-colors px-3 py-1 rounded-full border border-[#D8D0C4] text-[#7A6E64] hover:text-[#4A4440] hover:border-[#C0B8AC] flex-shrink-0"
               >
                 🔒 {lockedCards.length} locked
               </a>
@@ -1626,16 +1626,16 @@ export default function DiscoverPage() {
             className={`flex flex-col items-start gap-1 rounded-2xl border px-4 py-4 text-left transition-all duration-200 ${
               mode === 'discover'
                 ? 'border-[#C97552]/45 bg-[#C97552]/6'
-                : 'border-white/10 bg-white/3 hover:border-white/18 hover:bg-white/5'
+                : 'border-[#E8E0D6] bg-[#F5F2ED] hover:border-[#D0C8BC] hover:bg-white'
             }`}
           >
             <div className="flex items-center gap-2">
               <span className="text-base leading-none">🧭</span>
-              <span className={`text-sm font-medium ${mode === 'discover' ? 'text-white/90' : 'text-white/55'}`}>
+              <span className={`text-sm font-medium ${mode === 'discover' ? 'text-[#1A1A1A]' : 'text-[#5A504A]'}`}>
                 Discover
               </span>
             </div>
-            <p className={`text-[11px] leading-snug ${mode === 'discover' ? 'text-white/45' : 'text-white/28'}`}>
+            <p className={`text-[11px] leading-snug ${mode === 'discover' ? 'text-[#6b5f54]' : 'text-[#8A7E6E]'}`}>
               Find hidden gems matched to you
             </p>
           </button>
@@ -1646,16 +1646,16 @@ export default function DiscoverPage() {
             className={`flex flex-col items-start gap-1 rounded-2xl border px-4 py-4 text-left transition-all duration-200 ${
               mode === 'search'
                 ? 'border-[#C97552]/45 bg-[#C97552]/6'
-                : 'border-white/10 bg-white/3 hover:border-white/18 hover:bg-white/5'
+                : 'border-[#E8E0D6] bg-[#F5F2ED] hover:border-[#D0C8BC] hover:bg-white'
             }`}
           >
             <div className="flex items-center gap-2">
               <span className="text-base leading-none">🔍</span>
-              <span className={`text-sm font-medium ${mode === 'search' ? 'text-white/90' : 'text-white/55'}`}>
+              <span className={`text-sm font-medium ${mode === 'search' ? 'text-[#1A1A1A]' : 'text-[#5A504A]'}`}>
                 I know where I&apos;m going
               </span>
             </div>
-            <p className={`text-[11px] leading-snug ${mode === 'search' ? 'text-white/45' : 'text-white/28'}`}>
+            <p className={`text-[11px] leading-snug ${mode === 'search' ? 'text-[#6b5f54]' : 'text-[#8A7E6E]'}`}>
               Get local intel for any destination
             </p>
           </button>
@@ -1664,7 +1664,7 @@ export default function DiscoverPage() {
         {/* ── Search panel ──────────────────────────────────────────────────── */}
         {mode === 'search' && (
           <div className="mb-8">
-            <p className="text-white/60 text-sm font-medium mb-4">Where are you going?</p>
+            <p className="text-[#4A4440] text-sm font-medium mb-4">Where are you going?</p>
             <div className="flex gap-3">
               <input
                 type="text"
@@ -1673,7 +1673,7 @@ export default function DiscoverPage() {
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 placeholder="City, country, or region..."
                 autoFocus
-                className="flex-1 bg-white/5 border border-white/12 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none focus:border-[#C97552]/40 focus:bg-white/7 transition-all"
+                className="flex-1 bg-white border border-[#E2D8CE] rounded-xl px-4 py-3 text-sm text-[#1A1A1A] placeholder-[#9A8E7E] outline-none focus:border-[#C97552]/40 focus:bg-[#F5F0EA] transition-all"
               />
               <button
                 onClick={handleSearch}
@@ -1693,7 +1693,7 @@ export default function DiscoverPage() {
               <svg className="w-3.5 h-3.5 text-[#C97552]" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
               </svg>
-              <p className="text-xs text-white/35 uppercase tracking-widest font-label">Saved</p>
+              <p className="text-xs text-[#7A6E64] uppercase tracking-widest font-label">Saved</p>
             </div>
             <div className="space-y-3">
               {savedDestinations.map((dest, i) => {
@@ -1714,7 +1714,7 @@ export default function DiscoverPage() {
                 )
               })}
             </div>
-            <div className="mt-4 border-t border-white/8" />
+            <div className="mt-4 border-t border-[#E8E0D6]" />
           </div>
         )}
 
@@ -1764,8 +1764,8 @@ export default function DiscoverPage() {
         )}
 
         {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-white/8 text-center">
-          <p className="text-white/20 text-xs">Results refresh when your profile changes.</p>
+        <div className="mt-12 pt-8 border-t border-[#E8E0D6] text-center">
+          <p className="text-[#A8A09A] text-xs">Results refresh when your profile changes.</p>
         </div>
       </main>
     </div>

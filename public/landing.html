@@ -36,7 +36,7 @@ html{scroll-behavior:smooth}
    Canyon rust    #c97552   ← the exact colour of the sandstone walls
    Desert sand    #e8d8c4   ← warm ochre of the canyon floor
    Haze blue      #3a7bd5   ← the cool distant sky through the canyon mouth
-   Deep shadow    #0d1f35   ← the dark canyon interior, pre-dawn
+   Deep shadow    #100d0a   ← the dark canyon interior, deep warm brown
    Pale dust      #f8f5f0   ← light catching the rock face
    ──────────────────────────────────────────────────────────────────────── */
 :root{
@@ -46,8 +46,8 @@ html{scroll-behavior:smooth}
   --aegean-d: #1d5fa8;
   --terra:    #c97552;
   --bloom:    #d4728a;
-  --ink:      #0d1f35;
-  --ink-2:    rgba(13,31,53,.72);
+  --ink:      #100d0a;
+  --ink-2:    rgba(16,13,10,.72);
   --rule:     rgba(248,245,240,.18);
 }
 
@@ -528,11 +528,11 @@ body{
 
 .feat-card{
   padding:40px 36px;
-  background:rgba(13,31,53,.6);
+  background:rgba(20,14,9,.6);
   backdrop-filter:blur(4px);
   transition:background .4s;
 }
-.feat-card:hover{background:rgba(13,31,53,.4)}
+.feat-card:hover{background:rgba(20,14,9,.4)}
 
 .feat-num{
   font-family:'Cormorant Garamond',serif;
@@ -568,11 +568,11 @@ body{
   border-top:1px solid rgba(248,245,240,.06);
 }
 
-/* Faint photo echo behind CTA — warmth without overwhelming */
+/* Faint canyon warmth behind CTA — terracotta glow, not Aegean blue */
 .cta-section::before{
   content:"";position:absolute;inset:0;
   background:
-    radial-gradient(ellipse 60% 70% at 50% 50%, rgba(58,123,213,.07), transparent 70%);
+    radial-gradient(ellipse 60% 70% at 50% 50%, rgba(201,117,82,.07), transparent 70%);
   pointer-events:none;
 }
 
@@ -788,7 +788,7 @@ footer{
   max-width:1060px;margin:0 auto;
 }
 @media(max-width:860px){.pricing-grid{grid-template-columns:1fr}}
-.pricing-card{padding:44px 38px;background:rgba(13,31,53,.55)}
+.pricing-card{padding:44px 38px;background:rgba(20,14,9,.55)}
 .pricing-card.pro{background:rgba(58,123,213,.09)}
 .pricing-tier{
   font-family:'Josefin Sans',sans-serif;font-weight:200;

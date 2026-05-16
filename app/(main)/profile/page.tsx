@@ -332,7 +332,7 @@ export default function ProfilePage() {
 
       <main className="max-w-2xl mx-auto px-4 pb-10 space-y-6">
 
-        {/* ── Home location ─────────────────────────────────────────────── */}
+        {/* ── Home location + travel scope ──────────────────────────────── */}
         <Section title="Where are you based?">
           <div className="space-y-3">
             <div>
@@ -355,144 +355,67 @@ export default function ProfilePage() {
                 className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] placeholder-[#9A8E7E] focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm"
               />
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {['Australia', 'United States', 'United Kingdom', 'India', 'Canada', 'Germany', 'France', 'Brazil', 'New Zealand', 'Singapore'].map(c => (
-              <button key={c} type="button" onClick={() => set('home_country', c)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all
-                  ${profile.home_country === c
-                    ? 'border-[#C97552] bg-[#C97552]/15 text-[#1A1A1A]'
-                    : 'border-[#E2D8CE] bg-white text-[#5C564E] hover:border-[#C8C0B4] hover:text-[#2A2420]'
-                  }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </Section>
-
-        {/* ── Travel scope ──────────────────────────────────────────────── */}
-        <Section title="How far do you want to go?">
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: 'anywhere', icon: '🌍', label: 'Anywhere', sub: 'Global recommendations' },
-                { value: 'closer',   icon: '🏠', label: 'Domestic only', sub: 'Stay within your country' },
-              ].map(opt => (
-                <button key={opt.value} type="button" onClick={() => set('travel_scope', opt.value)}
-                  className={`text-left px-4 py-4 rounded-xl border transition-all
-                    ${profile.travel_scope === opt.value
-                      ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
-                      : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
+            <div className="flex flex-wrap gap-2">
+              {['Australia', 'United States', 'United Kingdom', 'India', 'Canada', 'Germany', 'France', 'Brazil', 'New Zealand', 'Singapore'].map(c => (
+                <button key={c} type="button" onClick={() => set('home_country', c)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all
+                    ${profile.home_country === c
+                      ? 'border-[#C97552] bg-[#C97552]/15 text-[#1A1A1A]'
+                      : 'border-[#E2D8CE] bg-white text-[#5C564E] hover:border-[#C8C0B4] hover:text-[#2A2420]'
                     }`}
                 >
-                  <div className="text-xl mb-1">{opt.icon}</div>
-                  <div className="font-medium text-sm">{opt.label}</div>
-                  <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
+                  {c}
                 </button>
               ))}
             </div>
 
-            {/* Domestic sub-selector */}
-            {profile.travel_scope === 'closer' && (
-              <div className="border border-[#E8E0D6] bg-[#F5F2ED] rounded-xl p-4 space-y-2">
-                <p className="text-xs text-[#6b5f54] uppercase tracking-widest mb-3">How far within your country?</p>
+            {/* Travel scope — merged here to match signup flow */}
+            <div className="pt-1">
+              <label className="block text-xs text-[#7A6E64] uppercase tracking-widest mb-2">How far do you want to go?</label>
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { value: 'any_state',  icon: '🗺️', label: 'Any state / region',   sub: 'Explore your whole country' },
-                  { value: 'same_state', icon: '📍', label: 'My state / region only', sub: `Stay close to ${profile.home_city || 'home'}` },
+                  { value: 'anywhere', icon: '🌍', label: 'Anywhere',      sub: 'Global recommendations' },
+                  { value: 'closer',   icon: '🏠', label: 'Domestic only', sub: 'Stay within your country' },
                 ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => set('domestic_scope', opt.value)}
-                    className={`w-full text-left px-4 py-3 rounded-lg border transition-all flex items-center gap-3
-                      ${profile.domestic_scope === opt.value
-                        ? 'border-[#C97552]/60 bg-[#C97552]/8 text-[#1A1A1A]'
-                        : 'border-[#E8E0D6] bg-[#F5F2ED] text-[#4A4440] hover:border-[#CCC4B8] hover:text-[#2A2420]'
+                  <button key={opt.value} type="button" onClick={() => set('travel_scope', opt.value)}
+                    className={`text-left px-4 py-3 rounded-xl border transition-all
+                      ${profile.travel_scope === opt.value
+                        ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
+                        : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
                       }`}
                   >
-                    <span className="text-lg leading-none flex-shrink-0">{opt.icon}</span>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{opt.label}</div>
-                      <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
-                    </div>
-                    {profile.domestic_scope === opt.value && (
-                      <span className="text-[#C97552] text-sm">✓</span>
-                    )}
+                    <div className="text-lg mb-0.5">{opt.icon}</div>
+                    <div className="font-medium text-sm">{opt.label}</div>
+                    <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-        </Section>
-
-        {/* ── Trip timing ───────────────────────────────────────────────── */}
-        <Section title="When are you thinking of going?">
-          <div className="space-y-2">
-            {[
-              { value: 'next_month',  icon: '📅', label: 'Next month',           sub: 'Planning very soon'        },
-              { value: '2_3_months',  icon: '🗓️', label: 'In 2–3 months',        sub: 'Got time to plan'          },
-              { value: 'exploring',   icon: '🌍', label: 'Just exploring',        sub: 'No fixed date'             },
-              { value: 'specific',    icon: '✏️', label: 'I have specific dates', sub: 'Pick your exact window'   },
-            ].map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => set('trip_timing', profile.trip_timing === opt.value ? '' : opt.value)}
-                className={`w-full text-left px-5 py-4 rounded-xl border transition-all
-                  ${profile.trip_timing === opt.value
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
-                    : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
-                  }`}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-xl">{opt.icon}</span>
-                  <div>
-                    <div className="font-medium text-sm">{opt.label}</div>
-                    <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
-                  </div>
+              {profile.travel_scope === 'closer' && (
+                <div className="mt-2 border border-[#E8E0D6] bg-[#F5F2ED] rounded-xl p-3 space-y-2">
+                  <p className="text-xs text-[#6b5f54] uppercase tracking-widest mb-2">How far within your country?</p>
+                  {[
+                    { value: 'any_state',  icon: '🗺️', label: 'Any state / region',    sub: 'Explore your whole country' },
+                    { value: 'same_state', icon: '📍', label: 'My state / region only', sub: `Stay close to ${profile.home_city || 'home'}` },
+                  ].map(opt => (
+                    <button key={opt.value} type="button" onClick={() => set('domestic_scope', opt.value)}
+                      className={`w-full text-left px-4 py-3 rounded-lg border transition-all flex items-center gap-3
+                        ${profile.domestic_scope === opt.value
+                          ? 'border-[#C97552]/60 bg-[#C97552]/8 text-[#1A1A1A]'
+                          : 'border-[#E8E0D6] bg-[#F5F2ED] text-[#4A4440] hover:border-[#CCC4B8]'
+                        }`}
+                    >
+                      <span className="text-base leading-none flex-shrink-0">{opt.icon}</span>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{opt.label}</div>
+                        <div className="text-xs opacity-60 mt-0.5">{opt.sub}</div>
+                      </div>
+                      {profile.domestic_scope === opt.value && <span className="text-[#C97552] text-sm">✓</span>}
+                    </button>
+                  ))}
                 </div>
-              </button>
-            ))}
+              )}
+            </div>
           </div>
-
-          {/* Date pickers — shown when 'specific' is selected */}
-          {profile.trip_timing === 'specific' && (() => {
-            const days = calcDays(profile.trip_start_date, profile.trip_end_date)
-            return (
-              <div className="space-y-3 mt-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-[#6b5f54] uppercase tracking-widest mb-2">Departure</label>
-                    <input
-                      type="date"
-                      value={profile.trip_start_date}
-                      onChange={e => set('trip_start_date', e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm [color-scheme:dark]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-[#6b5f54] uppercase tracking-widest mb-2">Return</label>
-                    <input
-                      type="date"
-                      value={profile.trip_end_date}
-                      onChange={e => set('trip_end_date', e.target.value)}
-                      min={profile.trip_start_date || new Date().toISOString().split('T')[0]}
-                      className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] focus:outline-none focus:border-[#C97552]/60 transition-colors text-sm [color-scheme:dark]"
-                    />
-                  </div>
-                </div>
-                {days !== null && (
-                  <p className="text-center text-sm text-[#C97552] font-medium">{days} {days === 1 ? 'day' : 'days'}</p>
-                )}
-              </div>
-            )
-          })()}
-
-          {!profile.trip_timing && (
-            <p className="text-xs text-[#9A8E7E] mt-3">Not set — timing won&apos;t affect your recommendations.</p>
-          )}
         </Section>
 
         {/* ── Budget ────────────────────────────────────────────────────── */}
@@ -587,30 +510,6 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
-        </Section>
-
-        {/* ── Dietary preferences ───────────────────────────────────────── */}
-        <Section title="Food preferences">
-          <div className="grid grid-cols-2 gap-2">
-            {DIETARY_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => toggleDietary(opt.value)}
-                className={`text-left px-4 py-4 rounded-xl border transition-all
-                  ${profile.dietary_preferences.includes(opt.value)
-                    ? 'border-[#C97552] bg-[#C97552]/10 text-[#1A1A1A]'
-                    : 'border-[#E8E0D6] bg-white text-[#3A3430] hover:border-[#C8C0B4] hover:text-[#1A1A1A]'
-                  }`}
-              >
-                <div className="text-xl mb-1">{opt.icon}</div>
-                <div className="font-medium text-sm">{opt.label}</div>
-              </button>
-            ))}
-          </div>
-          {profile.dietary_preferences.length === 0 && (
-            <p className="text-xs text-[#9A8E7E] mt-3">Nothing selected — no dietary filters applied.</p>
-          )}
         </Section>
 
         {/* ── Offbeat slider ────────────────────────────────────────────── */}

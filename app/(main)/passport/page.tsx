@@ -10,8 +10,8 @@ export default function PassportPage() {
       {/* Atmospheric hero */}
       <div className="relative overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-15"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=80&auto=format')" }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=80&auto=format')", opacity: 0.22 }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/40 to-[#0d1f35]" />
         <div className="relative px-6 pt-12 pb-8 text-center">

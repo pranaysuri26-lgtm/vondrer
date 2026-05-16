@@ -174,8 +174,8 @@ export default function TripsPage() {
       <div className="relative overflow-hidden">
         {/* Atmospheric background */}
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-15"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1200&q=80&auto=format')" }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1200&q=80&auto=format')", opacity: 0.22 }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/60 via-[#0d1f35]/80 to-[#0d1f35]" />
 

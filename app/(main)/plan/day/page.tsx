@@ -749,8 +749,8 @@ export default function PlanDayPage() {
       {/* Atmospheric hero */}
       <div className="relative overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-12"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1473163928189-364b2c4e1135?w=1200&q=80&auto=format')" }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1473163928189-364b2c4e1135?w=1200&q=80&auto=format')", opacity: 0.2 }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/50 to-[#0d1f35]" />
         <div className="relative max-w-lg mx-auto w-full px-4 pt-10 pb-6">

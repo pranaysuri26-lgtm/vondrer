@@ -127,8 +127,8 @@ export default function DealsPage() {
       {/* Atmospheric hero */}
       <div className="relative overflow-hidden mb-2">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-12"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1400&q=80&auto=format')" }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1400&q=80&auto=format')", opacity: 0.2 }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/40 to-[#0d1f35]" />
         <div className="relative max-w-2xl mx-auto px-4 pt-8 pb-6">

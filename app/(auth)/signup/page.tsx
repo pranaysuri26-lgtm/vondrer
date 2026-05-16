@@ -310,10 +310,10 @@ export default function SignupPage() {
 
       {/* Atmospheric background */}
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-8"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1400&q=80&auto=format')" }}
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1400&q=80&auto=format')", opacity: 0.18 }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/70 to-[#0d1f35]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/60 to-[#0d1f35]" />
 
       <div className="relative w-full max-w-md">
 
@@ -328,7 +328,7 @@ export default function SignupPage() {
         {step === 'account' && (
           <form onSubmit={handleAccountSubmit} className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">Start your journey</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">Start your journey</h1>
               <p className="text-white/45 text-sm">We'll personalise your recommendations in under 2 minutes.</p>
             </div>
             <div>
@@ -359,7 +359,7 @@ export default function SignupPage() {
         {step === 'location' && (
           <div className="space-y-5">
             <div className="mb-6">
-              <h1 className="text-2xl font-light text-white mb-2">Where are you based?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">Where are you based?</h1>
               <p className="text-white/45 text-sm">
                 We use this to match nearby hidden gems, realistic flight times, and on-the-ground budgets.
               </p>
@@ -485,7 +485,7 @@ export default function SignupPage() {
         {step === 'budget' && (
           <div className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">What's your daily travel budget?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">What's your daily travel budget?</h1>
               <p className="text-white/45 text-sm">
                 On-the-ground costs — accommodation, food, local transport. Flights are separate.
                 {currency.code !== 'USD' && (
@@ -517,7 +517,7 @@ export default function SignupPage() {
         {step === 'duration' && (
           <div className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">How long do you usually travel?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">How long do you usually travel?</h1>
               <p className="text-white/45 text-sm">We'll match destinations to the time you have.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -545,7 +545,7 @@ export default function SignupPage() {
         {step === 'group' && (
           <div className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">How do you travel?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">How do you travel?</h1>
               <p className="text-white/45 text-sm">Solo adventures need different destinations than couple getaways.</p>
             </div>
             <div className="space-y-3">
@@ -572,7 +572,7 @@ export default function SignupPage() {
         {step === 'interests' && (
           <div className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">What matters most to you?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">What matters most to you?</h1>
               <p className="text-white/45 text-sm">Select everything that applies. The more you pick, the better the match.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -604,7 +604,7 @@ export default function SignupPage() {
         {step === 'dietary' && (
           <div className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">Any food preferences?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">Any food preferences?</h1>
               <p className="text-white/45 text-sm">We'll tailor every food recommendation to what works for you.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -639,7 +639,7 @@ export default function SignupPage() {
         {step === 'offbeat' && (
           <div className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">How far off the beaten path?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">How far off the beaten path?</h1>
               <p className="text-white/45 text-sm">This is the most important question. Be honest.</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
@@ -669,7 +669,7 @@ export default function SignupPage() {
         {step === 'timing' && (
           <div className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">When are you planning to travel?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">When are you planning to travel?</h1>
               <p className="text-white/45 text-sm">We'll factor in seasonal conditions, festivals, and crowds.</p>
             </div>
 
@@ -753,7 +753,7 @@ export default function SignupPage() {
         {step === 'past_trips' && (
           <div className="space-y-4">
             <div className="mb-8">
-              <h1 className="text-2xl font-light text-white mb-2">Where have you been?</h1>
+              <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">Where have you been?</h1>
               <p className="text-white/45 text-sm">We'll never suggest somewhere you've already explored.</p>
             </div>
             <div className="flex gap-2">

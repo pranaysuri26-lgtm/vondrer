@@ -50,8 +50,8 @@ export default function LoginPage() {
 
       {/* Atmospheric background */}
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-10"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1400&q=80&auto=format')" }}
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1400&q=80&auto=format')", opacity: 0.2 }}
       />
       <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/60 to-[#0d1f35]" />
 
@@ -64,7 +64,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-8">
-          <h1 className="font-serif italic text-3xl text-white mb-2">Welcome back</h1>
+          <h1 className="font-serif italic text-4xl text-white leading-tight mb-2">Welcome back</h1>
           <p className="text-white/45 text-sm">Your recommendations are waiting.</p>
         </div>
 

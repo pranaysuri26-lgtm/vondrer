@@ -562,8 +562,8 @@ export default function TripAskPage() {
       {/* Atmospheric header */}
       <div className="relative overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-10"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=80&auto=format')" }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=80&auto=format')", opacity: 0.18 }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d1f35]" />
         <div className="relative max-w-lg mx-auto w-full px-4 pt-10 pb-8">

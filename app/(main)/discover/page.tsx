@@ -1499,8 +1499,8 @@ export default function DiscoverPage() {
       {/* Atmospheric hero header */}
       <div className="relative overflow-hidden mb-2">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-12"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80&auto=format')" }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1400&q=80&auto=format')", opacity: 0.2 }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/50 via-[#0d1f35]/70 to-[#0d1f35]" />
 

@@ -42,6 +42,30 @@ function sessionLabel(s: string) {
   }
 }
 
+const MODES = [
+  {
+    key:         'photo_spots' as const,
+    icon:        '📷',
+    label:       'Photo spots',
+    placeholder: 'Best photo spots for golden hour in Santorini…',
+    hint:        'Golden hour to the minute',
+  },
+  {
+    key:         'road_trip' as const,
+    icon:        '🚗',
+    label:       'Road trip',
+    placeholder: "I'm in Tampa, going to Miami by car. Want brunch — 3 vegans…",
+    hint:        'Stops along the route',
+  },
+  {
+    key:         'local_discovery' as const,
+    icon:        '🗺️',
+    label:       'Discover',
+    placeholder: 'Hidden street food near the Medina in Fez…',
+    hint:        'Local gems in one area',
+  },
+]
+
 const EXAMPLE_QUERIES = [
   "Best photo spots for golden hour in Santorini — I shoot with a Sony and 35mm",
   "I'm in Tampa, going to Miami by car. Want brunch stops — 3 vegans in the group.",
@@ -487,11 +511,14 @@ type Phase = 'input' | 'loading' | 'result'
 
 export default function TripAskPage() {
   const router  = useRouter()
-  const [phase,  setPhase]  = useState<Phase>('input')
-  const [query,  setQuery]  = useState('')
-  const [error,  setError]  = useState('')
-  const [result, setResult] = useState<TripAskResponse | null>(null)
+  const [phase,     setPhase]     = useState<Phase>('input')
+  const [query,     setQuery]     = useState('')
+  const [error,     setError]     = useState('')
+  const [result,    setResult]    = useState<TripAskResponse | null>(null)
+  const [activeMode, setActiveMode] = useState<typeof MODES[number]['key'] | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const currentMode = MODES.find(m => m.key === activeMode)
 
   useEffect(() => {
     const el = textareaRef.current
@@ -507,7 +534,7 @@ export default function TripAskPage() {
     try {
       const res = await fetch('/api/trip/ask', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query.trim() }),
+        body: JSON.stringify({ query: query.trim(), forced_mode: activeMode ?? undefined }),
       })
       if (res.status === 401) { router.push('/login'); return }
       const data = await res.json()
@@ -518,12 +545,12 @@ export default function TripAskPage() {
       setError(e instanceof Error ? e.message : 'Something went wrong')
       setPhase('input')
     }
-  }, [query, router])
+  }, [query, router, activeMode])
 
   if (phase === 'loading') return <LoadingView query={query} />
 
   if (phase === 'result' && result) {
-    const reset = () => { setPhase('input'); setQuery(''); setResult(null) }
+    const reset = () => { setPhase('input'); setQuery(''); setResult(null); setActiveMode(null) }
     if (result.mode === 'photo_spots')     return <PhotoSpotsResult     result={result} onReset={reset} />
     if (result.mode === 'local_discovery') return <LocalDiscoveryResult result={result} onReset={reset} />
     return <RoadTripResult result={result} onReset={reset} />
@@ -532,16 +559,43 @@ export default function TripAskPage() {
   return (
     <div className="min-h-screen bg-[#faf8f5] flex flex-col pb-24">
       <div className="max-w-lg mx-auto w-full px-4 pt-10 flex-1 flex flex-col">
-        <div className="mb-8">
+
+        <div className="mb-7">
           <p className="text-[10px] text-[#C97552] uppercase tracking-widest font-label mb-3">Ask</p>
           <h1 className="font-serif italic text-4xl text-[#1a1410] leading-tight mb-3">
             Where do you<br />want to go?
           </h1>
           <p className="text-[#6b5f54] text-sm leading-relaxed">
-            Ask anything — a road trip, photo spots with golden hour timing, or street food in a specific city. We find the real places.
+            Road trips, photo spots with golden hour timing, or local gems in any city.
           </p>
         </div>
 
+        {/* Mode chips */}
+        <div className="flex gap-2 mb-5">
+          {MODES.map(mode => (
+            <button
+              key={mode.key}
+              onClick={() => setActiveMode(prev => prev === mode.key ? null : mode.key)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-label transition-all ${
+                activeMode === mode.key
+                  ? 'bg-[#C97552] border-[#C97552] text-white shadow-sm'
+                  : 'bg-white border-[#e8e0d6] text-[#6b5f54] hover:border-[#C97552]/40 hover:text-[#1a1410]'
+              }`}
+            >
+              <span>{mode.icon}</span>
+              <span>{mode.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Active mode hint */}
+        {currentMode && (
+          <p className="text-[11px] text-[#C97552]/70 font-label tracking-wider mb-3">
+            {currentMode.hint}
+          </p>
+        )}
+
+        {/* Input row */}
         <div className="mb-5">
           <div className="flex gap-3 items-end">
             <textarea
@@ -549,7 +603,7 @@ export default function TripAskPage() {
               value={query}
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
-              placeholder="Best photo spots for golden hour in Santorini…"
+              placeholder={currentMode?.placeholder ?? 'Ask about any destination…'}
               rows={3}
               className="flex-1 bg-white border border-[#e8e0d6] rounded-2xl px-4 py-3.5 text-[#1a1410] placeholder:text-[#6b5f54]/40 text-sm resize-none focus:outline-none focus:border-[#C97552]/50 transition-colors leading-relaxed shadow-sm"
             />
@@ -564,9 +618,10 @@ export default function TripAskPage() {
           disabled={!query.trim()}
           className="w-full py-4 rounded-full bg-[#C97552] text-white font-medium text-sm disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[#b86642] transition-colors mb-8 shadow-sm"
         >
-          Find places →
+          {currentMode ? `${currentMode.icon} Find ${currentMode.label.toLowerCase()} →` : 'Find places →'}
         </button>
 
+        {/* Examples */}
         <div>
           <p className="text-[10px] text-[#6b5f54]/50 font-label tracking-widest uppercase mb-3">Try asking</p>
           <div className="space-y-2">
@@ -578,6 +633,7 @@ export default function TripAskPage() {
             ))}
           </div>
         </div>
+
       </div>
     </div>
   )

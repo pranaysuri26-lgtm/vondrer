@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
+import { geocodeLocation, fetchSunTimes } from '@/lib/sun'
+import type { SunTimes } from '@/lib/sun'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,40 @@ function formatDateRange(start: string, end: string): string {
     return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${e.getFullYear()}`
   }
   return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('en-US', opts)}`
+}
+
+// ─── Golden hour strip ────────────────────────────────────────────────────────
+
+function GoldenHourStrip({ sun }: { sun: SunTimes }) {
+  return (
+    <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 mb-4">
+      <p className="text-[10px] text-amber-300/60 font-label tracking-widest uppercase mb-2.5">
+        📷 Photo windows · {sun.date}
+      </p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+        <div className="flex items-center gap-1.5">
+          <span className="text-indigo-300/70">🌌</span>
+          <span className="text-white/40">Blue AM</span>
+          <span className="text-white/70 tabular-nums ml-auto">{sun.blue_am_start}–{sun.blue_am_end}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-amber-300/70">🌅</span>
+          <span className="text-white/40">Golden PM</span>
+          <span className="text-[#C97552]/80 tabular-nums ml-auto font-medium">{sun.golden_pm_start}–{sun.golden_pm_end}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-amber-300/70">🌅</span>
+          <span className="text-white/40">Golden AM</span>
+          <span className="text-[#C97552]/80 tabular-nums ml-auto font-medium">{sun.golden_am_start}–{sun.golden_am_end}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-indigo-300/70">🌌</span>
+          <span className="text-white/40">Blue PM</span>
+          <span className="text-white/70 tabular-nums ml-auto">{sun.blue_pm_start}–{sun.blue_pm_end}</span>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Sub-components (server-renderable) ──────────────────────────────────────
@@ -106,6 +142,18 @@ export default async function SharedTripPage({
     .order('position', { ascending: true })
 
   const dests: DestRow[] = destinations ?? []
+
+  // Fetch golden hour times for each destination in parallel (best-effort, non-blocking)
+  const sunTimesMap: Record<string, SunTimes | null> = {}
+  await Promise.all(
+    dests.map(async (dest) => {
+      try {
+        const geo = await geocodeLocation(`${dest.destination_name}, ${dest.country}`)
+        if (!geo) return
+        sunTimesMap[dest.id] = await fetchSunTimes(geo.lat, geo.lng, dest.start_date || undefined)
+      } catch { /* silent — golden hour is enhancement, not critical */ }
+    })
+  )
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
@@ -179,6 +227,9 @@ export default async function SharedTripPage({
 
               {days.length > 0 ? (
                 <div className="space-y-4">
+                  {sunTimesMap[dest.id] && (
+                    <GoldenHourStrip sun={sunTimesMap[dest.id]!} />
+                  )}
                   {days.map(day => <DayCard key={day.day} day={day} />)}
                 </div>
               ) : (

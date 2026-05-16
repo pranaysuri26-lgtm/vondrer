@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { geocodeLocation, fetchSunTimes, fallbackSunTimes } from '@/lib/sun'
 
 export const maxDuration = 55
 
@@ -91,7 +92,7 @@ export type TripAskResponse =
   | { mode: 'local_discovery';  parsed: LocalDiscoveryParsed; places: LocalPlace[]; map_center: { lat: number; lng: number; zoom: number } }
   | { mode: 'photo_spots';      parsed: PhotoSpotsParsed;     spots:  PhotoSpot[];  sun: PhotoSunTimes; map_center: { lat: number; lng: number; zoom: number } }
 
-// ─── Nominatim geocoder ───────────────────────────────────────────────────────
+// ─── Geocoder (with display_name for stop cards) ─────────────────────────────
 
 async function geocode(query: string): Promise<{ lat: number; lng: number; display_name: string } | null> {
   try {
@@ -118,55 +119,6 @@ function calcZoom(places: { lat: number | null; lng: number | null }[]): number 
   return 9
 }
 
-// ─── Sun times ────────────────────────────────────────────────────────────────
-// Approximate local time from UTC using longitude (±15 min accuracy for most locations)
-
-function utcToApproxLocal(utcIso: string, lngDeg: number): string {
-  const offsetMin = Math.round(lngDeg / 15) * 60
-  const d = new Date(new Date(utcIso).getTime() + offsetMin * 60_000)
-  return d.toISOString().substring(11, 16) // "HH:MM"
-}
-
-function addMinutes(hhmm: string, mins: number): string {
-  const [h, m] = hhmm.split(':').map(Number)
-  const total = h * 60 + m + mins
-  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-}
-
-async function fetchSunTimes(lat: number, lng: number): Promise<PhotoSunTimes | null> {
-  try {
-    const today = new Date().toISOString().split('T')[0]
-    const r = await fetch(
-      `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&formatted=0&date=${today}`,
-      { headers: { 'User-Agent': 'Voya-App/1.0' } }
-    )
-    const data = await r.json() as {
-      status: string
-      results: { sunrise: string; sunset: string; dawn: string; dusk: string }
-    }
-    if (data.status !== 'OK') return null
-
-    const sunrise      = utcToApproxLocal(data.results.sunrise, lng)
-    const sunset       = utcToApproxLocal(data.results.sunset,  lng)
-    const dawn         = utcToApproxLocal(data.results.dawn,    lng)
-    const dusk         = utcToApproxLocal(data.results.dusk,    lng)
-    const goldenAmEnd  = addMinutes(sunrise, 60)
-    const goldenPmStart = addMinutes(sunset, -60)
-
-    return {
-      date:            today,
-      blue_am_start:   dawn,
-      blue_am_end:     sunrise,
-      golden_am_start: sunrise,
-      golden_am_end:   goldenAmEnd,
-      golden_pm_start: goldenPmStart,
-      golden_pm_end:   sunset,
-      blue_pm_start:   sunset,
-      blue_pm_end:     dusk,
-    }
-  } catch { return null }
-}
-
 // ─── POST /api/trip/ask ───────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -184,10 +136,15 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { query } = await req.json() as { query: string }
+  const { query, forced_mode } = await req.json() as { query: string; forced_mode?: string }
   if (!query?.trim()) return NextResponse.json({ error: 'query required' }, { status: 400 })
 
   // ── Step 1: Detect mode + parse intent ───────────────────────────────────
+  // If forced_mode is provided, skip GPT detection and inject a hint instead
+  const modeHint = forced_mode === 'photo_spots'     ? 'PHOTO_SPOTS_MODE: '
+                 : forced_mode === 'road_trip'        ? 'ROAD_TRIP_MODE: '
+                 : forced_mode === 'local_discovery'  ? 'LOCAL_DISCOVERY_MODE: '
+                 : ''
   const parseCompletion = await openai.chat.completions.create({
     model:           'gpt-4o-mini',
     temperature:     0.1,
@@ -214,7 +171,7 @@ Photo spots:
 For photo_spots: detect keywords like "photo", "shoot", "golden hour", "sunrise", "sunset", "viewpoint", "lens", "light", "Instagram", "photography", "spot", "capture".`,
     }, {
       role: 'user',
-      content: query,
+      content: modeHint + query,
     }],
   })
 
@@ -275,8 +232,9 @@ Return JSON: { "route_summary": "origin → destination via [highway], approx [t
     const locationStr = parsed.country ? `${parsed.location}, ${parsed.country}` : parsed.location
 
     // Geocode location first (needed for sun times)
-    const centerGeo = await geocode(locationStr)
-    if (!centerGeo) return NextResponse.json({ error: `Couldn't locate "${locationStr}" — try a more specific place name` }, { status: 400 })
+    const centerGeoRaw = await geocodeLocation(locationStr)
+    if (!centerGeoRaw) return NextResponse.json({ error: `Couldn't locate "${locationStr}" — try a more specific place name` }, { status: 400 })
+    const centerGeo = { ...centerGeoRaw, display_name: locationStr }
 
     // Run GPT + sun times in parallel
     const [spotsComp, sunTimes] = await Promise.all([
@@ -314,14 +272,7 @@ Return JSON: { "spots": [{ "name","area","composition","locals_tip","best_sessio
       return { ...s, lat: geo?.lat ?? null, lng: geo?.lng ?? null, display_name: geo?.display_name ?? `${s.area}, ${locationStr}` }
     }))
 
-    // Fallback sun times if API unavailable
-    const sun: PhotoSunTimes = sunTimes ?? {
-      date:            new Date().toISOString().split('T')[0],
-      blue_am_start:   '05:10', blue_am_end:     '05:40',
-      golden_am_start: '05:40', golden_am_end:   '06:40',
-      golden_pm_start: '17:20', golden_pm_end:   '18:20',
-      blue_pm_start:   '18:20', blue_pm_end:     '18:50',
-    }
+    const sun: PhotoSunTimes = sunTimes ?? fallbackSunTimes()
 
     return NextResponse.json({
       mode:       'photo_spots',
@@ -354,13 +305,14 @@ Return JSON: { "places": [{ "name","area","type","story","tagline","price_range"
     }],
   })
   const dGen = JSON.parse(discovComp.choices[0]?.message?.content ?? '{}') as { places: Omit<LocalPlace, 'lat'|'lng'|'display_name'>[] }
-  const [placesGeo, centerGeo] = await Promise.all([
+  const [placesGeo, centerGeoBase] = await Promise.all([
     Promise.all((dGen.places ?? []).map(async p => {
       const geo = await geocode(`${p.name}, ${p.area}, ${locationStr}`) ?? await geocode(`${p.area}, ${locationStr}`)
       return { ...p, lat: geo?.lat ?? null, lng: geo?.lng ?? null, display_name: geo?.display_name ?? `${p.area}, ${locationStr}` } as LocalPlace
     })),
-    geocode(locationStr),
+    geocodeLocation(locationStr),
   ])
+  const centerGeo = centerGeoBase
   const withCoords = placesGeo.filter(p => p.lat != null)
   const cLat = centerGeo?.lat ?? (withCoords.length ? withCoords.reduce((s, p) => s + p.lat!, 0) / withCoords.length : 0)
   const cLng = centerGeo?.lng ?? (withCoords.length ? withCoords.reduce((s, p) => s + p.lng!, 0) / withCoords.length : 0)

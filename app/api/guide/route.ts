@@ -173,12 +173,14 @@ ACCOMMODATION RULES:
 - Southeast Asia: Agoda.com strong, mention old-town guesthouse option
 
 AIRPORT RULES:
-- Always include ALL airports within ~100km that have meaningful scheduled service — never just the main one.
+- CRITICAL: Only include airports that have ACTIVE, REGULAR scheduled commercial passenger service right now. Never include airports that are defunct, closed, rarely used, or serve only charter/military/emergency flights.
+- If a city's nearest airport has very limited or no scheduled service (e.g. Kota/KTU, small regional airstrips), DO NOT list it. Instead list the nearest practical airport with real scheduled flights (e.g. Jaipur/JAI or Udaipur/UDR for Kota).
+- Always include ALL airports within ~150km that have meaningful scheduled service — never just the main one.
 - Common multi-airport cities: Miami (MIA + FLL), London (LHR/LGW/STN/LTN/LCY), Paris (CDG/ORY), New York (JFK/LGA/EWR), LA (LAX/BUR/LGB/ONT/SNA), Rome (FCO/CIA), Tokyo (NRT/HND), Bangkok (BKK/DMK), Kuala Lumpur (KUL/SZB), Chicago (ORD/MDW), Delhi (DEL only — one airport), Mumbai (BOM only — one airport).
-- For single-airport cities, return an array with just that one airport (is_primary: true).
+- For single-airport cities (or cities where you fly into a nearby city), return an array with just that one best airport (is_primary: true).
 - is_primary should be true for the airport with the best overall balance of price + convenience for most travellers. Only one airport should have is_primary: true.
-- transfer_cost must name the cheapest public transport option first, then taxi/rideshare.
-- verdict must be honest about negatives — e.g. "FLL is 45 min farther but fares can be 30–40% cheaper on Spirit/Southwest."
+- transfer_cost must name the cheapest public transport option first, then taxi/rideshare. Include overland transfer time/distance if flying into a nearby city.
+- verdict must be honest about negatives — e.g. "No direct airport; fly into Jaipur (JAI, 240 km, ~4 hr by road) or take a train from Delhi."
 
 Return 2–4 airports (all relevant ones), 4 neighbourhoods, 6 food spots, 5 insider tips, 3 skip_these items, 1 accommodation object.
 No markdown. No explanation before or after. Just the JSON object.`

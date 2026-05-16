@@ -9,7 +9,7 @@ import type { LocalGuide, GuideAirport } from '@/app/api/guide/route'
 function Skeleton({ className }: { className?: string }) {
   return (
     <div
-      className={`rounded bg-white/6 animate-pulse ${className ?? ''}`}
+      className={`rounded bg-[#E8E0D6] animate-pulse ${className ?? ''}`}
       style={{ animation: 'pulse 1.8s ease-in-out infinite' }}
     />
   )
@@ -28,14 +28,14 @@ function LoadingState({ destination }: { destination: string }) {
       <div className="space-y-2">
         <Skeleton className="h-3 w-32" />
         {[1,2,3,4].map(i => (
-          <div key={i} className="border border-white/8 rounded-2xl p-5 space-y-2">
+          <div key={i} className="border border-[#E8E0D6] rounded-2xl p-5 space-y-2">
             <Skeleton className="h-5 w-40" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-3/4" />
           </div>
         ))}
       </div>
-      <p className="text-center text-white/25 text-xs">
+      <p className="text-center text-[#A8A09A] text-xs">
         Researching {destination}… this takes about 15 seconds
       </p>
     </div>
@@ -46,7 +46,7 @@ function LoadingState({ destination }: { destination: string }) {
 
 function PriceBadge({ price }: { price: string }) {
   const active = 'text-[#C97552]'
-  const dim    = 'text-white/15'
+  const dim    = 'text-[#D8D0C4]'
   return (
     <span className="font-mono text-xs tracking-widest">
       <span className={price.length >= 1 ? active : dim}>$</span>
@@ -60,7 +60,7 @@ function PriceBadge({ price }: { price: string }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-label mb-4">
+    <p className="text-[10px] text-[#9A8E7E] uppercase tracking-[0.2em] font-label mb-4">
       {children}
     </p>
   )
@@ -70,8 +70,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function AirportCard({ airport }: { airport: GuideAirport }) {
   return (
-    <div className={`relative bg-white/4 border rounded-2xl p-5 space-y-3 ${
-      airport.is_primary ? 'border-[#C97552]/35' : 'border-white/8'
+    <div className={`relative bg-white border rounded-2xl p-5 space-y-3 ${
+      airport.is_primary ? 'border-[#C97552]/40' : 'border-[#E8E0D6]'
     }`}>
       {airport.is_primary && (
         <span className="absolute top-4 right-4 text-[10px] font-label tracking-widest uppercase text-[#C97552] bg-[#C97552]/10 border border-[#C97552]/25 rounded-full px-2.5 py-1">
@@ -81,43 +81,43 @@ function AirportCard({ airport }: { airport: GuideAirport }) {
 
       {/* Header row */}
       <div className="flex items-start gap-3 pr-24">
-        <span className="font-mono text-xl font-bold text-white/90 leading-none">{airport.iata}</span>
+        <span className="font-mono text-xl font-bold text-[#1A1A1A] leading-none">{airport.iata}</span>
         <div className="min-w-0">
-          <p className="text-white/80 text-sm font-medium leading-tight">{airport.name}</p>
-          <p className="text-white/35 text-xs mt-0.5">{airport.distance_km} km from centre</p>
+          <p className="text-[#2A2420] text-sm font-medium leading-tight">{airport.name}</p>
+          <p className="text-[#9A8E7E] text-xs mt-0.5">{airport.distance_km} km from centre</p>
         </div>
       </div>
 
       {/* Transfer row */}
       <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
         <div>
-          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-1.5">Time</span>
-          <span className="text-white/60">{airport.transfer_time}</span>
+          <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] font-label mr-1.5">Time</span>
+          <span className="text-[#5C564E]">{airport.transfer_time}</span>
         </div>
         <div>
-          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-1.5">Cost</span>
-          <span className="text-white/60">{airport.transfer_cost}</span>
+          <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] font-label mr-1.5">Cost</span>
+          <span className="text-[#5C564E]">{airport.transfer_cost}</span>
         </div>
       </div>
 
       {/* Airlines */}
       {airport.airlines && (
-        <p className="text-xs text-white/40">
-          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-1.5">Airlines</span>
+        <p className="text-xs text-[#6b5f54]">
+          <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] font-label mr-1.5">Airlines</span>
           {airport.airlines}
         </p>
       )}
 
       {/* Best for */}
       {airport.best_for && (
-        <p className="text-xs text-white/40">
-          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-1.5">Best for</span>
+        <p className="text-xs text-[#6b5f54]">
+          <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] font-label mr-1.5">Best for</span>
           {airport.best_for}
         </p>
       )}
 
       {/* Verdict */}
-      <p className="text-xs text-white/55 leading-snug border-t border-white/6 pt-3">
+      <p className="text-xs text-[#7A6E64] leading-snug border-t border-[#E8E0D6] pt-3">
         {airport.verdict}
       </p>
     </div>
@@ -133,16 +133,14 @@ function GuideContent() {
   const country        = params.get('c')?.trim()    ?? ''
   const stateProv      = params.get('s')?.trim()    ?? ''
 
-  // If no explicit country param, the user typed a full string like "Kota, Rajasthan, India".
-  // Show just the first part as the city name in the header.
   const destination    = rawQuery
   const displayCity    = !country && rawQuery.includes(',')
     ? rawQuery.split(',')[0].trim()
     : rawQuery
 
-  const [guide,  setGuide]  = useState<LocalGuide | null>(null)
+  const [guide,   setGuide]   = useState<LocalGuide | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error,  setError]  = useState('')
+  const [error,   setError]   = useState('')
 
   useEffect(() => {
     if (!destination) { setLoading(false); return }
@@ -175,20 +173,14 @@ function GuideContent() {
       .finally(() => clearTimeout(timer))
   }, [destination, country, stateProv])
 
-  const locationLabel = stateProv
-    ? `${destination}, ${stateProv}, ${country}`
-    : country
-      ? `${destination}, ${country}`
-      : destination
-
   return (
-    <div className="min-h-screen bg-[#0d1f35]">
+    <div className="min-h-screen bg-[#FAF8F5]">
       {/* Nav */}
-      <nav className="sticky top-0 z-20 bg-[#0d1f35]/90 backdrop-blur-md border-b border-white/8 px-5 py-4 flex items-center justify-between">
-        <span className="font-serif italic text-xl text-white/90">Voya</span>
+      <nav className="sticky top-0 z-20 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E8E0D6] px-5 py-4 flex items-center justify-between">
+        <span className="font-serif italic text-xl text-[#1A1A1A] tracking-wide">Voya</span>
         <button
           onClick={() => router.back()}
-          className="text-[10px] text-white/30 hover:text-white/60 transition-colors font-label tracking-widest uppercase"
+          className="text-[10px] text-[#9A8E7E] hover:text-[#5C564E] transition-colors font-label tracking-widest uppercase"
         >
           ← Back
         </button>
@@ -196,29 +188,29 @@ function GuideContent() {
 
       {/* Header */}
       <div className="max-w-2xl mx-auto px-5 pt-10 pb-6">
-        <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-label mb-3">
+        <p className="text-[10px] text-[#9A8E7E] uppercase tracking-[0.2em] font-label mb-3">
           Local Intel
         </p>
-        <h1 className="font-serif italic text-4xl text-white leading-tight mb-1">
+        <h1 className="font-serif italic text-4xl text-[#1A1A1A] leading-tight mb-1">
           {displayCity || 'Your destination'}
         </h1>
         {(stateProv || country) ? (
-          <p className="text-white/35 text-sm">
+          <p className="text-[#6b5f54] text-sm">
             {stateProv ? `${stateProv}, ${country}` : country}
           </p>
         ) : rawQuery.includes(',') ? (
-          <p className="text-white/35 text-sm">
+          <p className="text-[#6b5f54] text-sm">
             {rawQuery.split(',').slice(1).join(',').trim()}
           </p>
         ) : null}
-        <div className="w-8 h-px bg-white/12 mt-5" />
+        <div className="w-8 h-px bg-[#E2D8CC] mt-5" />
       </div>
 
       {loading && <LoadingState destination={displayCity || destination} />}
 
       {error && (
         <div className="max-w-2xl mx-auto px-5 py-10 text-center space-y-4">
-          <p className="text-white/40 text-sm">{error}</p>
+          <p className="text-[#8A7E6E] text-sm">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="text-xs text-[#C97552]/70 hover:text-[#C97552] transition-colors underline underline-offset-2"
@@ -232,7 +224,7 @@ function GuideContent() {
         <div className="max-w-2xl mx-auto px-5 pb-16 space-y-12">
 
           {/* Intro */}
-          <p className="text-white/65 text-base leading-relaxed font-light">
+          <p className="text-[#5C564E] text-base leading-relaxed font-light">
             {guide.intro}
           </p>
 
@@ -248,7 +240,7 @@ function GuideContent() {
                   ))}
               </div>
               {guide.airports.length > 1 && (
-                <p className="text-white/25 text-xs mt-3 leading-snug">
+                <p className="text-[#A8A09A] text-xs mt-3 leading-snug">
                   Tip: check both airports when booking — fares can vary 30–50% for the same dates.
                 </p>
               )}
@@ -261,27 +253,27 @@ function GuideContent() {
               <SectionLabel>Neighbourhoods</SectionLabel>
               <div className="space-y-3">
                 {guide.neighbourhoods.map((n, i) => (
-                  <div key={i} className="bg-white/4 border border-white/8 rounded-2xl p-5 space-y-3">
+                  <div key={i} className="bg-white border border-[#E8E0D6] rounded-2xl p-5 space-y-3">
                     <div>
-                      <h3 className="text-white font-medium text-base">{n.name}</h3>
-                      <p className="text-white/50 text-sm leading-relaxed mt-1">{n.vibe}</p>
+                      <h3 className="text-[#1A1A1A] font-medium text-base">{n.name}</h3>
+                      <p className="text-[#5C564E] text-sm leading-relaxed mt-1">{n.vibe}</p>
                     </div>
-                    <div className="grid grid-cols-1 gap-2 pt-1 border-t border-white/6">
+                    <div className="grid grid-cols-1 gap-2 pt-1 border-t border-[#E8E0D6]">
                       {n.best_for && (
-                        <p className="text-xs text-white/40">
-                          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-2">Best for</span>
+                        <p className="text-xs text-[#6b5f54]">
+                          <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] font-label mr-2">Best for</span>
                           {n.best_for}
                         </p>
                       )}
                       {n.dont_miss && (
-                        <p className="text-xs text-white/40">
-                          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-2">Don't miss</span>
+                        <p className="text-xs text-[#6b5f54]">
+                          <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] font-label mr-2">Don&apos;t miss</span>
                           {n.dont_miss}
                         </p>
                       )}
                       {n.local_eat && (
-                        <p className="text-xs text-[#C97552]/70">
-                          <span className="text-white/25 uppercase tracking-wider text-[10px] font-label mr-2">Eat here</span>
+                        <p className="text-xs text-[#C97552]/80">
+                          <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] font-label mr-2">Eat here</span>
                           {n.local_eat}
                         </p>
                       )}
@@ -298,17 +290,17 @@ function GuideContent() {
               <SectionLabel>Where locals eat</SectionLabel>
               <div className="space-y-2">
                 {guide.food_spots.map((f, i) => (
-                  <div key={i} className="bg-white/4 border border-white/8 rounded-xl px-4 py-3.5 flex gap-4 items-start">
+                  <div key={i} className="bg-white border border-[#E8E0D6] rounded-xl px-4 py-3.5 flex gap-4 items-start">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2 flex-wrap">
-                        <h4 className="text-white font-medium text-sm">{f.name}</h4>
-                        <span className="text-white/25 text-xs">{f.neighbourhood}</span>
+                        <h4 className="text-[#1A1A1A] font-medium text-sm">{f.name}</h4>
+                        <span className="text-[#9A8E7E] text-xs">{f.neighbourhood}</span>
                       </div>
-                      <p className="text-white/40 text-xs mt-0.5">{f.type}</p>
-                      <p className="text-white/55 text-xs mt-1.5 leading-relaxed">{f.why}</p>
+                      <p className="text-[#8A7E6E] text-xs mt-0.5">{f.type}</p>
+                      <p className="text-[#5C564E] text-xs mt-1.5 leading-relaxed">{f.why}</p>
                       {f.order_this && (
-                        <p className="text-[#C97552]/70 text-xs mt-1">
-                          <span className="text-white/20 font-label uppercase tracking-wider text-[10px] mr-1.5">Order</span>
+                        <p className="text-[#C97552]/80 text-xs mt-1">
+                          <span className="text-[#A8A09A] font-label uppercase tracking-wider text-[10px] mr-1.5">Order</span>
                           {f.order_this}
                         </p>
                       )}
@@ -326,13 +318,13 @@ function GuideContent() {
               <SectionLabel>Insider tips</SectionLabel>
               <div className="space-y-2">
                 {guide.insider_tips.map((t, i) => (
-                  <div key={i} className="flex gap-4 items-start py-3 border-b border-white/6 last:border-0">
+                  <div key={i} className="flex gap-4 items-start py-3 border-b border-[#E8E0D6] last:border-0">
                     <span className="text-[#C97552]/50 text-xs font-label tracking-widest uppercase flex-shrink-0 w-5 pt-0.5">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <div>
-                      <p className="text-white/70 text-sm font-medium">{t.tip}</p>
-                      <p className="text-white/40 text-xs mt-0.5 leading-relaxed">{t.detail}</p>
+                      <p className="text-[#2A2420] text-sm font-medium">{t.tip}</p>
+                      <p className="text-[#7A6E64] text-xs mt-0.5 leading-relaxed">{t.detail}</p>
                     </div>
                   </div>
                 ))}
@@ -346,9 +338,9 @@ function GuideContent() {
               <SectionLabel>Skip these</SectionLabel>
               <div className="space-y-2">
                 {guide.skip_these.map((s, i) => (
-                  <div key={i} className="flex gap-3 items-start py-2.5 border-b border-white/6 last:border-0">
-                    <span className="text-white/20 text-sm flex-shrink-0 mt-0.5">✕</span>
-                    <p className="text-white/40 text-xs leading-relaxed">{s}</p>
+                  <div key={i} className="flex gap-3 items-start py-2.5 border-b border-[#E8E0D6] last:border-0">
+                    <span className="text-[#C0B8AC] text-sm flex-shrink-0 mt-0.5">✕</span>
+                    <p className="text-[#7A6E64] text-xs leading-relaxed">{s}</p>
                   </div>
                 ))}
               </div>
@@ -367,17 +359,17 @@ function GuideContent() {
                 return (
                   <div className="space-y-3">
                     {/* Primary card */}
-                    <div className="bg-white/4 border border-white/8 rounded-2xl p-5">
+                    <div className="bg-white border border-[#E8E0D6] rounded-2xl p-5">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-lg">{icon}</span>
-                          <span className="text-white font-medium text-sm">{rec.type}</span>
+                          <span className="text-[#1A1A1A] font-medium text-sm">{rec.type}</span>
                         </div>
-                        {rec.name && <span className="text-xs text-white/40 text-right leading-tight max-w-[140px]">{rec.name}</span>}
+                        {rec.name && <span className="text-xs text-[#8A7E6E] text-right leading-tight max-w-[140px]">{rec.name}</span>}
                       </div>
-                      <p className="text-white/70 font-medium text-sm mb-1">{rec.price_range}</p>
-                      <p className="text-white/50 text-xs leading-relaxed mb-2">{rec.why}</p>
-                      {rec.book_ahead && <p className="text-white/35 text-xs mb-3">📅 {rec.book_ahead}</p>}
+                      <p className="text-[#2A2420] font-medium text-sm mb-1">{rec.price_range}</p>
+                      <p className="text-[#5C564E] text-xs leading-relaxed mb-2">{rec.why}</p>
+                      {rec.book_ahead && <p className="text-[#8A7E6E] text-xs mb-3">📅 {rec.book_ahead}</p>}
                       <a
                         href={rec.booking_url ?? `https://www.google.com/travel/hotels/${encodeURIComponent(destination)}`}
                         target="_blank" rel="noopener noreferrer"
@@ -394,13 +386,13 @@ function GuideContent() {
                         { label: 'Airbnb',      status: acc.platforms.airbnb },
                         { label: 'Book direct', status: acc.platforms.direct },
                       ].map(({ label, status }) => {
-                        const isStrong  = status === 'strong' || status === 'recommended'
-                        const isWeak    = status === 'not_recommended' || status === 'not_available'
+                        const isStrong = status === 'strong' || status === 'recommended'
+                        const isWeak   = status === 'not_recommended' || status === 'not_available'
                         return (
                           <span key={label} className={`text-xs px-3 py-1 rounded-full border ${
-                            isStrong ? 'border-emerald-500/30 text-emerald-400/70 bg-emerald-500/5' :
-                            isWeak   ? 'border-white/8 text-white/20 line-through' :
-                                       'border-white/15 text-white/35'
+                            isStrong ? 'border-emerald-500/30 text-emerald-600 bg-emerald-50' :
+                            isWeak   ? 'border-[#E8E0D6] text-[#C0B8AC] line-through' :
+                                       'border-[#D8D0C4] text-[#8A7E6E]'
                           }`}>
                             {label}{isStrong ? ' ✓' : ''}
                           </span>
@@ -410,27 +402,27 @@ function GuideContent() {
 
                     {/* Alternative */}
                     {acc.alternative && (
-                      <div className="bg-white/2 border border-white/6 rounded-xl px-4 py-3">
+                      <div className="bg-[#F5F0EA] border border-[#E8E0D6] rounded-xl px-4 py-3">
                         <div className="flex items-baseline gap-2 mb-0.5">
-                          <span className="text-white/50 text-xs font-medium">Alt: {acc.alternative.type}</span>
-                          <span className="text-white/30 text-xs">{acc.alternative.price_range}</span>
+                          <span className="text-[#5C564E] text-xs font-medium">Alt: {acc.alternative.type}</span>
+                          <span className="text-[#8A7E6E] text-xs">{acc.alternative.price_range}</span>
                         </div>
-                        <p className="text-white/35 text-xs leading-snug">{acc.alternative.note}</p>
-                        <span className="text-white/25 text-xs">via {acc.alternative.book_via}</span>
+                        <p className="text-[#7A6E64] text-xs leading-snug">{acc.alternative.note}</p>
+                        <span className="text-[#9A8E7E] text-xs">via {acc.alternative.book_via}</span>
                       </div>
                     )}
 
                     {/* Neighbourhood advice */}
                     {acc.neighbourhood_advice && (
-                      <p className="text-white/40 text-xs leading-snug">
-                        <span className="text-white/25 uppercase tracking-wider text-[10px] mr-2">Best area</span>
+                      <p className="text-[#6b5f54] text-xs leading-snug">
+                        <span className="text-[#A8A09A] uppercase tracking-wider text-[10px] mr-2">Best area</span>
                         {acc.neighbourhood_advice}
                       </p>
                     )}
 
                     {/* Avoid */}
                     {acc.avoid && (
-                      <p className="text-amber-400/50 text-xs leading-snug">
+                      <p className="text-amber-600/70 text-xs leading-snug">
                         <span className="mr-1">⚠️</span>{acc.avoid}
                       </p>
                     )}
@@ -441,8 +433,8 @@ function GuideContent() {
           )}
 
           {/* Footer CTA */}
-          <div className="border-t border-white/8 pt-8 flex flex-col items-center gap-4">
-            <p className="text-white/25 text-xs text-center">
+          <div className="border-t border-[#E8E0D6] pt-8 flex flex-col items-center gap-4">
+            <p className="text-[#9A8E7E] text-xs text-center">
               Ready to plan your trip to {destination}?
             </p>
             <a
@@ -453,7 +445,7 @@ function GuideContent() {
             </a>
             <button
               onClick={() => router.back()}
-              className="text-white/20 text-xs hover:text-white/40 transition-colors"
+              className="text-[#A8A09A] text-xs hover:text-[#6b5f54] transition-colors"
             >
               ← Back to recommendations
             </button>
@@ -463,8 +455,8 @@ function GuideContent() {
 
       <style>{`
         @keyframes pulse {
-          0%, 100% { opacity: 0.4; }
-          50%       { opacity: 0.7; }
+          0%, 100% { opacity: 0.5; }
+          50%       { opacity: 1; }
         }
       `}</style>
     </div>
@@ -475,7 +467,7 @@ function GuideContent() {
 
 export default function GuidePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0d1f35]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5]" />}>
       <GuideContent />
     </Suspense>
   )

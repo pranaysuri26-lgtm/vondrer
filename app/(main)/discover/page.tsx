@@ -805,7 +805,7 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
 
   return (
     <div
-      className="relative h-44 overflow-hidden"
+      className="relative h-52 overflow-hidden"
       style={images.length === 0 ? { background: fallback } : undefined}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -858,54 +858,7 @@ function ImageCarousel({ dest }: { dest: RecommendedDestination }) {
   )
 }
 
-// ─── Card thumbnail (collapsed state) ────────────────────────────────────────
-
-function CardThumbnail({ dest }: { dest: RecommendedDestination }) {
-  const [imgUrl, setImgUrl] = useState<string | null>(null)
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    const cacheKey = `${dest.name}::${dest.country}`
-    if (imgSessionCache.has(cacheKey)) {
-      const cached = imgSessionCache.get(cacheKey)!
-      if (cached.length > 0) { setImgUrl(cached[0]); return }
-    }
-    const q = `${dest.name} ${dest.country} travel`
-    fetch(`/api/destination-image?q=${encodeURIComponent(q)}&count=4`)
-      .then(r => r.json())
-      .then(d => {
-        const urls: string[] = (d.urls ?? (d.url ? [d.url] : [])).filter(Boolean)
-        imgSessionCache.set(cacheKey, urls)
-        if (urls.length > 0) setImgUrl(urls[0])
-      })
-      .catch(() => {})
-  }, [dest.name, dest.country])
-
-  const fallback = getFallbackGradient(dest)
-
-  return (
-    <div
-      className="relative h-36 overflow-hidden"
-      style={!imgUrl ? { background: fallback } : undefined}
-    >
-      {imgUrl && (
-        <img
-          src={imgUrl}
-          alt={dest.name}
-          className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-80' : 'opacity-0'}`}
-          loading="lazy"
-          onLoad={() => setLoaded(true)}
-          onError={() => setImgUrl(null)}
-        />
-      )}
-      {!imgUrl && <div className="absolute inset-0 animate-pulse bg-[#F5F2ED]" />}
-      {/* Gradient scrim from bottom so card text reads cleanly */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#FAF8F5]" />
-    </div>
-  )
-}
-
-// ─── Destination card (expandable) ───────────────────────────────────────────
+// ─── Destination card (dark grid card) ────────────────────────────────────────
 
 function DestinationCard({
   dest, rank, locked, currency, gemEmphasis = false, dietaryPrefs = [], homeCity = '',
@@ -922,277 +875,211 @@ function DestinationCard({
   isSaving?:     boolean
   onSave?:       (dest: RecommendedDestination) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
   const displayScore  = effectiveScore(dest)
   const timingPenalty = dest.timing_warning ? dest.match_score - displayScore : 0
+  const country       = dest.state_province ? `${dest.state_province}, ${dest.country}` : dest.country
+  const primaryTransport = dest.transport?.[0]
 
   return (
-    <div
-      onClick={() => setExpanded(e => !e)}
-      className={`relative rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer
-        ${locked
-          ? 'border-[#E8E0D6] bg-[#F5F2ED]'
-          : expanded
-            ? 'border-[#C97552]/50 bg-[#F5F0EA]'
-            : 'border-[#E2D8CE] bg-white hover:border-[#C97552]/40 hover:bg-[#F5F0EA]'
-        }`}
-    >
-      {/* Thumbnail — shows when collapsed; unlocked cards load real photo, locked show gradient */}
-      {!expanded && !locked && <CardThumbnail dest={dest} />}
-      {!expanded && locked && (
-        <div className="relative h-24 overflow-hidden" style={{ background: 'linear-gradient(135deg,#EDE5D8,#F0EBE3)' }}>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <svg className="w-6 h-6 text-[#1A1A1A]/8" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-            </svg>
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#FAF8F5]/80" />
-        </div>
-      )}
+    <div className="rounded-3xl overflow-hidden bg-[#1C1C1E] border border-[#2A2A2E] flex flex-col shadow-xl shadow-black/20">
 
-      {/* ── Collapsed view ── */}
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          {/* Left: rank + name */}
-          <div className="flex items-start gap-3 min-w-0">
-            <span className="text-xs text-[#9A8E7E] font-label tracking-widest uppercase pt-0.5 flex-shrink-0">
-              #{rank}
-            </span>
-            <div className="min-w-0">
-              {locked ? (
-                <>
-                  <div className="flex items-center gap-2 mb-1">
-                    <svg className="w-3.5 h-3.5 text-[#9A8E7E] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[#8A7E6E] text-sm font-medium">Locked destination</span>
-                  </div>
-                  <p className="text-[#A8A09A] text-xs">Upgrade to reveal full details</p>
-                </>
-              ) : (
-                <>
-                  <h2 className="font-serif italic text-xl leading-tight mb-0.5 truncate text-[#1A1A1A]">
-                    {dest.name}
-                  </h2>
-                  <p className="text-sm text-[#5C564E]">
-                    {dest.state_province
-                      ? `${dest.state_province}, ${dest.country}`
-                      : dest.country}
-                  </p>
-                </>
-              )}
+      {/* ── Photo / carousel ── */}
+      <div className="relative flex-shrink-0">
+        {locked ? (
+          <div className="relative h-52 overflow-hidden" style={{ background: 'linear-gradient(135deg,#252525,#1C1C1E)' }}>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg className="w-10 h-10 text-white/8" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+              </svg>
             </div>
           </div>
+        ) : (
+          <ImageCarousel dest={dest} />
+        )}
 
-          {/* Right: value signal — always visible, even locked */}
-          <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            {locked && gemEmphasis ? (
-              // Low spread — lead with gem score, not match %
-              <div className="flex items-center gap-2 bg-[#F0EBE3] border border-[#D8D0C4] rounded-full px-3 py-1">
-                <GemDots score={dest.hidden_gem_score} />
-                <span className="text-xs text-[#5C564E]">{gemLabel(dest.hidden_gem_score)}</span>
-              </div>
-            ) : (
-              // Normal — show effective (timing-adjusted) match %
-              <div className={`flex items-center gap-1 rounded-full px-3 py-1 border ${
-                locked
-                  ? 'bg-[#F0EBE3] border-[#D8D0C4]'
-                  : timingPenalty > 0
-                    ? 'bg-amber-400/10 border-amber-400/30'
-                    : 'bg-[#C97552]/15 border-[#C97552]/30'
-              }`}>
-                <span className={`text-xs font-semibold ${
-                  locked ? 'text-[#5C564E]' : timingPenalty > 0 ? 'text-amber-400' : 'text-[#C97552]'
-                }`}>
-                  {displayScore}%
-                </span>
-                <span className={`text-xs ${
-                  locked ? 'text-[#8A7E6E]' : timingPenalty > 0 ? 'text-amber-400/70' : 'text-[#C97552]/70'
-                }`}>match</span>
-              </div>
-            )}
-            {/* Gem dots shown separately when not in gemEmphasis pill */}
-            {!(locked && gemEmphasis) && <GemDots score={dest.hidden_gem_score} />}
-          </div>
+        {/* Rank badge — top left */}
+        <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm rounded-full px-2.5 py-1">
+          <span className="text-[10px] text-white/70 font-label tracking-widest uppercase">#{rank}</span>
         </div>
 
-        {/* Timing + event badges — visible without expanding */}
-        {(dest.timing_warning || dest.upcoming_event) && (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {/* Save button — top right (unlocked only) */}
+        {onSave && !locked && (
+          <button
+            onClick={e => { e.stopPropagation(); onSave(dest) }}
+            disabled={isSaving}
+            title={isSaved ? 'Remove from saved' : 'Save this destination'}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center transition-all hover:bg-black/70 disabled:opacity-50"
+          >
+            {isSaving ? (
+              <svg className="w-3.5 h-3.5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill={isSaved ? '#C97552' : 'none'} stroke={isSaved ? '#C97552' : 'white'} strokeWidth="1.8" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+              </svg>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* ── Card body ── */}
+      <div className="flex-1 flex flex-col px-5 pt-4 pb-5 gap-3">
+
+        {/* Destination name + match% pill */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            {locked ? (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className="w-3.5 h-3.5 text-[#666] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[#777] text-sm font-medium">Locked destination</span>
+                </div>
+                <p className="text-[#555] text-xs">Upgrade to reveal full details</p>
+              </>
+            ) : (
+              <>
+                <h2 className="font-serif italic text-2xl text-white leading-tight mb-0.5 truncate">{dest.name}</h2>
+                <p className="text-sm text-[#888]">{country}</p>
+              </>
+            )}
+          </div>
+          {/* Match % pill */}
+          {locked && gemEmphasis ? (
+            <div className="flex-shrink-0 flex items-center gap-2 bg-[#2A2A2E] border border-[#333] rounded-full px-3 py-1.5">
+              <GemDots score={dest.hidden_gem_score} />
+              <span className="text-xs text-[#888]">{gemLabel(dest.hidden_gem_score)}</span>
+            </div>
+          ) : (
+            <div className={`flex-shrink-0 rounded-full px-3 py-1.5 ${
+              locked
+                ? 'bg-[#2A2A2E]'
+                : timingPenalty > 0
+                  ? 'bg-amber-500/20 border border-amber-500/30'
+                  : 'bg-[#C97552]'
+            }`}>
+              <span className={`text-xs font-bold ${
+                locked ? 'text-[#666]' : timingPenalty > 0 ? 'text-amber-400' : 'text-white'
+              }`}>
+                {displayScore}% match
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Gem dots (unlocked) */}
+        {!locked && !(locked && gemEmphasis) && dest.hidden_gem_score && (
+          <GemDots score={dest.hidden_gem_score} />
+        )}
+
+        {/* Timing + event badges */}
+        {!locked && (dest.timing_warning || dest.upcoming_event) && (
+          <div className="flex flex-wrap gap-1.5">
             {dest.timing_warning && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-400/80 bg-amber-400/8 border border-amber-400/20 rounded-full px-2.5 py-1">
+              <span className="inline-flex items-center gap-1 text-[11px] text-amber-400/80 bg-amber-400/10 border border-amber-400/20 rounded-full px-2.5 py-1">
                 {dest.timing_warning}
               </span>
             )}
             {dest.upcoming_event && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-[#C97552]/80 bg-[#C97552]/8 border border-[#C97552]/20 rounded-full px-2.5 py-1">
+              <span className="inline-flex items-center gap-1 text-[11px] text-[#C97552]/80 bg-[#C97552]/10 border border-[#C97552]/20 rounded-full px-2.5 py-1">
                 🎪 {dest.upcoming_event.name} — {dest.upcoming_event.when}
               </span>
             )}
           </div>
         )}
 
-        {/* First reason tag (unlocked collapsed preview only) */}
-        {!locked && dest.reasons?.[0] && !expanded && (
-          <div className="mt-3">
-            <span className="text-xs text-[#5A504A] bg-[#F5F0EA] border border-[#E8E0D6] px-2.5 py-1 rounded-full">
-              {dest.reasons[0]}
+        {/* Reason tags — up to 3 dark pills */}
+        {!locked && dest.reasons?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {dest.reasons.slice(0, 3).map((r, i) => (
+              <span key={i} className="text-xs text-[#AAA] bg-[#2A2A2E] border border-[#333] px-2.5 py-1 rounded-full leading-none">
+                {r}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Personalization note */}
+        {!locked && dest.personalization_note && (
+          <p className="text-xs text-[#777] italic leading-snug line-clamp-2">
+            {dest.personalization_note}
+          </p>
+        )}
+
+        {/* Dietary badges */}
+        {!locked && <DietaryBadges dest={dest} userPrefs={dietaryPrefs} />}
+
+        {/* Timing note */}
+        {!locked && dest.timing_note && (
+          <p className={`text-xs leading-snug ${dest.timing_note.startsWith('⚠️') ? 'text-amber-400/80' : 'text-[#777]'}`}>
+            {dest.timing_note.startsWith('⚠️') ? '' : '📅 '}{dest.timing_note}
+          </p>
+        )}
+
+        {/* HOW TO GET THERE — abbreviated (first mode only) */}
+        {!locked && primaryTransport && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[#555] font-label tracking-widest uppercase flex-shrink-0">Getting there</span>
+            <span className="text-base leading-none">{TRANSPORT_ICONS[primaryTransport.mode] ?? '✈️'}</span>
+            <span className="text-xs text-[#888] truncate">
+              {primaryTransport.duration_note ?? primaryTransport.mode}
             </span>
           </div>
         )}
 
-        {/* Expand hint */}
+        {/* Budget + Best time */}
+        {!locked && (dest.budget_per_day_usd || dest.best_time_to_visit) && (
+          <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-[#2A2A2E] pt-3 mt-auto">
+            {dest.budget_per_day_usd && (
+              <div>
+                <p className="text-[10px] text-[#555] font-label tracking-widest uppercase mb-0.5">Budget / day</p>
+                <p className="text-sm text-white font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
+                <p className="text-[10px] text-[#555] mt-0.5">excl. flights</p>
+              </div>
+            )}
+            {dest.best_time_to_visit && (
+              <div>
+                <p className="text-[10px] text-[#555] font-label tracking-widest uppercase mb-0.5">Best time</p>
+                <p className="text-sm text-[#AAA]">{dest.best_time_to_visit}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CTAs */}
         {!locked && (
-          <div className="mt-3 flex justify-end">
-            <span className="text-xs text-[#A8A09A]">{expanded ? '▲ collapse' : '▼ details'}</span>
+          <div className="space-y-2 mt-1">
+            <a
+              href={`/plan/ai/${encodeURIComponent(dest.name)}?country=${encodeURIComponent(dest.country)}${dest.state_province ? `&state=${encodeURIComponent(dest.state_province)}` : ''}&from=discover`}
+              className="block w-full text-center bg-[#C97552] text-white font-semibold text-sm py-3 rounded-full hover:bg-[#b86644] transition-colors"
+            >
+              Plan this trip →
+            </a>
+            <a
+              href={`/guide?q=${encodeURIComponent(dest.name)}&c=${encodeURIComponent(dest.country)}${dest.state_province ? `&s=${encodeURIComponent(dest.state_province)}` : ''}`}
+              className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-full border border-[#333] text-[#888] text-sm hover:border-[#555] hover:text-white transition-all"
+            >
+              <span>🗺</span>
+              <span>Local guide</span>
+            </a>
+          </div>
+        )}
+
+        {/* Locked CTA */}
+        {locked && (
+          <div className="mt-auto pt-2">
+            <div className="w-full py-3 rounded-full border border-[#333] flex items-center justify-center gap-2">
+              <svg className="w-3.5 h-3.5 text-[#555]" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
+              <span className="text-[#555] text-sm">Unlock to reveal</span>
+            </div>
           </div>
         )}
       </div>
-
-      {/* ── Expanded view ── */}
-      {expanded && (
-        <div onClick={e => e.stopPropagation()} className={locked ? 'relative overflow-hidden' : ''}>
-
-          {/* Carousel (unlocked only) */}
-          {!locked && <ImageCarousel dest={dest} />}
-
-          <div className={`px-5 pb-5 pt-4 ${locked ? 'blur-sm select-none pointer-events-none' : ''}`}>
-            {/* All reason tags */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {dest.reasons.map((r, i) => (
-                <span key={i} className="text-xs text-[#4A4440] bg-[#F5F0EA] border border-[#E8E0D6] px-2.5 py-1 rounded-full">
-                  {r}
-                </span>
-              ))}
-            </div>
-
-            {/* FIX 2 — Personalization note */}
-            {!locked && dest.personalization_note && (
-              <p className="text-xs text-[#7A6E64] italic mt-2 mb-3 leading-snug">
-                {dest.personalization_note}
-              </p>
-            )}
-
-            {/* Dietary badges — only unlocked, only if destination genuinely supports the preference */}
-            {!locked && <DietaryBadges dest={dest} userPrefs={dietaryPrefs} />}
-
-            {/* FIX 5 — Timing note: amber when it's a shoulder season or starts with ⚠️ */}
-            {!locked && dest.timing_note && (
-              <div className={`flex items-start gap-2 mt-3 text-xs leading-relaxed ${
-                dest.timing_note.startsWith('⚠️') ? 'text-amber-400/80' : 'text-[#6b5f54]'
-              }`}>
-                <span className="flex-shrink-0">{dest.timing_note.startsWith('⚠️') ? '' : '📅'}</span>
-                <span>{dest.timing_note}</span>
-              </div>
-            )}
-
-            {/* Upcoming event box */}
-            {!locked && dest.upcoming_event && (
-              <div className="mt-3 rounded-xl border border-[#C97552]/20 bg-[#C97552]/5 px-4 py-3">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-base leading-none">🎪</span>
-                  <span className="text-sm text-[#1A1A1A] font-medium">{dest.upcoming_event.name}</span>
-                </div>
-                <p className="text-[11px] text-[#6b5f54] mb-1">
-                  {dest.upcoming_event.when} · {crowdLabel(dest.upcoming_event.crowd_level)}
-                </p>
-                <p className="text-xs text-[#5A504A] leading-snug">{dest.upcoming_event.what}</p>
-              </div>
-            )}
-
-            {/* Transport block — HOW TO GET THERE */}
-            {!locked && <TransportBlock dest={dest} homeCity={homeCity} />}
-
-            {/* Accommodation block — WHERE TO STAY */}
-            {!locked && dest.accommodation && (
-              <AccommodationBlock acc={dest.accommodation} destName={dest.name} />
-            )}
-
-            {/* Meta row */}
-            <div className="flex items-start justify-between border-t border-[#E8E0D6] pt-4 mt-4 mb-4">
-              <div className="space-y-3">
-                {dest.budget_per_day_usd && (
-                  <div>
-                    <p className="text-xs text-[#8A7E6E] uppercase tracking-widest mb-0.5">Budget</p>
-                    <p className="text-sm text-[#2A2420] font-medium">{displayBudget(dest.budget_per_day_usd, currency)}</p>
-                    <p className="text-xs text-[#8A7E6E] mt-0.5">on the ground · excl. flights</p>
-                    {(!dest.transport || dest.transport.length === 0) && (
-                      <a
-                        href={`https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(dest.name + ', ' + dest.country)}`}
-                        target="_blank" rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="text-xs text-[#C97552]/70 hover:text-[#C97552] transition-colors mt-1 inline-block">
-                        Search flights →
-                      </a>
-                    )}
-                  </div>
-                )}
-                {dest.best_time_to_visit && (
-                  <div>
-                    <p className="text-xs text-[#8A7E6E] uppercase tracking-widest mb-0.5">Best time</p>
-                    <p className="text-sm text-[#3A3430]">{dest.best_time_to_visit}</p>
-                  </div>
-                )}
-              </div>
-              {onSave && (
-                <button
-                  onClick={e => { e.stopPropagation(); onSave(dest) }}
-                  disabled={isSaving}
-                  title={isSaved ? 'Remove from saved' : 'Save this destination'}
-                  className={`flex items-center gap-1.5 text-xs border rounded-full px-3 py-2 transition-all flex-shrink-0 disabled:opacity-50 ${
-                    isSaved
-                      ? 'border-[#C97552]/50 text-[#C97552] bg-[#C97552]/10 hover:bg-[#C97552]/5'
-                      : 'border-[#E2D8CE] text-[#6b5f54] hover:border-[#C97552]/40 hover:text-[#C97552]/70'
-                  }`}
-                >
-                  {isSaving ? (
-                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                  ) : (
-                    <svg className="w-3.5 h-3.5" fill={isSaved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                    </svg>
-                  )}
-                  <span>{isSaved ? 'Saved' : 'Save'}</span>
-                </button>
-              )}
-            </div>
-
-            {/* CTAs row */}
-            <div className="space-y-2">
-              <a
-                href={`/plan/ai/${encodeURIComponent(dest.name)}?country=${encodeURIComponent(dest.country)}${dest.state_province ? `&state=${encodeURIComponent(dest.state_province)}` : ''}&from=discover`}
-                onClick={e => e.stopPropagation()}
-                className="block w-full text-center bg-[#C97552] text-white font-semibold text-sm py-3.5 rounded-full hover:bg-[#b86644] transition-colors"
-              >
-                Plan this trip →
-              </a>
-              <a
-                href={`/guide?q=${encodeURIComponent(dest.name)}&c=${encodeURIComponent(dest.country)}${dest.state_province ? `&s=${encodeURIComponent(dest.state_province)}` : ''}`}
-                onClick={e => e.stopPropagation()}
-                className="flex items-center justify-center gap-1.5 w-full py-3 rounded-full border border-[#D8D0C4] text-[#5A504A] text-sm hover:border-[#C0B8AC] hover:text-[#2A2420] transition-all"
-              >
-                <span>🗺</span>
-                <span>Local guide</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Frosted overlay for locked expanded */}
-          {locked && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-              <div className="text-center px-6">
-                <svg className="w-5 h-5 text-[#6b5f54] mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-                <p className="text-[#5C564E] text-xs">Unlock to see full details</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -1564,7 +1451,7 @@ export default function DiscoverPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#FAF8F5]/30 via-[#FAF8F5]/60 to-[#FAF8F5]" />
 
-        <div className="relative max-w-2xl mx-auto px-4 pt-12 pb-8">
+        <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-8">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs text-[#6b5f54] uppercase tracking-widest font-label mb-3">Your results</p>
@@ -1584,7 +1471,7 @@ export default function DiscoverPage() {
         </div>
       </div>
 
-      <main className="max-w-2xl mx-auto px-4 pb-10">
+      <main className="max-w-6xl mx-auto px-4 pb-10">
         {/* Sub-header */}
         <div className="mb-8">
           <p className="text-[#6b5f54] text-sm">
@@ -1695,7 +1582,7 @@ export default function DiscoverPage() {
               </svg>
               <p className="text-xs text-[#7A6E64] uppercase tracking-widest font-label">Saved</p>
             </div>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {savedDestinations.map((dest, i) => {
                 const key = savedKey(dest.name, dest.country)
                 return (
@@ -1720,7 +1607,7 @@ export default function DiscoverPage() {
 
         {/* ── Destination cards (discover mode only) ────────────────────────── */}
         {mode === 'discover' && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {/* Free cards */}
           {freeCards.map((dest, i) => {
             const key = savedKey(dest.name, dest.country)
@@ -1743,7 +1630,7 @@ export default function DiscoverPage() {
           {/* Conversion hook + locked cards */}
           {lockedCards.length > 0 && (
             <>
-              <div id="unlock">
+              <div id="unlock" className="col-span-full">
                 <ConversionHook lockedCount={lockedCards.length} topScore={topLockedScore} />
               </div>
               {lockedCards.map((dest, i) => (

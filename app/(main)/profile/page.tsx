@@ -313,16 +313,24 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
-      <main className="max-w-2xl mx-auto px-4 py-10 space-y-6">
 
-        {/* Header */}
-        <div className="mb-2">
+      {/* Atmospheric hero */}
+      <div className="relative overflow-hidden mb-2">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-10"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1200&q=80&auto=format')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/40 to-[#0d1f35]" />
+        <div className="relative max-w-2xl mx-auto px-4 pt-8 pb-6">
           <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">Settings</p>
           <h1 className="font-serif italic text-4xl text-white">Your profile</h1>
           <p className="text-white/40 text-sm mt-2">
             Changes here will refresh your destination recommendations.
           </p>
         </div>
+      </div>
+
+      <main className="max-w-2xl mx-auto px-4 pb-10 space-y-6">
 
         {/* ── Home location ─────────────────────────────────────────────── */}
         <Section title="Where are you based?">

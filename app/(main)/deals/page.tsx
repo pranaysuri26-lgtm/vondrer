@@ -123,9 +123,15 @@ export default function DealsPage() {
 
   return (
     <div className="min-h-screen bg-[#0d1f35]">
-      <main className="max-w-2xl mx-auto px-4 py-10">
-        {/* Header */}
-        <div className="mb-8">
+
+      {/* Atmospheric hero */}
+      <div className="relative overflow-hidden mb-2">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-12"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1400&q=80&auto=format')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/40 to-[#0d1f35]" />
+        <div className="relative max-w-2xl mx-auto px-4 pt-8 pb-6">
           <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-2">
             Travel tips
             {cached
@@ -140,9 +146,15 @@ export default function DealsPage() {
             <span className="text-white/50">for right now.</span>
           </h1>
           <p className="text-white/35 text-sm mt-3">
-            Flight promotions, hotel offers, card bonuses, and travel news — curated daily for your country. Free for every user.
+            Flight promotions, hotel offers, card bonuses, and travel news — curated daily for your country.
           </p>
-          <p className="text-white/20 text-xs mt-3">
+        </div>
+      </div>
+
+      <main className="max-w-2xl mx-auto px-4 pb-10">
+        {/* Sub-header note */}
+        <div className="mb-6">
+          <p className="text-white/20 text-xs">
             AI-curated and updated daily. Always verify details directly with the provider before booking.
           </p>
         </div>

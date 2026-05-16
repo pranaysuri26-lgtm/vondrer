@@ -745,10 +745,15 @@ export default function PlanDayPage() {
 
   return (
     <div className="min-h-screen bg-[#0d1f35] flex flex-col pb-24">
-      <div className="max-w-lg mx-auto w-full px-4 pt-10 flex-1 flex flex-col">
 
-        {/* Title */}
-        <div className="mb-10">
+      {/* Atmospheric hero */}
+      <div className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-12"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1473163928189-364b2c4e1135?w=1200&q=80&auto=format')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/50 to-[#0d1f35]" />
+        <div className="relative max-w-lg mx-auto w-full px-4 pt-10 pb-6">
           <p className="text-xs text-white/30 uppercase tracking-widest font-label mb-3">Plan a Day</p>
           <h1 className="font-serif italic text-4xl text-white leading-tight mb-3">
             Where are you<br />heading today?
@@ -757,6 +762,9 @@ export default function PlanDayPage() {
             Type any place — a park, a drive, a neighbourhood, a beach. We'll build your day around the weather.
           </p>
         </div>
+      </div>
+
+      <div className="max-w-lg mx-auto w-full px-4 flex-1 flex flex-col">
 
         {/* Place input */}
         <div className="mb-6">

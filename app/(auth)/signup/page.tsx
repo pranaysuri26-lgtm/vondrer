@@ -306,11 +306,20 @@ export default function SignupPage() {
     : POPULAR_COUNTRIES
 
   return (
-    <div className="min-h-screen bg-[#0d1f35] flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#0d1f35] relative flex flex-col items-center justify-center px-4 py-12">
+
+      {/* Atmospheric background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-8"
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1400&q=80&auto=format')" }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/70 to-[#0d1f35]" />
+
+      <div className="relative w-full max-w-md">
 
         <div className="text-center mb-10">
           <span className="font-serif italic text-3xl text-white/90 tracking-wide">Voya</span>
+          <p className="text-white/25 text-xs mt-1 font-label tracking-widest uppercase">Your travel intelligence</p>
         </div>
 
         <ProgressBar step={step} />

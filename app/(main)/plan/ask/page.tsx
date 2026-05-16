@@ -23,22 +23,22 @@ function dietaryBadge(fit: string) {
   if (!fit) return null
   const f = fit.toLowerCase()
   const cls = f.includes('fully')
-    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
     : f.includes('strong')
-      ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-      : 'text-amber-700 bg-amber-50 border-amber-200'
+      ? 'text-emerald-400/80 bg-emerald-500/10 border-emerald-500/20'
+      : 'text-amber-400 bg-amber-400/10 border-amber-400/20'
   return <span className={`text-[11px] font-label px-2.5 py-1 rounded-full border ${cls}`}>🌱 {fit}</span>
 }
 
 function sessionLabel(s: string) {
   switch (s) {
-    case 'golden_sunrise': return { label: 'Golden · sunrise', color: 'text-amber-700 bg-amber-50 border-amber-200',   icon: '🌅' }
-    case 'golden_sunset':  return { label: 'Golden · sunset',  color: 'text-amber-700 bg-amber-50 border-amber-200',   icon: '🌅' }
-    case 'blue_sunrise':   return { label: 'Blue · sunrise',   color: 'text-indigo-700 bg-indigo-50 border-indigo-200', icon: '🌌' }
-    case 'blue_sunset':    return { label: 'Blue · sunset',    color: 'text-indigo-700 bg-indigo-50 border-indigo-200', icon: '🌌' }
-    case 'midday':         return { label: 'Midday',           color: 'text-sky-700 bg-sky-50 border-sky-200',         icon: '☀️' }
-    case 'night':          return { label: 'Night',            color: 'text-slate-700 bg-slate-100 border-slate-200',  icon: '🌙' }
-    default:               return { label: s,                  color: 'text-[#6b5f54] bg-[#f2ede8] border-[#e8e0d6]', icon: '📷' }
+    case 'golden_sunrise': return { label: 'Golden · sunrise', color: 'text-amber-400 bg-amber-400/10 border-amber-400/20',   icon: '🌅' }
+    case 'golden_sunset':  return { label: 'Golden · sunset',  color: 'text-amber-400 bg-amber-400/10 border-amber-400/20',   icon: '🌅' }
+    case 'blue_sunrise':   return { label: 'Blue · sunrise',   color: 'text-indigo-400 bg-indigo-400/10 border-indigo-400/20', icon: '🌌' }
+    case 'blue_sunset':    return { label: 'Blue · sunset',    color: 'text-indigo-400 bg-indigo-400/10 border-indigo-400/20', icon: '🌌' }
+    case 'midday':         return { label: 'Midday',           color: 'text-sky-400 bg-sky-400/10 border-sky-400/20',         icon: '☀️' }
+    case 'night':          return { label: 'Night',            color: 'text-white/50 bg-white/5 border-white/10',             icon: '🌙' }
+    default:               return { label: s,                  color: 'text-white/50 bg-white/5 border-white/10',             icon: '📷' }
   }
 }
 
@@ -84,28 +84,28 @@ function SunTimingCard({ sun }: { sun: PhotoSunTimes }) {
   ]
 
   return (
-    <div className="rounded-2xl border border-[#e8e0d6] bg-white shadow-sm overflow-hidden mb-5">
-      <div className="px-4 pt-4 pb-3 border-b border-[#f2ede8]">
+    <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 overflow-hidden mb-5">
+      <div className="px-4 pt-4 pb-3 border-b border-white/6">
         <p className="text-[10px] text-[#C97552] font-label tracking-widest uppercase">Today's light windows</p>
-        <p className="text-[#6b5f54] text-xs mt-0.5">Approximate local time · {sun.date}</p>
+        <p className="text-white/40 text-xs mt-0.5">Approximate local time · {sun.date}</p>
       </div>
-      <div className="grid grid-cols-2 divide-x divide-[#f2ede8]">
+      <div className="grid grid-cols-2 divide-x divide-white/6">
         {/* Morning */}
         <div className="px-4 py-3 space-y-2">
-          <p className="text-[10px] text-[#6b5f54]/60 font-label tracking-widest uppercase">Morning</p>
+          <p className="text-[10px] text-white/30 font-label tracking-widest uppercase">Morning</p>
           {sessions.filter(s => s.period === 'AM').map((s, i) => (
             <div key={i} className={`border-l-2 pl-2.5 ${s.color}`}>
-              <p className="text-[#1a1410] text-xs font-medium">{s.emoji} {s.label} hour</p>
+              <p className="text-white/70 text-xs font-medium">{s.emoji} {s.label} hour</p>
               <p className="text-[#C97552] text-sm font-semibold tabular-nums">{s.start} – {s.end}</p>
             </div>
           ))}
         </div>
         {/* Evening */}
         <div className="px-4 py-3 space-y-2">
-          <p className="text-[10px] text-[#6b5f54]/60 font-label tracking-widest uppercase">Evening</p>
+          <p className="text-[10px] text-white/30 font-label tracking-widest uppercase">Evening</p>
           {sessions.filter(s => s.period === 'PM').map((s, i) => (
             <div key={i} className={`border-l-2 pl-2.5 ${s.color}`}>
-              <p className="text-[#1a1410] text-xs font-medium">{s.emoji} {s.label} hour</p>
+              <p className="text-white/70 text-xs font-medium">{s.emoji} {s.label} hour</p>
               <p className="text-[#C97552] text-sm font-semibold tabular-nums">{s.start} – {s.end}</p>
             </div>
           ))}
@@ -128,14 +128,14 @@ function PhotoSpotCard({
       onClick={onSelect}
       className={`w-full text-left rounded-2xl border transition-all duration-200 overflow-hidden ${
         selected
-          ? 'border-[#C97552]/50 bg-white shadow-md ring-1 ring-[#C97552]/20'
-          : 'border-[#e8e0d6] bg-white shadow-sm hover:border-[#C97552]/30'
+          ? 'border-[#C97552]/50 bg-[#C97552]/5'
+          : 'border-white/10 bg-white/4 hover:border-[#C97552]/30 hover:bg-white/6'
       }`}
     >
       <div className="px-4 py-4">
         <div className="flex items-start gap-3">
           <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-            selected ? 'bg-[#C97552] text-white' : 'bg-[#f2ede8] text-[#C97552]'
+            selected ? 'bg-[#C97552] text-white' : 'bg-[#C97552]/15 text-[#C97552]'
           }`}>
             {index + 1}
           </div>
@@ -143,7 +143,7 @@ function PhotoSpotCard({
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-[10px] text-[#C97552] font-label tracking-widest uppercase mb-0.5">{spot.area}</p>
-                <p className="text-[#1a1410] text-sm font-semibold leading-snug">{spot.name}</p>
+                <p className="text-white/90 text-sm font-semibold leading-snug">{spot.name}</p>
               </div>
               <span className={`flex-shrink-0 text-[10px] font-label px-2 py-0.5 rounded-full border mt-0.5 ${sess.color}`}>
                 {sess.icon} {sess.label}
@@ -156,35 +156,35 @@ function PhotoSpotCard({
           <div className="mt-4 space-y-4">
             {/* Composition */}
             <div>
-              <p className="text-[10px] text-[#6b5f54]/60 font-label tracking-widest uppercase mb-1.5">Composition</p>
-              <p className="text-[#1a1410] text-sm leading-relaxed">{spot.composition}</p>
+              <p className="text-[10px] text-white/30 font-label tracking-widest uppercase mb-1.5">Composition</p>
+              <p className="text-white/80 text-sm leading-relaxed">{spot.composition}</p>
             </div>
 
             {/* Locals tip */}
-            <div className="rounded-xl bg-[#f2ede8] border border-[#e8e0d6] px-3.5 py-3">
-              <p className="text-[10px] text-[#6b5f54]/60 font-label tracking-widest uppercase mb-1">Where locals stand</p>
-              <p className="text-[#1a1410] text-sm leading-relaxed">{spot.locals_tip}</p>
+            <div className="rounded-xl bg-white/5 border border-white/10 px-3.5 py-3">
+              <p className="text-[10px] text-white/30 font-label tracking-widest uppercase mb-1">Where locals stand</p>
+              <p className="text-white/70 text-sm leading-relaxed">{spot.locals_tip}</p>
             </div>
 
             {/* Light + lens row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[10px] text-[#6b5f54]/60 font-label tracking-widest uppercase mb-1">The light</p>
-                <p className="text-[#6b5f54] text-xs leading-relaxed">{spot.light_note}</p>
+                <p className="text-[10px] text-white/30 font-label tracking-widest uppercase mb-1">The light</p>
+                <p className="text-white/50 text-xs leading-relaxed">{spot.light_note}</p>
               </div>
               <div>
-                <p className="text-[10px] text-[#6b5f54]/60 font-label tracking-widest uppercase mb-1">Lens</p>
+                <p className="text-[10px] text-white/30 font-label tracking-widest uppercase mb-1">Lens</p>
                 <p className="text-[#C97552] text-xs font-medium leading-relaxed">📷 {spot.lens}</p>
               </div>
             </div>
 
             {/* Avoid */}
             {spot.avoid && (
-              <div className="flex gap-2 rounded-xl bg-red-50 border border-red-200/60 px-3.5 py-2.5">
+              <div className="flex gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-3.5 py-2.5">
                 <span className="text-xs mt-0.5 flex-shrink-0">🚫</span>
                 <div>
-                  <p className="text-[10px] text-red-700/60 font-label tracking-wider uppercase mb-0.5">Tourist mistake</p>
-                  <p className="text-red-800/80 text-xs leading-relaxed">{spot.avoid}</p>
+                  <p className="text-[10px] text-red-400/60 font-label tracking-wider uppercase mb-0.5">Tourist mistake</p>
+                  <p className="text-red-400/80 text-xs leading-relaxed">{spot.avoid}</p>
                 </div>
               </div>
             )}
@@ -211,31 +211,31 @@ function PhotoSpotCard({
 function StopCard({ stop, index }: { stop: TripStop; index: number }) {
   const [open, setOpen] = useState(index < 2)
   return (
-    <div className="rounded-2xl border border-[#e8e0d6] bg-white shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-white/10 bg-white/4 overflow-hidden">
       <button onClick={() => setOpen(o => !o)} className="w-full text-left px-5 py-4">
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-9 h-9 rounded-full bg-[#f2ede8] border border-[#e8e0d6] flex items-center justify-center text-base">
+          <div className="flex-shrink-0 w-9 h-9 rounded-full bg-[#C97552]/15 border border-[#C97552]/25 flex items-center justify-center text-base">
             {stopTypeIcon(stop.type)}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-[10px] text-[#C97552] font-label tracking-widest uppercase mb-0.5">Stop {index + 1} · {stop.type}</p>
-                <p className="text-[#1a1410] text-sm font-semibold leading-snug">{stop.name}</p>
-                <p className="text-[#6b5f54] text-xs mt-0.5">{stop.city}, {stop.state}</p>
+                <p className="text-white/90 text-sm font-semibold leading-snug">{stop.name}</p>
+                <p className="text-white/50 text-xs mt-0.5">{stop.city}, {stop.state}</p>
               </div>
-              <span className="text-[11px] text-[#6b5f54]">{stop.price_range}</span>
+              <span className="text-[11px] text-white/40">{stop.price_range}</span>
             </div>
           </div>
         </div>
       </button>
       {open && (
-        <div className="px-5 pb-4 border-t border-[#f2ede8] pt-3 space-y-3">
-          <p className="text-[#6b5f54] text-sm leading-relaxed">{stop.why}</p>
+        <div className="px-5 pb-4 border-t border-white/6 pt-3 space-y-3">
+          <p className="text-white/60 text-sm leading-relaxed">{stop.why}</p>
           <div className="flex flex-wrap gap-2">
             {stop.dietary_fit && dietaryBadge(stop.dietary_fit)}
-            {stop.distance_note && <span className="text-[11px] font-label px-2.5 py-1 rounded-full border border-[#e8e0d6] bg-[#f2ede8] text-[#6b5f54]">📍 {stop.distance_note}</span>}
-            {stop.open_note && <span className="text-[11px] font-label px-2.5 py-1 rounded-full border border-[#e8e0d6] bg-[#f2ede8] text-[#6b5f54]">🕐 {stop.open_note}</span>}
+            {stop.distance_note && <span className="text-[11px] font-label px-2.5 py-1 rounded-full border border-white/10 bg-white/5 text-white/50">📍 {stop.distance_note}</span>}
+            {stop.open_note && <span className="text-[11px] font-label px-2.5 py-1 rounded-full border border-white/10 bg-white/5 text-white/50">🕐 {stop.open_note}</span>}
           </div>
           {stop.lat && stop.lng && (
             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.name + ', ' + stop.city)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#C97552] hover:text-[#b86642] transition-colors">View on maps →</a>
@@ -253,30 +253,30 @@ function PlaceCard({ place, index, selected, onSelect }: { place: LocalPlace; in
     <button
       onClick={onSelect}
       className={`w-full text-left rounded-2xl border transition-all duration-200 overflow-hidden ${
-        selected ? 'border-[#C97552]/50 bg-white shadow-md ring-1 ring-[#C97552]/20' : 'border-[#e8e0d6] bg-white shadow-sm hover:border-[#C97552]/30'
+        selected ? 'border-[#C97552]/50 bg-[#C97552]/5' : 'border-white/10 bg-white/4 hover:border-[#C97552]/30 hover:bg-white/6'
       }`}
     >
       <div className="px-4 py-4">
         <div className="flex items-start gap-3">
-          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${selected ? 'bg-[#C97552] text-white' : 'bg-[#f2ede8] text-[#C97552]'}`}>
+          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${selected ? 'bg-[#C97552] text-white' : 'bg-[#C97552]/15 text-[#C97552]'}`}>
             {index + 1}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] text-[#C97552] font-label tracking-widest uppercase mb-0.5">{place.type}</p>
-            <p className="text-[#1a1410] text-sm font-semibold leading-snug">{place.name}</p>
-            <p className="text-[#6b5f54] text-xs mt-0.5">{place.area}</p>
-            {selected && <p className="text-[#6b5f54]/80 text-xs italic mt-1">"{place.tagline}"</p>}
+            <p className="text-white/90 text-sm font-semibold leading-snug">{place.name}</p>
+            <p className="text-white/50 text-xs mt-0.5">{place.area}</p>
+            {selected && <p className="text-white/40 text-xs italic mt-1">"{place.tagline}"</p>}
           </div>
-          <span className="text-[11px] text-[#6b5f54] flex-shrink-0 mt-1">{place.price_range}</span>
+          <span className="text-[11px] text-white/40 flex-shrink-0 mt-1">{place.price_range}</span>
         </div>
         {selected && (
-          <div className="mt-3 pt-3 border-t border-[#f2ede8] space-y-3">
-            <p className="text-[#6b5f54] text-sm leading-relaxed">{place.story}</p>
+          <div className="mt-3 pt-3 border-t border-white/8 space-y-3">
+            <p className="text-white/60 text-sm leading-relaxed">{place.story}</p>
             <div className="flex flex-wrap gap-2">
-              {place.best_time && <span className="text-[11px] font-label px-2.5 py-1 rounded-full border border-[#e8e0d6] bg-[#f2ede8] text-[#6b5f54]">🕐 {place.best_time}</span>}
+              {place.best_time && <span className="text-[11px] font-label px-2.5 py-1 rounded-full border border-white/10 bg-white/5 text-white/50">🕐 {place.best_time}</span>}
             </div>
             {place.insider_tip && (
-              <div className="flex gap-2 rounded-xl bg-[#C97552]/6 border border-[#C97552]/15 px-3 py-2.5">
+              <div className="flex gap-2 rounded-xl bg-[#C97552]/8 border border-[#C97552]/15 px-3 py-2.5">
                 <span className="text-xs mt-0.5">💡</span>
                 <p className="text-[#C97552]/80 text-xs leading-relaxed">{place.insider_tip}</p>
               </div>
@@ -317,9 +317,9 @@ function MicButton({ onResult, disabled }: { onResult: (text: string) => void; d
   return (
     <button onClick={toggle} disabled={disabled} title={listening ? 'Stop' : 'Speak'}
       className={`flex-shrink-0 w-12 h-12 rounded-full border flex items-center justify-center transition-all ${
-        listening ? 'bg-[#C97552] border-[#C97552] shadow-lg shadow-[#C97552]/25 animate-pulse' : 'bg-white border-[#e8e0d6] hover:border-[#C97552]/50'
+        listening ? 'bg-[#C97552] border-[#C97552] shadow-lg shadow-[#C97552]/25 animate-pulse' : 'bg-white/5 border-white/15 hover:border-[#C97552]/50 hover:bg-white/8'
       } disabled:opacity-40 disabled:cursor-not-allowed`}>
-      <span className={`text-lg ${listening ? 'text-white' : 'text-[#6b5f54]'}`}>🎤</span>
+      <span className={`text-lg ${listening ? 'text-white' : 'text-white/60'}`}>🎤</span>
     </button>
   )
 }
@@ -340,14 +340,14 @@ function LoadingView({ query }: { query: string }) {
     return () => clearInterval(id)
   }, [steps.length])
   return (
-    <div className="min-h-screen bg-[#faf8f5] flex flex-col items-center justify-center px-6 pb-24">
+    <div className="min-h-screen bg-[#0d1f35] flex flex-col items-center justify-center px-6 pb-24">
       <div className="text-center max-w-xs">
         <div className="text-4xl mb-6" style={{ animation: 'float 2s ease-in-out infinite' }}>
           {isPhoto ? '📷' : isRoadTrip ? '🚗' : '🗺️'}
         </div>
-        <p className="text-[#6b5f54] text-sm">{steps[step]}</p>
+        <p className="text-white/50 text-sm">{steps[step]}</p>
         <div className="flex justify-center gap-1.5 mt-5">
-          {steps.map((_, i) => <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i <= step ? 'bg-[#C97552]' : 'bg-[#e8e0d6]'}`} />)}
+          {steps.map((_, i) => <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i <= step ? 'bg-[#C97552]' : 'bg-white/15'}`} />)}
         </div>
       </div>
       <style>{`@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}`}</style>
@@ -359,9 +359,9 @@ function LoadingView({ query }: { query: string }) {
 
 function Disclaimer({ label }: { label: string }) {
   return (
-    <div className="rounded-2xl border border-[#e8e0d6] bg-[#f2ede8] px-4 py-3 mb-6">
-      <p className="text-[#6b5f54] text-xs leading-relaxed">
-        <span className="font-medium text-[#1a1410]">Before you go —</span> {label}
+    <div className="rounded-2xl border border-white/8 bg-white/4 px-4 py-3 mb-6">
+      <p className="text-white/45 text-xs leading-relaxed">
+        <span className="font-medium text-white/70">Before you go —</span> {label}
       </p>
     </div>
   )
@@ -383,16 +383,16 @@ function PhotoSpotsResult({ result, onReset }: {
   const hasMap = result.spots.some(p => p.lat != null)
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] pb-28">
+    <div className="min-h-screen bg-[#0d1f35] pb-28">
       <div className="max-w-lg mx-auto px-4 pt-8">
-        <button onClick={onReset} className="text-[#6b5f54] text-xs hover:text-[#1a1410] transition-colors mb-5">← New search</button>
+        <button onClick={onReset} className="text-white/40 text-xs hover:text-white/70 transition-colors mb-5">← New search</button>
 
         <p className="text-[10px] text-[#C97552] font-label tracking-widest uppercase mb-2">
           Photo spots · {result.parsed.location}{result.parsed.country ? `, ${result.parsed.country}` : ''}
         </p>
-        <h1 className="font-serif italic text-2xl text-[#1a1410] leading-tight mb-5">
+        <h1 className="font-serif italic text-2xl text-white leading-tight mb-5">
           {result.spots.length} places to shoot.<br />
-          <span className="text-[#6b5f54]">Golden hour to the minute.</span>
+          <span className="text-white/50">Golden hour to the minute.</span>
         </h1>
 
         {/* Sun timing */}
@@ -401,7 +401,7 @@ function PhotoSpotsResult({ result, onReset }: {
         {/* Map */}
         {hasMap && (
           <>
-            <div className="rounded-2xl overflow-hidden border border-[#e8e0d6] mb-2 shadow-sm" style={{ height: '280px' }}>
+            <div className="rounded-2xl overflow-hidden border border-white/10 mb-2" style={{ height: '280px' }}>
               <LeafletMap
                 places={result.spots}
                 center={result.map_center}
@@ -409,7 +409,7 @@ function PhotoSpotsResult({ result, onReset }: {
                 onSelect={i => setSelectedIndex(i)}
               />
             </div>
-            <p className="text-[#6b5f54]/50 text-[11px] text-center mb-5 font-label tracking-wider">TAP A PIN TO SELECT · SCROLL FOR DETAILS</p>
+            <p className="text-white/25 text-[11px] text-center mb-5 font-label tracking-wider">TAP A PIN TO SELECT · SCROLL FOR DETAILS</p>
           </>
         )}
 
@@ -427,7 +427,7 @@ function PhotoSpotsResult({ result, onReset }: {
         </div>
 
         <Disclaimer label="verify access, permissions, and any entry fees before visiting photo spots. Light times are approximate local estimates." />
-        <button onClick={onReset} className="w-full py-4 rounded-full border border-[#e8e0d6] bg-white text-[#6b5f54] text-sm hover:border-[#C97552]/50 hover:text-[#C97552] transition-all">
+        <button onClick={onReset} className="w-full py-4 rounded-full border border-white/15 bg-white/4 text-white/55 text-sm hover:border-[#C97552]/50 hover:text-[#C97552] transition-all">
           Search somewhere else →
         </button>
       </div>
@@ -439,25 +439,25 @@ function PhotoSpotsResult({ result, onReset }: {
 
 function RoadTripResult({ result, onReset }: { result: Extract<TripAskResponse, { mode: 'road_trip' }>; onReset: () => void }) {
   return (
-    <div className="min-h-screen bg-[#faf8f5] pb-28">
+    <div className="min-h-screen bg-[#0d1f35] pb-28">
       <div className="max-w-lg mx-auto px-4 pt-8">
-        <button onClick={onReset} className="text-[#6b5f54] text-xs hover:text-[#1a1410] transition-colors mb-5">← New trip</button>
+        <button onClick={onReset} className="text-white/40 text-xs hover:text-white/70 transition-colors mb-5">← New trip</button>
         <p className="text-[10px] text-[#C97552] font-label tracking-widest uppercase mb-2">Road trip · {result.stops.length} stops</p>
-        <h1 className="font-serif italic text-3xl text-[#1a1410] leading-tight mb-2">
-          {result.parsed.origin}<span className="text-[#6b5f54]"> → </span>{result.parsed.destination}
+        <h1 className="font-serif italic text-3xl text-white leading-tight mb-2">
+          {result.parsed.origin}<span className="text-white/40"> → </span>{result.parsed.destination}
         </h1>
-        <p className="text-[#6b5f54] text-sm mb-6">{result.route_summary}</p>
+        <p className="text-white/50 text-sm mb-6">{result.route_summary}</p>
         {result.parsed.dietary.length > 0 && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 mb-6 flex items-start gap-2.5">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 mb-6 flex items-start gap-2.5">
             <span className="text-base mt-0.5">🌱</span>
-            <p className="text-emerald-800 text-sm">Filtered for: {result.parsed.dietary.join(', ')}{result.parsed.travelers ? ` · ${result.parsed.travelers} travellers` : ''}</p>
+            <p className="text-emerald-400 text-sm">Filtered for: {result.parsed.dietary.join(', ')}{result.parsed.travelers ? ` · ${result.parsed.travelers} travellers` : ''}</p>
           </div>
         )}
         <div className="space-y-3 mb-8">
           {result.stops.map((s, i) => <StopCard key={i} stop={s} index={i} />)}
         </div>
         <Disclaimer label="verify opening hours and availability directly with each place." />
-        <button onClick={onReset} className="w-full py-4 rounded-full border border-[#e8e0d6] bg-white text-[#6b5f54] text-sm hover:border-[#C97552]/50 hover:text-[#C97552] transition-all">Plan another trip →</button>
+        <button onClick={onReset} className="w-full py-4 rounded-full border border-white/15 bg-white/4 text-white/55 text-sm hover:border-[#C97552]/50 hover:text-[#C97552] transition-all">Plan another trip →</button>
       </div>
     </div>
   )
@@ -474,21 +474,21 @@ function LocalDiscoveryResult({ result, onReset }: { result: Extract<TripAskResp
   }, [selectedIndex])
   const hasMap = result.places.some(p => p.lat != null)
   return (
-    <div className="min-h-screen bg-[#faf8f5] pb-28">
+    <div className="min-h-screen bg-[#0d1f35] pb-28">
       <div className="max-w-lg mx-auto px-4 pt-8">
-        <button onClick={onReset} className="text-[#6b5f54] text-xs hover:text-[#1a1410] transition-colors mb-5">← New search</button>
+        <button onClick={onReset} className="text-white/40 text-xs hover:text-white/70 transition-colors mb-5">← New search</button>
         <p className="text-[10px] text-[#C97552] font-label tracking-widest uppercase mb-2">
           {result.parsed.location}{result.parsed.country ? `, ${result.parsed.country}` : ''} · {result.places.length} places
         </p>
-        <h1 className="font-serif italic text-2xl text-[#1a1410] leading-tight mb-5">
+        <h1 className="font-serif italic text-2xl text-white leading-tight mb-5">
           {result.parsed.intent.length > 60 ? result.parsed.intent.slice(0, 60) + '…' : result.parsed.intent}
         </h1>
         {hasMap && (
           <>
-            <div className="rounded-2xl overflow-hidden border border-[#e8e0d6] mb-2 shadow-sm" style={{ height: '300px' }}>
+            <div className="rounded-2xl overflow-hidden border border-white/10 mb-2" style={{ height: '300px' }}>
               <LeafletMap places={result.places} center={result.map_center} selectedIndex={selectedIndex} onSelect={i => setSelectedIndex(i)} />
             </div>
-            <p className="text-[#6b5f54]/50 text-[11px] text-center mb-5 font-label tracking-wider">TAP A PIN OR CARD TO EXPLORE</p>
+            <p className="text-white/25 text-[11px] text-center mb-5 font-label tracking-wider">TAP A PIN OR CARD TO EXPLORE</p>
           </>
         )}
         <div className="space-y-2 mb-8">
@@ -499,7 +499,7 @@ function LocalDiscoveryResult({ result, onReset }: { result: Extract<TripAskResp
           ))}
         </div>
         <Disclaimer label="verify opening hours and availability directly with each place." />
-        <button onClick={onReset} className="w-full py-4 rounded-full border border-[#e8e0d6] bg-white text-[#6b5f54] text-sm hover:border-[#C97552]/50 hover:text-[#C97552] transition-all">Search somewhere else →</button>
+        <button onClick={onReset} className="w-full py-4 rounded-full border border-white/15 bg-white/4 text-white/55 text-sm hover:border-[#C97552]/50 hover:text-[#C97552] transition-all">Search somewhere else →</button>
       </div>
     </div>
   )
@@ -557,18 +557,27 @@ export default function TripAskPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] flex flex-col pb-24">
-      <div className="max-w-lg mx-auto w-full px-4 pt-10 flex-1 flex flex-col">
+    <div className="min-h-screen bg-[#0d1f35] flex flex-col pb-24">
 
-        <div className="mb-7">
-          <p className="text-[10px] text-[#C97552] uppercase tracking-widest font-label mb-3">Ask</p>
-          <h1 className="font-serif italic text-4xl text-[#1a1410] leading-tight mb-3">
+      {/* Atmospheric header */}
+      <div className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-10"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=80&auto=format')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d1f35]" />
+        <div className="relative max-w-lg mx-auto w-full px-4 pt-10 pb-8">
+          <p className="text-[10px] text-[#C97552] uppercase tracking-widest font-label mb-3">Trip Ask</p>
+          <h1 className="font-serif italic text-4xl text-white leading-tight mb-3">
             Where do you<br />want to go?
           </h1>
-          <p className="text-[#6b5f54] text-sm leading-relaxed">
+          <p className="text-white/45 text-sm leading-relaxed">
             Road trips, photo spots with golden hour timing, or local gems in any city.
           </p>
         </div>
+      </div>
+
+      <div className="max-w-lg mx-auto w-full px-4 flex-1 flex flex-col">
 
         {/* Mode chips */}
         <div className="flex gap-2 mb-5">
@@ -578,8 +587,8 @@ export default function TripAskPage() {
               onClick={() => setActiveMode(prev => prev === mode.key ? null : mode.key)}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-label transition-all ${
                 activeMode === mode.key
-                  ? 'bg-[#C97552] border-[#C97552] text-white shadow-sm'
-                  : 'bg-white border-[#e8e0d6] text-[#6b5f54] hover:border-[#C97552]/40 hover:text-[#1a1410]'
+                  ? 'bg-[#C97552] border-[#C97552] text-white'
+                  : 'bg-white/5 border-white/12 text-white/55 hover:border-[#C97552]/40 hover:text-white/80'
               }`}
             >
               <span>{mode.icon}</span>
@@ -605,29 +614,29 @@ export default function TripAskPage() {
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
               placeholder={currentMode?.placeholder ?? 'Ask about any destination…'}
               rows={3}
-              className="flex-1 bg-white border border-[#e8e0d6] rounded-2xl px-4 py-3.5 text-[#1a1410] placeholder:text-[#6b5f54]/40 text-sm resize-none focus:outline-none focus:border-[#C97552]/50 transition-colors leading-relaxed shadow-sm"
+              className="flex-1 bg-white/5 border border-white/12 rounded-2xl px-4 py-3.5 text-white placeholder:text-white/30 text-sm resize-none focus:outline-none focus:border-[#C97552]/50 focus:bg-white/7 transition-all leading-relaxed"
             />
             <MicButton onResult={text => setQuery(q => q ? q + ' ' + text : text)} disabled={false} />
           </div>
         </div>
 
-        {error && <p className="text-red-600/80 text-sm mb-4">{error}</p>}
+        {error && <p className="text-red-400/80 text-sm mb-4">{error}</p>}
 
         <button
           onClick={handleSubmit}
           disabled={!query.trim()}
-          className="w-full py-4 rounded-full bg-[#C97552] text-white font-medium text-sm disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[#b86642] transition-colors mb-8 shadow-sm"
+          className="w-full py-4 rounded-full bg-[#C97552] text-white font-medium text-sm disabled:opacity-35 disabled:cursor-not-allowed hover:bg-[#b86642] transition-colors mb-8 shadow-lg shadow-[#C97552]/20"
         >
           {currentMode ? `${currentMode.icon} Find ${currentMode.label.toLowerCase()} →` : 'Find places →'}
         </button>
 
         {/* Examples */}
         <div>
-          <p className="text-[10px] text-[#6b5f54]/50 font-label tracking-widest uppercase mb-3">Try asking</p>
+          <p className="text-[10px] text-white/25 font-label tracking-widest uppercase mb-3">Try asking</p>
           <div className="space-y-2">
             {EXAMPLE_QUERIES.map((ex, i) => (
               <button key={i} onClick={() => setQuery(ex)}
-                className="w-full text-left px-4 py-3.5 rounded-xl border border-[#e8e0d6] bg-white hover:border-[#C97552]/40 hover:bg-[#f2ede8] transition-all text-sm text-[#6b5f54] leading-relaxed shadow-sm">
+                className="w-full text-left px-4 py-3.5 rounded-xl border border-white/8 bg-white/4 hover:border-[#C97552]/35 hover:bg-white/6 transition-all text-sm text-white/50 leading-relaxed">
                 "{ex}"
               </button>
             ))}

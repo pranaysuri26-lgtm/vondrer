@@ -168,33 +168,38 @@ export default function TripsPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-[#111111]">
+    <div className="min-h-screen bg-[#0d1f35]">
 
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#111111]/90 backdrop-blur border-b border-white/8">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="w-9 h-9 rounded-full bg-white/8 flex items-center justify-center text-white/70 hover:bg-white/15 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
-            </svg>
-          </button>
-          <div className="flex-1">
-            <h1 className="text-white font-bold text-base">My Trips</h1>
-            {!loading && trips.length > 0 && (
-              <p className="text-white/40 text-xs mt-0.5">
-                {trips.length} trip{trips.length !== 1 ? 's' : ''}
-              </p>
-            )}
+      {/* Hero header */}
+      <div className="relative overflow-hidden">
+        {/* Atmospheric background */}
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-15"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1488085061387-422e29b40080?w=1200&q=80&auto=format')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/60 via-[#0d1f35]/80 to-[#0d1f35]" />
+
+        {/* Sticky top bar */}
+        <div className="relative z-10 max-w-2xl mx-auto px-4 pt-8 pb-10">
+          <p className="text-xs text-white/35 uppercase tracking-widest font-label mb-3">Your journeys</p>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h1 className="font-serif italic text-4xl text-white leading-tight">
+                My Trips
+              </h1>
+              {!loading && trips.length > 0 && (
+                <p className="text-white/40 text-sm mt-1">
+                  {trips.length} trip{trips.length !== 1 ? 's' : ''} planned
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => router.push('/plan/new')}
+              className="flex-shrink-0 flex items-center gap-2 bg-[#C97552] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#b86644] transition-colors shadow-lg shadow-[#C97552]/20 mb-1"
+            >
+              + Plan trip
+            </button>
           </div>
-          <button
-            onClick={() => router.push('/discover')}
-            className="px-4 py-2 bg-[#C97552] text-white text-sm font-semibold rounded-full hover:bg-[#b86644] transition-colors"
-          >
-            + New trip
-          </button>
         </div>
       </div>
 
@@ -221,15 +226,26 @@ export default function TripsPage() {
         ))}
 
         {!loading && !error && trips.length === 0 && (
-          <div className="text-center py-24">
-            <div className="text-5xl mb-4">🗺️</div>
-            <h2 className="text-white font-semibold text-lg mb-2">No trips yet</h2>
+          <div className="text-center py-16">
+            {/* Atmospheric empty state */}
+            <div className="relative w-full max-w-xs mx-auto mb-8 rounded-2xl overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&q=80&auto=format"
+                alt="Travel"
+                className="w-full h-40 object-cover opacity-40"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0d1f35] to-transparent" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-5xl">🗺️</span>
+              </div>
+            </div>
+            <h2 className="font-serif italic text-2xl text-white mb-2">No trips yet</h2>
             <p className="text-white/40 text-sm max-w-xs mx-auto leading-relaxed mb-8">
               Pick your destinations and we'll build a day-by-day itinerary — flights, hotels, everything.
             </p>
             <button
               onClick={() => router.push('/plan/new')}
-              className="bg-[#C97552] text-white text-sm font-semibold px-6 py-3.5 rounded-full hover:bg-[#b86644] transition-colors mb-4"
+              className="bg-[#C97552] text-white text-sm font-semibold px-6 py-3.5 rounded-full hover:bg-[#b86644] transition-colors shadow-lg shadow-[#C97552]/20 mb-4"
             >
               Plan your first trip →
             </button>

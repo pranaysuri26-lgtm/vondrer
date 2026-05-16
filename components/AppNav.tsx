@@ -84,8 +84,8 @@ export default function AppNav() {
 
   // ── Desktop top nav ─────────────────────────────────────────────────────────
   const DesktopNav = (
-    <nav className="hidden md:flex sticky top-0 z-30 bg-[#faf8f5]/95 backdrop-blur-md border-b border-[#e8e0d6] px-8 h-14 items-center justify-between">
-      <span className="font-serif italic text-xl text-[#1a1410] select-none">Voya</span>
+    <nav className="hidden md:flex sticky top-0 z-30 bg-[#0d1f35]/95 backdrop-blur-md border-b border-white/8 px-8 h-14 items-center justify-between">
+      <span className="font-serif italic text-xl text-white/90 select-none tracking-wide">Voya</span>
 
       <div className="flex items-center gap-1">
         {TABS.map(tab => {
@@ -94,10 +94,10 @@ export default function AppNav() {
             <button
               key={tab.key}
               onClick={() => handleTab(tab.key, tab.href)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm transition-colors ${
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm transition-all ${
                 active
-                  ? 'text-[#C97552]'
-                  : 'text-[#6b5f54] hover:text-[#1a1410]'
+                  ? 'text-[#C97552] bg-[#C97552]/8'
+                  : 'text-white/45 hover:text-white/80 hover:bg-white/5'
               }`}
             >
               <span className="text-base leading-none">{tab.icon}</span>
@@ -113,7 +113,7 @@ export default function AppNav() {
 
   // ── Mobile bottom nav ───────────────────────────────────────────────────────
   const MobileNav = (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#faf8f5]/98 backdrop-blur-md border-t border-[#e8e0d6] flex items-stretch h-14">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#0d1f35]/97 backdrop-blur-md border-t border-white/8 flex items-stretch h-14">
       {TABS.map(tab => {
         const active = isActive(tab.key)
         return (
@@ -122,11 +122,11 @@ export default function AppNav() {
             onClick={() => handleTab(tab.key, tab.href)}
             className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1"
           >
-            <span className={`text-lg leading-none transition-opacity ${active ? 'opacity-100' : 'opacity-40'}`}>
+            <span className={`text-lg leading-none transition-opacity ${active ? 'opacity-100' : 'opacity-35'}`}>
               {tab.icon}
             </span>
             <span className={`text-[8px] font-label tracking-wide uppercase transition-colors ${
-              active ? 'text-[#C97552]' : 'text-[#6b5f54]'
+              active ? 'text-[#C97552]' : 'text-white/35'
             }`}>
               {tab.label}
             </span>

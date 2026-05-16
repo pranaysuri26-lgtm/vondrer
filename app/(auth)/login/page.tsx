@@ -46,16 +46,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1f35] flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#0d1f35] relative flex flex-col items-center justify-center px-4 py-12">
+
+      {/* Atmospheric background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-10"
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1400&q=80&auto=format')" }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/60 to-[#0d1f35]" />
+
+      <div className="relative w-full max-w-md">
 
         {/* Wordmark */}
         <div className="text-center mb-10">
           <span className="font-serif italic text-3xl text-white/90 tracking-wide">Voya</span>
+          <p className="text-white/25 text-xs mt-1 font-label tracking-widest uppercase">Travel intelligence</p>
         </div>
 
         <div className="mb-8">
-          <h1 className="text-2xl font-light text-white mb-2">Welcome back</h1>
+          <h1 className="font-serif italic text-3xl text-white mb-2">Welcome back</h1>
           <p className="text-white/45 text-sm">Your recommendations are waiting.</p>
         </div>
 
@@ -134,4 +143,5 @@ export default function LoginPage() {
       </div>
     </div>
   )
+
 }

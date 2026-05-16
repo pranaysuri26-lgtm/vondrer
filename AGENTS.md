@@ -270,3 +270,19 @@ Renders `DayCard` / `BlockCard` components from `itinerary_json`.
 | Marquee strip | `public/landing.html` | Scrolling feature tags below hero |
 | Gem Score section | `public/landing.html` | New section explaining gem rating system |
 | Golden hour section | `public/landing.html` | Dark section — photo spots + Trip Ask |
+| **AppNav dark theme** | `components/AppNav.tsx` | Nav changed from parchment (light) → dark glass `#0d1f35/95` to match all pages |
+| **Trip Ask dark theme** | `app/(main)/plan/ask/page.tsx` | Full light→dark conversion — all components now use dark navy palette |
+| **Trips page** | `app/(main)/trips/page.tsx` | Fixed bg `#111111` → `#0d1f35`, added atmospheric hero + imagery |
+| **Atmospheric heroes** | All pages | Unsplash background images + gradient overlays on: discover, trips, profile, plan/day, plan/ask, deals, login, signup, passport |
+| **Passport page** | `app/(main)/passport/page.tsx` | Visual redesign — passport book, stamp preview grid, CTA |
+
+### UI Conventions (Dark Theme)
+All authenticated pages use `bg-[#0d1f35]` (navy). Atmospheric hero sections use:
+```html
+<div class="relative overflow-hidden">
+  <div class="absolute inset-0 bg-cover bg-center opacity-12" style="background-image: url('...unsplash...')" />
+  <div class="absolute inset-0 bg-gradient-to-b from-[#0d1f35]/40 to-[#0d1f35]" />
+  <div class="relative ..."><!-- content --></div>
+</div>
+```
+Opacity range 8–15% keeps images subtle so white text remains readable.

@@ -815,9 +815,9 @@ function ImageCarousel({ dest, compact = false }: { dest: RecommendedDestination
       {/* Shimmer while fetching */}
       {images.length === 0 && (
         <>
-          <div className="absolute inset-0 bg-white animate-pulse" />
+          <div className="absolute inset-0 animate-pulse" style={{ background: 'linear-gradient(135deg,#2a2a2a,#1a1a1a)' }} />
           <div className="absolute inset-0 flex items-end p-4">
-            <span className="font-serif italic text-[#A8A09A] text-2xl">{dest.name}</span>
+            <span className="font-serif italic text-white/20 text-2xl">{dest.name}</span>
           </div>
         </>
       )}

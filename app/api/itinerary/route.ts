@@ -635,11 +635,26 @@ Skew all recommendations toward these themes. When two options are equal quality
     const effectivePace = forcedRelaxed ? 'relaxed' : (trip_pace ?? 'balanced')
     switch (effectivePace) {
       case 'packed':
-        return `PACE: PACKED — Start days at 8am. Up to 3 activities per time block. Minimize downtime. Maximum coverage.`
+        return `PACE: PACKED — This is an ambitious traveller. Start days at 7:30–8am.
+Target 9–12 activities per day across all blocks.
+Morning: 3 stops. Afternoon: 3–4 stops. Dinner: 1 restaurant. Evening: 2 stops.
+Use also_visit generously — every block should have 2–3 items.
+No dead time, no "rest at hotel", no padding. Every hour counts.`
+
       case 'relaxed':
-        return `PACE: RELAXED — Start days 9–10am. 1 main activity per block. Include café stops and rest points. End days by 9pm. Use language like "take your time here", "no need to rush". ${forcedRelaxed && trip_pace !== 'relaxed' ? `\nPace adjusted for accessibility needs in this group.` : ''}`
+        return `PACE: RELAXED — Leisurely traveller. Start days 9–10am.
+Target 4–5 activities per day. 1–2 stops per block max.
+Include at least one café sit-down per day. End by 9pm.
+Language: "take your time", "no need to rush", "linger here".
+${forcedRelaxed && trip_pace !== 'relaxed' ? `Pace adjusted for accessibility needs in this group.` : ''}`
+
       default:
-        return `PACE: BALANCED — 2 activities per time block. One rest period per day. Realistic transit between spots.`
+        return `PACE: BALANCED — Active adult travellers who want a full, satisfying day.
+Target 6–8 activities per day across all blocks. This is the MINIMUM for a good trip.
+Morning: 2 stops (e.g. breakfast spot + nearby attraction). Afternoon: 2–3 stops. Dinner: 1 restaurant. Evening: 1–2 stops.
+Use also_visit for the second stop in each block. A day with only 3–4 total activities feels empty and wastes the trip.
+Real example of a great balanced day: breakfast at a local café → walk through a neighbourhood market → afternoon at a landmark → nearby viewpoint → dinner at a specific restaurant → evening dessert or bar.
+That is 6 stops. That is the baseline. Aim higher.`
     }
   })()
 
@@ -1042,8 +1057,10 @@ DINNER RULES — MANDATORY:
 - Last day with early departure: use dinner slot for farewell lunch
 
 GAP-FILLING RULES:
-- Every empty slot must have a named recommendation — never just "free time"
-- Slots with 0 user picks: AI adds the best local option for that time + neighbourhood
+- Every slot must be full. Never just "free time" without a named recommendation.
+- If user picks don't fill a block, the AI MUST add the best local activities to hit the target count.
+- A block with only 1 activity is always underfilled unless it's dinner or a specifically time-consuming activity (full-day hike, theme park, etc.).
+- Think like a knowledgeable local friend planning a trip for an energetic adult — they would NEVER suggest only 3 things for a full day.
 
 ABSOLUTE RULES:
 - SPECIFIC real place names only — never "a local restaurant" or "a park"

@@ -103,18 +103,63 @@ function AnimatedCross({ trigger }: { trigger: boolean }) {
   )
 }
 
+// ─── Lazy destination image ───────────────────────────────────────────────────
+// Fetches one image from the destination-image API on mount.
+// Shows a shimmer placeholder while loading, then crossfades in.
+
+function DestImage({
+  query, className, style,
+}: {
+  query:     string
+  className?: string
+  style?:    React.CSSProperties
+}) {
+  const [url,     setUrl]     = useState<string | null>(null)
+  const [loaded,  setLoaded]  = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/destination-image?q=${encodeURIComponent(query)}&count=1`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled) setUrl(d.url ?? null) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [query])
+
+  return (
+    <div className={`relative overflow-hidden bg-[#E8E0D6] ${className ?? ''}`} style={style}>
+      {/* shimmer */}
+      {!loaded && (
+        <div className="absolute inset-0 animate-pulse"
+          style={{ background: 'linear-gradient(135deg,#D8D0C4,#EDE5D8)' }} />
+      )}
+      {url && (
+        <img
+          src={url}
+          alt=""
+          className="w-full h-full object-cover transition-opacity duration-500"
+          style={{ opacity: loaded ? 1 : 0 }}
+          onLoad={() => setLoaded(true)}
+        />
+      )}
+    </div>
+  )
+}
+
 // ─── Card detail sheet ────────────────────────────────────────────────────────
 
 function CardDetailSheet({
   card,
+  destination,
   isPicked,
   onPick,
   onClose,
 }: {
-  card:     PlanActivityCard
-  isPicked: boolean
-  onPick:   () => void
-  onClose:  () => void
+  card:        PlanActivityCard
+  destination: string
+  isPicked:    boolean
+  onPick:      () => void
+  onClose:     () => void
 }) {
   const meta = getCategoryMeta(card.category)
   const [visible,   setVisible]   = useState(false)
@@ -145,27 +190,28 @@ function CardDetailSheet({
     setTimeout(() => { onPick(); close() }, 520)
   }
 
+  const imgQuery = `${card.name} ${destination}`
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.28s ease' }}
         onClick={() => !animating && close()}
       />
 
-      {/* Sheet — bottom sheet on mobile, centered card on desktop */}
+      {/* Sheet */}
       <div
-        className="relative w-full max-w-lg rounded-t-[28px] sm:rounded-3xl border-t sm:border border-x border-white/[0.11] shadow-2xl overflow-hidden sm:max-h-[85vh] sm:overflow-y-auto"
+        className="relative w-full max-w-lg rounded-t-[28px] sm:rounded-3xl border-t sm:border border-x border-[#E8E0D6] shadow-2xl overflow-hidden sm:max-h-[90vh] sm:overflow-y-auto bg-[#FAF8F5]"
         style={{
-          background: 'linear-gradient(160deg, #0f2035 0%, #0a1624 100%)',
           transform:  visible ? 'translateY(0) scale(1)' : 'translateY(100%) scale(0.97)',
           transition: 'transform 0.32s cubic-bezier(0.32,0.72,0,1)',
         }}
       >
         {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-9 h-[3px] rounded-full bg-white/18"/>
+        <div className="flex justify-center pt-3 pb-0">
+          <div className="w-9 h-[3px] rounded-full bg-[#D8D0C4]"/>
         </div>
 
         {animating ? (
@@ -173,89 +219,97 @@ function CardDetailSheet({
             {action === 'pick' ? (
               <>
                 <AnimatedCheck trigger />
-                <p className="text-emerald-400 font-semibold mt-4 text-sm tracking-wide">Added to your trip</p>
+                <p className="text-emerald-600 font-semibold mt-4 text-sm tracking-wide">Added to your trip</p>
               </>
             ) : (
               <>
                 <AnimatedCross trigger />
-                <p className="text-rose-400/80 font-semibold mt-4 text-sm tracking-wide">Removed</p>
+                <p className="text-rose-500/80 font-semibold mt-4 text-sm tracking-wide">Removed</p>
               </>
             )}
           </div>
         ) : (
-          <div className="px-6 pb-8 pt-3">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <span className={`text-[10px] font-bold uppercase tracking-widest ${meta.colour}`}>
-                {card.category}
-              </span>
-              <button onClick={close}
-                className="w-7 h-7 rounded-full bg-[#F0EBE3] flex items-center justify-center text-[#7A6E64] hover:bg-[#E2D8CC] transition-colors">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
+          <>
+            {/* Hero image */}
+            <DestImage
+              query={imgQuery}
+              className="w-full h-44 sm:h-52"
+            />
 
-            {/* Name */}
-            <h2 className="text-[#1A1A1A] font-bold text-[22px] leading-tight tracking-tight mb-1">
-              {card.name}
-            </h2>
-            <p className="text-[#6b5f54] text-sm mb-4 leading-relaxed">{card.tagline}</p>
-
-            <div className="h-px bg-white/[0.07] mb-4"/>
-
-            {/* Why */}
-            <p className="text-[#3A3430] text-[13px] leading-relaxed mb-5">{card.why}</p>
-
-            {/* Metadata pills */}
-            <div className="flex flex-wrap gap-2 mb-5">
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] border border-[#E8E0D6] text-xs">
-                <PriceBadge price={card.price} />
-              </span>
-              <span className="px-3 py-1.5 rounded-full bg-white/[0.06] border border-[#E8E0D6] text-xs text-[#6b5f54]">
-                {card.duration}
-              </span>
-              <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/[0.06] border border-[#E8E0D6] text-xs text-[#6b5f54]">
-                <svg className="w-3 h-3 text-[#9A8E7E] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                </svg>
-                {card.neighbourhood}
-              </span>
-            </div>
-
-            {card.related_to && (
-              <p className="text-[#C97552]/55 text-xs mb-5">↳ {card.related_to}</p>
-            )}
-
-            {/* Actions */}
-            {isPicked ? (
-              <div className="flex gap-3">
-                <button onClick={handleRemove}
-                  className="flex-1 py-3.5 rounded-2xl border border-rose-500/25 bg-rose-500/7 text-rose-400 text-sm font-semibold hover:bg-rose-500/14 transition-colors">
-                  Remove ✗
-                </button>
+            <div className="px-6 pb-8 pt-5">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <span className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${meta.colour}`}>
+                  {card.category}
+                </span>
                 <button onClick={close}
-                  className="flex-1 py-3.5 rounded-2xl bg-[#F5F0EA] border border-[#E2D8CE] text-[#5A504A] text-sm font-semibold hover:bg-[#E8E0D4] transition-colors">
-                  Keep ✓
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-3">
-                <button onClick={close}
-                  className="py-3.5 px-5 rounded-2xl border border-[#E2D8CE] text-[#7A6E64] text-sm font-semibold hover:bg-white transition-colors">
-                  Skip ✗
-                </button>
-                <button onClick={handlePick}
-                  className="flex-1 py-3.5 rounded-2xl bg-[#C97552] text-white text-sm font-bold hover:bg-[#b86644] transition-colors flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                  className="w-7 h-7 rounded-full bg-[#F0EBE3] border border-[#E0D8D0] flex items-center justify-center text-[#6b5f54] hover:bg-[#E2D8CC] transition-colors flex-shrink-0">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
-                  Pick it
                 </button>
               </div>
-            )}
-          </div>
+
+              {/* Name */}
+              <h2 className="text-[#1A1A1A] font-bold text-[22px] leading-tight tracking-tight mb-1">
+                {card.name}
+              </h2>
+              <p className="text-[#6b5f54] text-sm mb-4 leading-relaxed">{card.tagline}</p>
+
+              <div className="h-px bg-[#E8E0D6] mb-4"/>
+
+              {/* Why */}
+              <p className="text-[#3A3430] text-[13px] leading-relaxed mb-5">{card.why}</p>
+
+              {/* Metadata pills */}
+              <div className="flex flex-wrap gap-2 mb-5">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#E8E0D6] text-xs">
+                  <PriceBadge price={card.price} />
+                </span>
+                <span className="px-3 py-1.5 rounded-full bg-white border border-[#E8E0D6] text-xs text-[#6b5f54]">
+                  {card.duration}
+                </span>
+                <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white border border-[#E8E0D6] text-xs text-[#6b5f54]">
+                  <svg className="w-3 h-3 text-[#9A8E7E] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  </svg>
+                  {card.neighbourhood}
+                </span>
+              </div>
+
+              {card.related_to && (
+                <p className="text-[#C97552]/70 text-xs mb-5">↳ {card.related_to}</p>
+              )}
+
+              {/* Actions */}
+              {isPicked ? (
+                <div className="flex gap-3">
+                  <button onClick={handleRemove}
+                    className="flex-1 py-3.5 rounded-2xl border border-rose-500/25 bg-rose-500/8 text-rose-500 text-sm font-semibold hover:bg-rose-500/15 transition-colors">
+                    Remove ✗
+                  </button>
+                  <button onClick={close}
+                    className="flex-1 py-3.5 rounded-2xl bg-[#F5F0EA] border border-[#E2D8CE] text-[#5A504A] text-sm font-semibold hover:bg-[#E8E0D4] transition-colors">
+                    Keep ✓
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <button onClick={close}
+                    className="py-3.5 px-5 rounded-2xl border border-[#E2D8CE] text-[#7A6E64] text-sm font-semibold hover:bg-white transition-colors">
+                    Skip ✗
+                  </button>
+                  <button onClick={handlePick}
+                    className="flex-1 py-3.5 rounded-2xl bg-[#C97552] text-white text-sm font-bold hover:bg-[#b86644] transition-colors flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Pick it
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -301,12 +355,14 @@ function NewCardWrapper({
 
 function ActivityCard({
   card,
+  destination,
   picked,
   onExpand,
 }: {
-  card:     PlanActivityCard
-  picked:   boolean
-  onExpand: (card: PlanActivityCard) => void
+  card:        PlanActivityCard
+  destination: string
+  picked:      boolean
+  onExpand:    (card: PlanActivityCard) => void
 }) {
   const meta = getCategoryMeta(card.category)
 
@@ -315,51 +371,55 @@ function ActivityCard({
       onClick={() => onExpand(card)}
       className={`
         group relative w-full text-left rounded-2xl overflow-hidden transition-all duration-200
-        border-t-2 ${meta.border}
         ${picked
-          ? 'border border-[#C97552]/40 shadow-[0_0_24px_rgba(201,117,82,0.09)]'
-          : 'border border-[#E8E0D6] hover:border-white/18'
+          ? 'border-2 border-[#C97552]/60 shadow-[0_0_20px_rgba(201,117,82,0.12)]'
+          : 'border border-[#E8E0D6] hover:border-[#C8C0B4] hover:shadow-md'
         }
+        bg-white
       `}
-      style={{
-        background: picked
-          ? 'linear-gradient(145deg, rgba(201,117,82,0.07) 0%, rgba(13,31,53,0.9) 100%)'
-          : `linear-gradient(145deg, ${meta.gradFrom} 0%, rgba(13,31,53,0.9) 100%)`,
-      }}
     >
+      {/* Photo strip */}
+      <DestImage
+        query={`${card.name} ${destination}`}
+        className="w-full h-28 rounded-none"
+      />
+
+      {/* Category colour accent bar */}
+      <div className={`h-[2px] w-full border-t-2 ${meta.border}`} />
+
       {/* Picked badge */}
       {picked && (
-        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#C97552] flex items-center justify-center z-10 shadow-sm">
-          <svg className="w-2.5 h-2.5 text-[#1A1A1A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+        <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-[#C97552] flex items-center justify-center z-10 shadow-md">
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
         </div>
       )}
 
-      <div className="p-4">
+      <div className="p-3.5">
         {/* Category */}
-        <div className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${picked ? 'text-[#C97552]' : meta.colour}`}>
+        <div className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${picked ? 'text-[#C97552]' : meta.colour}`}>
           {card.category}
         </div>
 
-        {/* Name — hero */}
-        <h3 className={`font-bold text-[15px] leading-snug mb-1.5 pr-6 transition-colors ${picked ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]/88 group-hover:text-[#1A1A1A]'}`}>
+        {/* Name */}
+        <h3 className="font-bold text-[14px] leading-snug mb-1.5 text-[#1A1A1A] pr-6 group-hover:text-[#C97552] transition-colors line-clamp-2">
           {card.name}
         </h3>
 
         {/* Tagline */}
-        <p className="text-[#1A1A1A]/38 text-[11px] leading-relaxed mb-3 line-clamp-2">
+        <p className="text-[#6b5f54] text-[11px] leading-relaxed mb-3 line-clamp-2">
           {card.tagline}
         </p>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-[#E8E0D6]">
+        <div className="flex items-center justify-between pt-2.5 border-t border-[#F0EBE3]">
           <div className="flex items-center gap-1.5">
             <PriceBadge price={card.price} />
-            <span className="text-[#1A1A1A]/18 text-[10px]">·</span>
+            <span className="text-[#C8C0B4] text-[10px]">·</span>
             <span className="text-[#8A7E6E] text-[10px]">{card.duration}</span>
           </div>
-          <span className="text-[#1A1A1A]/22 text-[9px] truncate max-w-[80px]">{card.neighbourhood}</span>
+          <span className="text-[#A8A09A] text-[9px] truncate max-w-[80px]">{card.neighbourhood}</span>
         </div>
       </div>
     </button>
@@ -819,6 +879,7 @@ export default function AIPlanPage() {
                 >
                   <ActivityCard
                     card={card}
+                    destination={destination}
                     picked={!!picked.find(p => p.id === card.id)}
                     onExpand={setExpandedCard}
                   />
@@ -884,6 +945,7 @@ export default function AIPlanPage() {
       {expandedCard && (
         <CardDetailSheet
           card={expandedCard}
+          destination={destination}
           isPicked={!!picked.find(p => p.id === expandedCard.id)}
           onPick={() => togglePick(expandedCard)}
           onClose={() => setExpandedCard(null)}

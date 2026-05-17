@@ -104,31 +104,40 @@ function AnimatedCross({ trigger }: { trigger: boolean }) {
 }
 
 // ─── Lazy destination image ───────────────────────────────────────────────────
-// Fetches one image from the destination-image API on mount.
-// Shows a shimmer placeholder while loading, then crossfades in.
+// Shows a destination photo. If `preloadedUrl` is supplied the component never
+// fires its own fetch — it just crossfades in the URL immediately on mount.
+// When no preloaded URL is available it falls back to a direct API fetch.
 
 function DestImage({
-  query, className, style,
+  query, preloadedUrl, className, style,
 }: {
-  query:     string
-  className?: string
-  style?:    React.CSSProperties
+  query?:        string
+  preloadedUrl?: string | null
+  className?:    string
+  style?:        React.CSSProperties
 }) {
-  const [url,     setUrl]     = useState<string | null>(null)
-  const [loaded,  setLoaded]  = useState(false)
+  const [url,    setUrl]    = useState<string | null>(preloadedUrl ?? null)
+  const [loaded, setLoaded] = useState(false)
 
+  // Keep in sync when parent resolves the preloaded URL after mount
   useEffect(() => {
+    if (preloadedUrl) setUrl(preloadedUrl)
+  }, [preloadedUrl])
+
+  // Only fire own fetch when no preloaded URL is available
+  useEffect(() => {
+    if (preloadedUrl || !query) return
     let cancelled = false
     fetch(`/api/destination-image?q=${encodeURIComponent(query)}&count=1`)
       .then(r => r.json())
       .then(d => { if (!cancelled) setUrl(d.url ?? null) })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [query])
+  }, [query, preloadedUrl])
 
   return (
     <div className={`relative overflow-hidden bg-[#E8E0D6] ${className ?? ''}`} style={style}>
-      {/* shimmer */}
+      {/* shimmer — hide once image has painted */}
       {!loaded && (
         <div className="absolute inset-0 animate-pulse"
           style={{ background: 'linear-gradient(135deg,#D8D0C4,#EDE5D8)' }} />
@@ -154,12 +163,14 @@ function CardDetailSheet({
   isPicked,
   onPick,
   onClose,
+  imageUrl,
 }: {
   card:        PlanActivityCard
   destination: string
   isPicked:    boolean
   onPick:      () => void
   onClose:     () => void
+  imageUrl?:   string | null
 }) {
   const meta = getCategoryMeta(card.category)
   const [visible,   setVisible]   = useState(false)
@@ -190,7 +201,7 @@ function CardDetailSheet({
     setTimeout(() => { onPick(); close() }, 520)
   }
 
-  const imgQuery = `${card.name} ${destination}`
+  const imgQuery = `${card.neighbourhood} ${destination}`
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4">
@@ -232,6 +243,7 @@ function CardDetailSheet({
           <>
             {/* Hero image */}
             <DestImage
+              preloadedUrl={imageUrl}
               query={imgQuery}
               className="w-full h-44 sm:h-52"
             />
@@ -357,11 +369,13 @@ function ActivityCard({
   card,
   destination,
   picked,
+  imageUrl,
   onExpand,
 }: {
   card:        PlanActivityCard
   destination: string
   picked:      boolean
+  imageUrl?:   string | null
   onExpand:    (card: PlanActivityCard) => void
 }) {
   const meta = getCategoryMeta(card.category)
@@ -380,7 +394,8 @@ function ActivityCard({
     >
       {/* Photo strip */}
       <DestImage
-        query={`${card.name} ${destination}`}
+        preloadedUrl={imageUrl}
+        query={`${card.neighbourhood} ${destination}`}
         className="w-full h-28 rounded-none"
       />
 
@@ -685,6 +700,9 @@ export default function AIPlanPage() {
   const [onboarding,   setOnboarding]   = useState<OnboardingProfile | null>(null)
   const [expandedCard, setExpandedCard] = useState<PlanActivityCard | null>(null)
 
+  // imageMap: card.id → resolved image URL (prefetched in parallel when cards arrive)
+  const [imageMap, setImageMap] = useState<Record<string, string>>({})
+
   // Refs to avoid stale closures
   const pickedRef     = useRef<PlanActivityCard[]>([])
   const onboardingRef = useRef<OnboardingProfile | null>(null)
@@ -695,6 +713,40 @@ export default function AIPlanPage() {
   useEffect(() => { onboardingRef.current = onboarding }, [onboarding])
   useEffect(() => { allCardsRef.current   = allCards   }, [allCards])
   useEffect(() => { roundNumRef.current   = roundNum   }, [roundNum])
+
+  // ── Parallel image prefetch — fires for every new batch of cards ─────────
+  // Uses neighbourhood as query (e.g. "Mission District San Francisco") which
+  // reliably hits Wikipedia. Falls back to the card name if neighbourhood is
+  // the same as destination (e.g. day trips like "Point Reyes").
+  useEffect(() => {
+    const unloaded = allCards.filter(c => !(c.id in imageMap))
+    if (unloaded.length === 0) return
+
+    Promise.all(
+      unloaded.map(async (card) => {
+        // Build a neighbourhood-first query; fall back to the activity name for day trips
+        const nbhd = card.neighbourhood?.trim() ?? ''
+        const q = nbhd && nbhd.toLowerCase() !== destination.toLowerCase()
+          ? `${nbhd} ${destination}`
+          : `${card.name} ${destination}`
+        try {
+          const d = await fetch(
+            `/api/destination-image?q=${encodeURIComponent(q)}&count=1`
+          ).then(r => r.json())
+          return { id: card.id, url: (d.url as string | null) ?? null }
+        } catch {
+          return { id: card.id, url: null }
+        }
+      })
+    ).then(results => {
+      setImageMap(prev => {
+        const next = { ...prev }
+        results.forEach(({ id, url }) => { if (url) next[id] = url })
+        return next
+      })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCards])
 
   // ── Load onboarding ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -881,6 +933,7 @@ export default function AIPlanPage() {
                     card={card}
                     destination={destination}
                     picked={!!picked.find(p => p.id === card.id)}
+                    imageUrl={imageMap[card.id] ?? null}
                     onExpand={setExpandedCard}
                   />
                 </NewCardWrapper>
@@ -949,6 +1002,7 @@ export default function AIPlanPage() {
           isPicked={!!picked.find(p => p.id === expandedCard.id)}
           onPick={() => togglePick(expandedCard)}
           onClose={() => setExpandedCard(null)}
+          imageUrl={imageMap[expandedCard.id] ?? null}
         />
       )}
 

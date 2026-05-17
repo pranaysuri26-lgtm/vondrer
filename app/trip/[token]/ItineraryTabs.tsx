@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
 import type { SunTimes } from '@/lib/sun'
 import EditableBlock from './EditableBlock'
+import BudgetPanel from './BudgetPanel'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -303,7 +304,40 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
     }))
   })
 
-  const [activeTab, setActiveTab] = useState<string>('overview')
+  const [activeTab,    setActiveTab]    = useState<string>('overview')
+  const [replanningDay, setReplanningDay] = useState<number | null>(null)
+  const [replanReason,  setReplanReason]  = useState('')
+  const [showReplanFor, setShowReplanFor] = useState<number | null>(null)
+
+  async function replanDay(destId: string, dayNumber: number, destName: string, country: string, existingDay: ItineraryDay) {
+    setReplanningDay(dayNumber)
+    setShowReplanFor(null)
+    try {
+      const res = await fetch(`/api/trip/${tripId}/replan-day`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          destination_id:   destId,
+          day_number:       dayNumber,
+          destination_name: destName,
+          country,
+          reason:           replanReason.trim() || undefined,
+          existing_day:     existingDay,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.day) return
+      // Patch the day into localDests
+      setLocalDests(prev => prev.map(dest => {
+        if (dest.id !== destId) return dest
+        const itinerary = (dest.itinerary_json ?? []).map(d => d.day === dayNumber ? data.day : d)
+        return { ...dest, itinerary_json: itinerary }
+      }))
+      setReplanReason('')
+    } finally {
+      setReplanningDay(null)
+    }
+  }
 
   // ── Booking URLs (constructed server-free from prop data) ──────────────────
   const primaryDest   = localDests[0]?.destination_name ?? ''
@@ -348,6 +382,7 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
             <TabBtn key={globalDay} id={`day-${globalDay}`} label={`Day ${globalDay}`} />
           ))}
           <TabBtn id="deals" label="✈️ Deals" />
+          {isOwner && tripId && <TabBtn id="budget" label="💰 Budget" />}
         </div>
       </div>
 
@@ -452,13 +487,40 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
               {/* Day card — sequential numbered timeline */}
               <div className="bg-white border border-[#E8E0D6] rounded-2xl overflow-hidden">
                 {/* Header */}
-                <div className="px-5 py-3.5 border-b border-[#F0EBE3] flex items-baseline justify-between">
-                  <h4 className="font-serif italic text-base text-[#1A1A1A] leading-tight pr-4">{day.title}</h4>
-                  <span className="text-xs text-[#9A8E7E] flex-shrink-0">
-                    Day {day.day}
-                    {canEdit && <span className="ml-2 text-[#C97552]/60">· hover to edit</span>}
-                  </span>
+                <div className="px-5 py-3.5 border-b border-[#F0EBE3] flex items-center justify-between gap-2">
+                  <h4 className="font-serif italic text-base text-[#1A1A1A] leading-tight">{day.title}</h4>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs text-[#9A8E7E]">Day {day.day}</span>
+                    {canEdit && (
+                      <button
+                        onClick={() => setShowReplanFor(showReplanFor === globalDay ? null : globalDay)}
+                        disabled={replanningDay !== null}
+                        className="text-[11px] text-[#C97552] border border-[#C97552]/30 rounded-full px-2.5 py-0.5 hover:bg-[#C97552]/5 disabled:opacity-40 transition-colors"
+                      >
+                        {replanningDay === globalDay ? '…regenerating' : '✨ Re-plan'}
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Re-plan panel */}
+                {canEdit && showReplanFor === globalDay && (
+                  <div className="px-5 py-3 bg-[#FFF8F5] border-b border-[#F0EBE3] flex gap-2">
+                    <input
+                      value={replanReason}
+                      onChange={e => setReplanReason(e.target.value)}
+                      placeholder="Optional: any constraints or vibe? (e.g. rainy day, more budget)"
+                      className="flex-1 text-xs border border-[#E0D8CF] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 bg-white"
+                      onKeyDown={e => { if (e.key === 'Enter') replanDay(dest.id, day.day, dest.destination_name, dest.country, day) }}
+                    />
+                    <button
+                      onClick={() => replanDay(dest.id, day.day, dest.destination_name, dest.country, day)}
+                      className="text-xs bg-[#C97552] text-white px-4 py-2 rounded-lg hover:bg-[#b86644] transition-colors"
+                    >
+                      Go
+                    </button>
+                  </div>
+                )}
 
                 {/* Stops */}
                 {(() => {
@@ -583,6 +645,10 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
               </a>
             </div>
           </div>
+        )}
+        {/* ─ Budget tab (owner only) ─────────────────────────────────────────── */}
+        {activeTab === 'budget' && isOwner && tripId && (
+          <BudgetPanel tripId={tripId} totalDays={totalDays} />
         )}
       </main>
     </>

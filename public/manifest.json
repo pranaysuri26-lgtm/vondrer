@@ -1,0 +1,42 @@
+{
+  "name": "Voya — AI Travel Planner",
+  "short_name": "Voya",
+  "description": "AI-powered travel itinerary planner. Plan, edit, and explore trips.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FAF8F5",
+  "theme_color": "#C97552",
+  "categories": ["travel", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Plan a trip",
+      "short_name": "Plan",
+      "description": "Start planning a new trip",
+      "url": "/plan",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My trips",
+      "short_name": "Trips",
+      "description": "View your saved trips",
+      "url": "/trips",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

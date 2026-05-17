@@ -7,6 +7,10 @@ import { geocodeLocation, fetchSunTimes } from '@/lib/sun'
 import type { SunTimes } from '@/lib/sun'
 import TripMap, { type MapPin } from './TripMap'
 import ItineraryTabs from './ItineraryTabs'
+import TripChat from './TripChat'
+import VisaStrip from './VisaStrip'
+import CollabPresence from './CollabPresence'
+import LiveModeStrip from './LiveModeStrip'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,6 +89,17 @@ export default async function SharedTripPage({
 
   // True only when the authenticated user owns this trip — enables inline editing.
   const isOwner = !!(user && user.id === trip.user_id)
+
+  // Fetch home country from user profile for visa intel (best-effort)
+  let homeCountry = ''
+  if (user) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('home_country')
+      .eq('user_id', user.id)
+      .single()
+    homeCountry = profile?.home_country ?? ''
+  }
 
   const { data: destinations } = await supabase
     .from('trip_destinations')
@@ -196,6 +211,32 @@ export default async function SharedTripPage({
           </div>
         )}
 
+        {/* Live trip mode — shown only when today falls within trip dates */}
+        {trip.start_date && trip.end_date && dests.length > 0 && (
+          <LiveModeStrip
+            startDate={trip.start_date}
+            endDate={trip.end_date}
+            dests={dests}
+          />
+        )}
+
+        {/* Collab presence — real-time viewer avatars (owner only, no SSR needed) */}
+        {isOwner && trip.id && (
+          <div className="max-w-2xl mx-auto px-4 pt-3">
+            <CollabPresence tripId={trip.id} />
+          </div>
+        )}
+
+        {/* Visa intel strip — only shown when we know home country */}
+        {dests.length > 0 && homeCountry && (
+          <div className="max-w-2xl mx-auto px-4 pt-3">
+            <VisaStrip
+              homeCountry={homeCountry}
+              destCountry={dests[0].country}
+            />
+          </div>
+        )}
+
         {/* Tab bar + itinerary content (client component) */}
         <ItineraryTabs
           dests={dests}
@@ -206,6 +247,15 @@ export default async function SharedTripPage({
           isOwner={isOwner}
           tripId={trip.id}
         />
+
+        {/* AI trip chat — floating button, owner only */}
+        {isOwner && trip.id && (
+          <TripChat
+            tripId={trip.id}
+            tripName={trip.trip_name}
+            dests={dests}
+          />
+        )}
       </div>
     </div>
   )

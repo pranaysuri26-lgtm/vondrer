@@ -1,0 +1,103 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import type { VisaInfo } from '@/app/api/visa/route'
+
+interface Props {
+  homeCountry:  string   // e.g. "United States"
+  destCountry:  string   // e.g. "Japan"
+}
+
+const STATUS_CONFIG: Record<VisaInfo['requirement'], { icon: string; label: string; bg: string; text: string; border: string }> = {
+  visa_free:       { icon: '✅', label: 'Visa-free',        bg: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-200' },
+  visa_on_arrival: { icon: '🟡', label: 'Visa on arrival',  bg: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-200'   },
+  e_visa:          { icon: '💻', label: 'e-Visa required',  bg: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-200'    },
+  visa_required:   { icon: '🔴', label: 'Visa required',    bg: 'bg-red-50',      text: 'text-red-700',     border: 'border-red-200'     },
+  unknown:         { icon: 'ℹ️', label: 'Check requirements',bg: 'bg-stone-50',   text: 'text-stone-700',   border: 'border-stone-200'   },
+}
+
+export default function VisaStrip({ homeCountry, destCountry }: Props) {
+  const [info,     setInfo]     = useState<VisaInfo | null>(null)
+  const [loading,  setLoading]  = useState(true)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    const key = `visa:${homeCountry}:${destCountry}`
+    const cached = sessionStorage.getItem(key)
+    if (cached) { setInfo(JSON.parse(cached)); setLoading(false); return }
+
+    fetch(`/api/visa?from=${encodeURIComponent(homeCountry)}&to=${encodeURIComponent(destCountry)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) { setInfo(d); sessionStorage.setItem(key, JSON.stringify(d)) }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [homeCountry, destCountry])
+
+  if (loading) return (
+    <div className="mx-4 mb-3 h-10 bg-[#F0EBE3] rounded-xl animate-pulse" />
+  )
+  if (!info) return null
+
+  const cfg = STATUS_CONFIG[info.requirement]
+
+  return (
+    <div className={`mx-4 mb-3 rounded-xl border ${cfg.border} ${cfg.bg} overflow-hidden`}>
+      {/* Summary row */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left"
+      >
+        <span className="text-base">{cfg.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className={`text-xs font-semibold uppercase tracking-widest ${cfg.text}`}>{cfg.label}</p>
+          <p className="text-xs text-[#5A504A] truncate mt-0.5">{info.summary}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {info.stay_days && (
+            <span className={`text-xs font-medium ${cfg.text}`}>{info.stay_days}d max</span>
+          )}
+          <span className={`text-xs transition-transform ${expanded ? 'rotate-180' : ''} ${cfg.text}`}>▾</span>
+        </div>
+      </button>
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="px-4 pb-4 space-y-3 border-t border-[#E8E0D6]">
+          {info.steps && info.steps.length > 0 && (
+            <div className="pt-3">
+              <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest mb-2">Steps</p>
+              <ol className="space-y-1.5">
+                {info.steps.map((step, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-[#5A504A]">
+                    <span className={`w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-white ${cfg.text.replace('text-', 'bg-').replace('-700', '-500')}`}>{i + 1}</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+            {info.cost       && <div><span className="text-[#9A8E7E]">Cost: </span><span className="text-[#1A1A1A]">{info.cost}</span></div>}
+            {info.processing && <div><span className="text-[#9A8E7E]">Processing: </span><span className="text-[#1A1A1A]">{info.processing}</span></div>}
+          </div>
+          {info.important && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              ⚠️ {info.important}
+            </p>
+          )}
+          <div className="flex items-center justify-between pt-1">
+            {info.official_url ? (
+              <a href={info.official_url} target="_blank" rel="noopener noreferrer"
+                className={`text-xs font-medium underline underline-offset-2 ${cfg.text}`}>
+                Official portal →
+              </a>
+            ) : <span />}
+            <p className="text-[10px] text-[#B8B0A4]">AI-generated · verify before travel · {info.last_verified}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

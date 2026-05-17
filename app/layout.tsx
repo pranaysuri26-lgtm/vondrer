@@ -22,16 +22,24 @@ const josefin = Josefin_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Voya — Find places most apps will never show you',
-  description:
-    'Three hidden gems a month, matched to your budget, your pace, your version of beautiful. Free, forever.',
-  keywords: ['travel', 'hidden gems', 'destinations', 'travel discovery'],
+  title: 'Voya — AI Travel Planner',
+  description: 'Plan, edit, and share AI-generated trip itineraries. Real photos, time windows, and local insights.',
+  keywords: ['travel', 'itinerary planner', 'AI travel', 'trip planning'],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable:        true,
+    statusBarStyle: 'default',
+    title:          'Voya',
+  },
   openGraph: {
-    title: 'Voya — Travel Discovery',
-    description: 'Find places most apps will never show you.',
-    url: 'https://getvoya.net',
-    siteName: 'Voya',
-    type: 'website',
+    title:       'Voya — AI Travel Planner',
+    description: 'Plan and share beautiful trip itineraries with AI.',
+    url:         'https://getvoya.net',
+    siteName:    'Voya',
+    type:        'website',
+  },
+  icons: {
+    apple: '/icons/icon-192.png',
   },
 }
 
@@ -47,6 +55,14 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[#FAF8F5] text-[#1A1A1A]">
         {children}
+        {/* PWA service worker registration */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+              navigator.serviceWorker.register('/sw.js').catch(() => {})
+            })
+          }
+        `}} />
       </body>
     </html>
   )

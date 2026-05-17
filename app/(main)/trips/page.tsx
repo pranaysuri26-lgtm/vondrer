@@ -221,7 +221,16 @@ export default function TripsPage() {
           <TripCard
             key={trip.id}
             trip={trip}
-            onClick={() => trip.share_token ? router.push(`/trip/${trip.share_token}`) : null}
+            onClick={() => {
+              if (!trip.share_token) return
+              // Planning trips → collaborate view (organizer can interact)
+              // Confirmed/completed → read-only share view
+              if (trip.status === 'planning') {
+                router.push(`/trip/${trip.share_token}/collaborate`)
+              } else {
+                router.push(`/trip/${trip.share_token}`)
+              }
+            }}
           />
         ))}
 

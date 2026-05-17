@@ -1054,8 +1054,8 @@ function SpecialOccasionSection({
         </div>
       )}
 
-      {/* ANNIVERSARY / HONEYMOON */}
-      {(occasion === 'anniversary' || occasion === 'honeymoon') && (
+      {/* ANNIVERSARY */}
+      {occasion === 'anniversary' && (
         <div className="ml-7 space-y-3">
           <div>
             <label className={labelCls}>Anniversary date (optional)</label>
@@ -1064,6 +1064,13 @@ function SpecialOccasionSection({
           {date && dateInTrip === true && (
             <p className="text-xs text-[#C97552]/80">💑 Anniversary falls during this trip — that evening gets the special dinner.</p>
           )}
+        </div>
+      )}
+
+      {/* HONEYMOON — no date needed, just celebratory context */}
+      {occasion === 'honeymoon' && (
+        <div className="ml-7">
+          <p className="text-xs text-[#C97552]/70">💍 Every day gets a romantic touch — candlelit dinners, scenic walks, and intimate spots over busy tourist sites.</p>
         </div>
       )}
 
@@ -1741,8 +1748,10 @@ function AddDestForm({ nextStart, onAdd, onCancel, prefillName = '', prefillCoun
   const [start,   setStart]   = useState(nextStart)
   const endDate = calcEndDate(start, days)
 
+  const sameAsCountry = name.trim().toLowerCase() === country.trim().toLowerCase() && name.trim() !== ''
+
   function submit() {
-    if (!name.trim() || !country.trim() || days < 1 || !start) return
+    if (!name.trim() || !country.trim() || days < 1 || !start || sameAsCountry) return
     onAdd(emptyDest(localId(), name.trim(), country.trim(), days, start, endDate))
   }
 
@@ -1754,15 +1763,18 @@ function AddDestForm({ nextStart, onAdd, onCancel, prefillName = '', prefillCoun
           <label className="block text-xs text-[#7A6E64] mb-1.5">City / Destination</label>
           <input type="text" value={name} onChange={e => setName(e.target.value)}
             placeholder="e.g. Miami" autoFocus
-            className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] placeholder-[#9A8E7E] focus:outline-none focus:border-[#C97552]/60 text-sm" />
+            className={`w-full bg-white border rounded-lg px-4 py-3 text-[#1A1A1A] placeholder-[#9A8E7E] focus:outline-none text-sm transition-colors ${sameAsCountry ? 'border-red-400/60 focus:border-red-400/80' : 'border-[#D8D0C4] focus:border-[#C97552]/60'}`} />
         </div>
         <div>
           <label className="block text-xs text-[#7A6E64] mb-1.5">Country</label>
           <input type="text" value={country} onChange={e => setCountry(e.target.value)}
             placeholder="e.g. United States"
-            className="w-full bg-white border border-[#D8D0C4] rounded-lg px-4 py-3 text-[#1A1A1A] placeholder-[#9A8E7E] focus:outline-none focus:border-[#C97552]/60 text-sm" />
+            className={`w-full bg-white border rounded-lg px-4 py-3 text-[#1A1A1A] placeholder-[#9A8E7E] focus:outline-none text-sm transition-colors ${sameAsCountry ? 'border-red-400/60 focus:border-red-400/80' : 'border-[#D8D0C4] focus:border-[#C97552]/60'}`} />
         </div>
       </div>
+      {sameAsCountry && (
+        <p className="text-xs text-red-500/80">Enter a specific city name — the city can&apos;t be the same as the country.</p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs text-[#7A6E64] mb-1.5">Start date</label>
@@ -1780,7 +1792,7 @@ function AddDestForm({ nextStart, onAdd, onCancel, prefillName = '', prefillCoun
         <p className="text-xs text-[#7A6E64]">{formatDateRange(start, endDate)} · {days} {days === 1 ? 'day' : 'days'}</p>
       )}
       <div className="flex gap-2 pt-1">
-        <button onClick={submit} disabled={!name.trim() || !country.trim()}
+        <button onClick={submit} disabled={!name.trim() || !country.trim() || sameAsCountry}
           className="flex-1 bg-[#C97552] text-white text-sm font-medium py-3 rounded-full disabled:opacity-40 hover:bg-[#b86644] transition-colors">
           Add to trip
         </button>
@@ -1860,22 +1872,22 @@ function EditableBlockView({
             ⋮
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-7 z-50 bg-[#1a2f48] border border-[#E2D8CE] rounded-xl shadow-xl w-48 overflow-hidden">
+            <div className="absolute right-0 top-7 z-50 bg-white border border-[#E2D8CE] rounded-xl shadow-xl shadow-black/8 w-48 overflow-hidden">
               <button
                 onClick={() => { setMenuOpen(false); onReplace() }}
-                className="w-full text-left px-4 py-3 text-sm text-[#3A3430] hover:bg-[#F0EBE3] transition-colors flex items-center gap-2"
+                className="w-full text-left px-4 py-3 text-sm text-[#3A3430] hover:bg-[#F5F0EA] transition-colors flex items-center gap-2"
               >
                 🔄 Replace this
               </button>
               <button
                 onClick={() => { setMenuOpen(false); onMove() }}
-                className="w-full text-left px-4 py-3 text-sm text-[#3A3430] hover:bg-[#F0EBE3] transition-colors flex items-center gap-2"
+                className="w-full text-left px-4 py-3 text-sm text-[#3A3430] hover:bg-[#F5F0EA] transition-colors flex items-center gap-2"
               >
                 ↕ Move to another day
               </button>
               <button
                 onClick={() => { setMenuOpen(false); onRemove() }}
-                className="w-full text-left px-4 py-3 text-sm text-red-400/80 hover:bg-[#F0EBE3] transition-colors flex items-center gap-2"
+                className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-[#F5F0EA] transition-colors flex items-center gap-2"
               >
                 ✕ Remove
               </button>
@@ -1904,8 +1916,14 @@ function EditableDayCard({
   onMove:    (slot: TimeSlot) => void
   onAdd:     (slot: TimeSlot) => void
 }) {
+  const allSlotsFilled = day.morning !== null && day.afternoon !== null && day.evening !== null
+
   function handleAddActivity() {
-    const firstNull: TimeSlot = day.morning === null ? 'morning' : day.afternoon === null ? 'afternoon' : 'evening'
+    const firstNull: TimeSlot | null =
+      day.morning   === null ? 'morning'   :
+      day.afternoon === null ? 'afternoon' :
+      day.evening   === null ? 'evening'   : null
+    if (!firstNull) return  // all slots full — button is disabled
     onAdd(firstNull)
   }
 
@@ -1953,12 +1971,18 @@ function EditableDayCard({
       </div>
       <div className="pt-2 border-t border-[#E8E0D6] flex items-center justify-between">
         <span className="text-xs text-[#C97552]/70">Day total: ~{day.day_total_estimate}</span>
-        <button
-          onClick={handleAddActivity}
-          className="text-xs text-[#8A7E6E] hover:text-[#5A504A] transition-colors"
-        >
-          + Add activity
-        </button>
+        {allSlotsFilled ? (
+          <span className="text-xs text-[#A8A09A]" title="Remove a slot first to add another">
+            All slots filled
+          </span>
+        ) : (
+          <button
+            onClick={handleAddActivity}
+            className="text-xs text-[#8A7E6E] hover:text-[#5A504A] transition-colors"
+          >
+            + Add activity
+          </button>
+        )}
       </div>
     </div>
   )

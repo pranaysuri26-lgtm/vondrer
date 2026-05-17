@@ -10,11 +10,16 @@ import type {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function todayISO()    { return new Date().toISOString().split('T')[0] }
-function tomorrowISO() {
-  const d = new Date(); d.setDate(d.getDate() + 1)
-  return d.toISOString().split('T')[0]
+function localDateISO(offset = 0): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
+function todayISO()    { return localDateISO(0) }
+function tomorrowISO() { return localDateISO(1) }
 function formatDateLabel(iso: string) {
   const d = new Date(iso + 'T12:00:00')
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
@@ -756,7 +761,7 @@ export default function PlanDayPage() {
         <div className="relative max-w-lg mx-auto w-full px-4 pt-10 pb-6">
           <p className="text-xs text-[#8A7E6E] uppercase tracking-widest font-label mb-3">Plan a Day</p>
           <h1 className="font-serif italic text-4xl text-[#1A1A1A] leading-tight mb-3">
-            Where are you<br />heading today?
+            Where are you<br />headed?
           </h1>
           <p className="text-[#6b5f54] text-sm">
             Type any place — a park, a drive, a neighbourhood, a beach. We'll build your day around the weather.
@@ -807,7 +812,7 @@ export default function PlanDayPage() {
               type="date"
               value={customDate}
               min={todayISO()}
-              max={(() => { const d = new Date(); d.setDate(d.getDate() + 6); return d.toISOString().split('T')[0] })()}
+              max={localDateISO(6)}
               onChange={e => setCustomDate(e.target.value)}
               className="w-full bg-white border border-[#E2D8CE] rounded-xl px-4 py-3 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"
             />

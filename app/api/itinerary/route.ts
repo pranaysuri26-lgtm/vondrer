@@ -910,14 +910,16 @@ Never schedule ANYTHING during these time slots. Zero exceptions.` : ''
   const skyDate     = start_date.replace(/-/g, '').slice(2)
   const skyscannerUrl = `https://www.skyscanner.com/transport/flights/${skyOrigin}/${skyDest}/${skyDate}/`
 
+  const todayStr = new Date().toISOString().split('T')[0]
   const flightSearchSection = body.searching_flights ? `
 FLIGHT RECOMMENDATION — USER HAS NOT BOOKED FLIGHTS YET:
 Trip: ${homeLabel} → ${destination}, ${start_date} to ${endDateStr}
+Today's date: ${todayStr}
 
 Include a "pre_trip.flight_recommendation" block in your JSON response with:
 {
   "best_arrival": "Morning flight — arrive by noon. Reason: [honest specific reason e.g. 'Arriving before noon gives a full afternoon in ${destination}. Evening arrivals waste Day 1 entirely.']",
-  "booking_advice": "[Honest advice for these specific dates — e.g. 'Summer peak — book at least 6 weeks ahead. Prices spike within 3 weeks of travel.']",
+  "booking_advice": "[Honest, forward-looking advice based on today being ${todayStr} and trip starting ${start_date}. Give specific lead time e.g. 'X weeks to go — book this week, prices will rise'. NEVER reference past months or dates that have already passed.]",
   "airport_to_hotel": "${getAirportTransit(destination)}",
   "skyscanner_url": "${skyscannerUrl}"
 }

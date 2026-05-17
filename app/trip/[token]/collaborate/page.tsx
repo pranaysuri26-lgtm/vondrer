@@ -77,37 +77,37 @@ function CommentBubble({
     <div className={[
       'rounded-xl p-3 space-y-2 border text-xs',
       comment.status === 'accepted'  ? 'bg-green-500/8 border-green-500/20' :
-      comment.status === 'dismissed' ? 'bg-white/3 border-white/6 opacity-50' :
-      'bg-white/5 border-white/10',
+      comment.status === 'dismissed' ? 'bg-[#F5F2ED] border-[#E8E0D6] opacity-50' :
+      'bg-[#FAF8F5] border-[#E8E0D6]',
     ].join(' ')}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <span className="text-white/70 font-medium">{comment.commenter_name || 'Anonymous'}</span>
-          {comment.status === 'accepted'  && <span className="ml-2 text-green-400/70">✓ Accepted</span>}
-          {comment.status === 'dismissed' && <span className="ml-2 text-white/30">Dismissed</span>}
+          <span className="text-[#2A2420] font-medium">{comment.commenter_name || 'Anonymous'}</span>
+          {comment.status === 'accepted'  && <span className="ml-2 text-green-600/70">✓ Accepted</span>}
+          {comment.status === 'dismissed' && <span className="ml-2 text-[#9A8E7E]">Dismissed</span>}
         </div>
-        <span className="text-white/25 flex-shrink-0">{new Date(comment.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+        <span className="text-[#A8A09A] flex-shrink-0">{new Date(comment.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
       </div>
-      <p className="text-white/65 leading-relaxed">{comment.comment}</p>
+      <p className="text-[#4A4440] leading-relaxed">{comment.comment}</p>
 
       <div className="flex items-center gap-3 pt-1">
         <button onClick={() => onVote(comment.id, 'up')}
-          className="flex items-center gap-1 text-white/40 hover:text-green-400 transition-colors">
+          className="flex items-center gap-1 text-[#8A7E6E] hover:text-green-600 transition-colors">
           👍 <span>{comment.votes_up}</span>
         </button>
         <button onClick={() => onVote(comment.id, 'down')}
-          className="flex items-center gap-1 text-white/40 hover:text-red-400 transition-colors">
+          className="flex items-center gap-1 text-[#8A7E6E] hover:text-red-500 transition-colors">
           👎 <span>{comment.votes_down}</span>
         </button>
 
         {isOrganizer && comment.status === 'pending' && (
           <div className="ml-auto flex gap-2">
             <button onClick={() => onAccept(comment.id)}
-              className="text-green-400/70 hover:text-green-400 border border-green-500/20 rounded-full px-2 py-0.5 transition-colors">
+              className="text-green-600/80 hover:text-green-700 border border-green-500/30 rounded-full px-2 py-0.5 transition-colors">
               Accept
             </button>
             <button onClick={() => onDismiss(comment.id)}
-              className="text-white/30 hover:text-white/50 border border-white/12 rounded-full px-2 py-0.5 transition-colors">
+              className="text-[#9A8E7E] hover:text-[#5A504A] border border-[#D8D0C4] rounded-full px-2 py-0.5 transition-colors">
               Dismiss
             </button>
           </div>
@@ -143,27 +143,27 @@ function BlockWithComments({
     if (!text.trim()) return
     onAddComment(destId, dayNum, slot, block.activity, text.trim())
     setText('')
-    setOpen(false)
+    // Stay open so the user can see their comment appear
   }
 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-white/30 uppercase tracking-widest">{slotLabel(slot)}</p>
+        <p className="text-xs text-[#8A7E6E] uppercase tracking-widest">{slotLabel(slot)}</p>
         <button
           onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors"
+          className="flex items-center gap-1 text-xs text-[#8A7E6E] hover:text-[#5A504A] transition-colors"
         >
           💬{pending > 0 && <span className="bg-[#C97552] text-white rounded-full text-[10px] px-1.5 py-0.5">{pending}</span>}
         </button>
       </div>
-      <p className="text-white/85 font-medium text-sm">{block.activity}</p>
-      <p className="text-white/55 text-sm leading-relaxed">{block.description}</p>
+      <p className="text-[#1A1A1A] font-medium text-sm">{block.activity}</p>
+      <p className="text-[#5A504A] text-sm leading-relaxed">{block.description}</p>
       {block.insider_tip && <p className="text-[#C97552]/80 text-xs italic">💡 {block.insider_tip}</p>}
-      <p className="text-white/30 text-xs">{block.estimated_cost}</p>
+      <p className="text-[#8A7E6E] text-xs">{block.estimated_cost}</p>
 
       {open && (
-        <div className="mt-3 space-y-3 border-t border-white/8 pt-3">
+        <div className="mt-3 space-y-3 border-t border-[#E8E0D6] pt-3">
           {comments.map(c => (
             <CommentBubble
               key={c.id} comment={c} isOrganizer={isOrganizer}
@@ -176,7 +176,7 @@ function BlockWithComments({
               onChange={e => setText(e.target.value)}
               rows={2}
               placeholder="Add a comment or suggestion…"
-              className="w-full bg-white/5 border border-white/12 rounded-lg px-3 py-2 text-white text-xs placeholder-white/25 focus:outline-none focus:border-[#C97552]/60 resize-none"
+              className="w-full bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 text-[#1A1A1A] text-xs placeholder-[#9A8E7E] focus:outline-none focus:border-[#C97552]/60 resize-none"
             />
             <div className="flex gap-2">
               <button onClick={submit} disabled={!text.trim()}
@@ -184,7 +184,7 @@ function BlockWithComments({
                 Send
               </button>
               <button onClick={() => setOpen(false)}
-                className="px-4 text-xs text-white/40 border border-white/12 rounded-full hover:border-white/25 transition-all">
+                className="px-4 text-xs text-[#7A6E64] border border-[#D8D0C4] rounded-full hover:border-[#C0B8AC] transition-all">
                 Cancel
               </button>
             </div>
@@ -308,7 +308,10 @@ export default function CollaboratePage({
     destId: string, day: number, slot: string, activity: string, text: string
   ) => {
     if (!trip || !commenterName) return
-    await anonClient.from('trip_comments').insert({
+
+    // Optimistic insert — show comment immediately without waiting for realtime
+    const optimistic: Comment = {
+      id:             `opt-${Date.now()}`,
       trip_id:        trip.id,
       destination_id: destId,
       day_number:     day,
@@ -316,7 +319,31 @@ export default function CollaboratePage({
       activity_name:  activity,
       comment:        text,
       commenter_name: commenterName,
-    })
+      votes_up:       0,
+      votes_down:     0,
+      status:         'pending',
+      created_at:     new Date().toISOString(),
+    }
+    setComments(prev => [...prev, optimistic])
+
+    try {
+      const { data, error } = await anonClient.from('trip_comments').insert({
+        trip_id:        trip.id,
+        destination_id: destId,
+        day_number:     day,
+        time_of_day:    slot,
+        activity_name:  activity,
+        comment:        text,
+        commenter_name: commenterName,
+      }).select().single()
+
+      if (!error && data) {
+        // Replace optimistic entry with real DB row
+        setComments(prev => prev.map(c => c.id === optimistic.id ? (data as Comment) : c))
+      }
+    } catch {
+      // Leave optimistic entry — user can still see their comment
+    }
   }, [trip, commenterName])
 
   const handleAccept = useCallback(async (id: string) => {
@@ -345,26 +372,26 @@ export default function CollaboratePage({
   // ── Render ────────────────────────────────────────────────────────────────────
 
   if (loading) return (
-    <div className="min-h-screen bg-[#0d1f35] flex items-center justify-center">
-      <div className="w-6 h-6 rounded-full border-2 border-white/20 border-t-[#C97552]"
+    <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+      <div className="w-6 h-6 rounded-full border-2 border-[#D8D0C4] border-t-[#C97552]"
         style={{ animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
   if (notFound || !trip) return (
-    <div className="min-h-screen bg-[#0d1f35] flex items-center justify-center">
-      <p className="text-white/40">Trip not found.</p>
+    <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center">
+      <p className="text-[#9A8E7E]">Trip not found.</p>
     </div>
   )
 
   // Name gate for non-organizers
   if (!isOrganizer && !nameSet) return (
-    <div className="min-h-screen bg-[#0d1f35] flex items-center justify-center p-4">
-      <div className="bg-white/4 border border-white/10 rounded-2xl max-w-sm w-full p-8 space-y-5 text-center">
-        <p className="text-xs text-white/35 uppercase tracking-widest">Collaborating on</p>
-        <h1 className="font-serif italic text-2xl text-white">{trip.trip_name}</h1>
-        <p className="text-white/50 text-sm">Enter your name so the group knows who&apos;s commenting.</p>
+    <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center p-4">
+      <div className="bg-white border border-[#E8E0D6] rounded-2xl max-w-sm w-full p-8 space-y-5 text-center shadow-sm">
+        <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">Collaborating on</p>
+        <h1 className="font-serif italic text-2xl text-[#1A1A1A]">{trip.trip_name}</h1>
+        <p className="text-[#6b5f54] text-sm">Enter your name so the group knows who&apos;s commenting.</p>
         <input
           type="text"
           value={nameInput}
@@ -372,7 +399,7 @@ export default function CollaboratePage({
           onKeyDown={e => e.key === 'Enter' && saveName()}
           placeholder="Your name"
           autoFocus
-          className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#C97552]/60"
+          className="w-full bg-white border border-[#D8D0C4] rounded-xl px-4 py-3 text-[#1A1A1A] text-sm placeholder-[#9A8E7E] focus:outline-none focus:border-[#C97552]/60"
         />
         <button onClick={saveName} disabled={!nameInput.trim()}
           className="w-full bg-[#C97552] text-white py-3 rounded-full font-medium text-sm disabled:opacity-40 hover:bg-[#b86644] transition-colors">
@@ -385,27 +412,27 @@ export default function CollaboratePage({
   const onlineNames = presence.map(p => p.name).filter(Boolean)
 
   return (
-    <div className="min-h-screen bg-[#0d1f35]">
+    <div className="min-h-screen bg-[#FAF8F5]">
       {/* Header */}
-      <div className="border-b border-white/8 sticky top-0 bg-[#0d1f35]/95 backdrop-blur z-20">
+      <div className="border-b border-[#E8E0D6] sticky top-0 bg-[#FAF8F5]/95 backdrop-blur z-20">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs text-white/35 uppercase tracking-widest mb-1">
+            <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-1">
               {isOrganizer ? 'Your trip' : 'Collaborating on'}
             </p>
-            <h1 className="font-serif italic text-xl text-white">{trip.trip_name}</h1>
+            <h1 className="font-serif italic text-xl text-[#1A1A1A]">{trip.trip_name}</h1>
           </div>
           <div className="text-right flex-shrink-0 space-y-1">
             {onlineNames.length > 0 && (
-              <p className="text-xs text-white/35">
+              <p className="text-xs text-[#9A8E7E]">
                 👁️ {onlineNames.slice(0, 3).join(', ')}{onlineNames.length > 3 ? ` +${onlineNames.length - 3}` : ''} viewing
               </p>
             )}
             {isOrganizer && pendingCount > 0 && (
-              <p className="text-xs text-[#C97552]/80">{pendingCount} suggestion{pendingCount > 1 ? 's' : ''} pending</p>
+              <p className="text-xs text-[#C97552]">{pendingCount} suggestion{pendingCount > 1 ? 's' : ''} pending</p>
             )}
             {!isOrganizer && (
-              <p className="text-xs text-white/30">Viewing as <span className="text-white/55">{commenterName}</span></p>
+              <p className="text-xs text-[#8A7E6E]">Viewing as <span className="text-[#4A4440]">{commenterName}</span></p>
             )}
           </div>
         </div>
@@ -419,18 +446,18 @@ export default function CollaboratePage({
 
           return (
             <section key={dest.id}>
-              <div className="border-t border-white/10 pt-6 mb-5">
-                <p className="text-xs text-white/35 uppercase tracking-widest mb-1">
+              <div className="border-t border-[#E8E0D6] pt-6 mb-5">
+                <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-1">
                   📍 {dest.destination_name.toUpperCase()}, {dest.country.toUpperCase()}
                   {' · '}
                   {dest.days === 1 ? `Day ${dayOffset + 1}` : `Days ${dayOffset + 1}–${dayOffset + dest.days}`}
                 </p>
-                <h2 className="font-serif italic text-2xl text-white">{dest.destination_name}</h2>
-                {dest.start_date && <p className="text-white/35 text-xs mt-0.5">{formatDate(dest.start_date)} – {formatDate(dest.end_date)}</p>}
+                <h2 className="font-serif italic text-2xl text-[#1A1A1A]">{dest.destination_name}</h2>
+                {dest.start_date && <p className="text-[#8A7E6E] text-xs mt-0.5">{formatDate(dest.start_date)} – {formatDate(dest.end_date)}</p>}
               </div>
 
               {days.length === 0 && (
-                <p className="text-white/30 text-sm italic py-4">No itinerary generated for this destination.</p>
+                <p className="text-[#9A8E7E] text-sm italic py-4">No itinerary generated for this destination.</p>
               )}
 
               <div className="space-y-4">
@@ -441,12 +468,12 @@ export default function CollaboratePage({
                     { slot: 'evening',   block: day.evening   },
                   ]
                   return (
-                    <div key={day.day} className="bg-white/4 border border-white/8 rounded-2xl p-5 space-y-4">
+                    <div key={day.day} className="bg-white border border-[#E8E0D6] rounded-2xl p-5 space-y-4">
                       <div className="flex items-baseline justify-between">
-                        <h4 className="font-serif italic text-base text-white">{day.title}</h4>
-                        <span className="text-xs text-white/25">Day {day.day}</span>
+                        <h4 className="font-serif italic text-base text-[#1A1A1A]">{day.title}</h4>
+                        <span className="text-xs text-[#9A8E7E]">Day {day.day}</span>
                       </div>
-                      <div className="space-y-4 divide-y divide-white/6">
+                      <div className="space-y-4 divide-y divide-[#F0EBE3]">
                         {slots.map(({ slot, block }, si) => {
                           const blockComments = comments.filter(c =>
                             c.destination_id === dest.id &&
@@ -472,7 +499,7 @@ export default function CollaboratePage({
                           )
                         })}
                       </div>
-                      <div className="pt-2 border-t border-white/8 flex justify-end">
+                      <div className="pt-2 border-t border-[#E8E0D6] flex justify-end">
                         <span className="text-xs text-[#C97552]/70">Day total: ~{day.day_total_estimate}</span>
                       </div>
                     </div>
@@ -484,13 +511,13 @@ export default function CollaboratePage({
         })}
 
         {/* Footer */}
-        <div className="border-t border-white/8 pt-8 text-center space-y-2">
-          <p className="text-white/25 text-xs">Tap 💬 on any activity to comment or suggest a change.</p>
+        <div className="border-t border-[#E8E0D6] pt-8 text-center space-y-2">
+          <p className="text-[#9A8E7E] text-xs">Tap 💬 on any activity to comment or suggest a change.</p>
           {isOrganizer && (
-            <p className="text-white/25 text-xs">You&apos;re the organizer — you can accept or dismiss suggestions.</p>
+            <p className="text-[#9A8E7E] text-xs">You&apos;re the organizer — you can accept or dismiss suggestions.</p>
           )}
           <a href={`/trip/${trip.share_token}`}
-            className="inline-block text-xs text-white/35 hover:text-white/55 mt-2 transition-colors">
+            className="inline-block text-xs text-[#8A7E6E] hover:text-[#5A504A] mt-2 transition-colors">
             View read-only version →
           </a>
         </div>

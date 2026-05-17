@@ -93,12 +93,14 @@ Your voice: direct, specific, never generic. Zero filler. You write like a local
 
 RULES:
 - Every spot must be real and specific — named places, specific dishes, actual neighbourhood names.
-- Never write anything that could appear on TripAdvisor's front page or a generic travel blog.
+- Never write anything that could appear on a generic travel blog. Avoid clichés.
 - food_spots must be places locals genuinely eat — not restaurants that appear on every "best of" list.
 - neighbourhoods must be described through what they feel like on foot, not their Wikipedia summary.
 - insider_tips must be things a tourist would never figure out on their own.
 - skip_these should be honest — specific tourist traps that locals actively avoid and why.
 - All text should be punchy, specific, and under 2 sentences per field unless instructed otherwise.
+- IMPORTANT: Do NOT skip iconic local landmarks just because tourists visit them too. Sukhna Lake in Chandigarh, Rock Garden in Chandigarh, etc. — these are places locals genuinely use and love. Include them in neighbourhoods or food_spots context if they are genuinely part of local life. The goal is the LOCAL angle on real places, not hiding real places.
+- skip_these should only list things that are genuinely bad value or overrated traps — never a well-loved local spot just because it's on a tourist map.
 
 OUTPUT: Return a single valid JSON object matching this schema exactly:
 {
@@ -209,11 +211,10 @@ export async function POST(req: NextRequest) {
         destination    = parts[0]
         country        = parts[parts.length - 1]
         state_province = state_province ?? (parts.length >= 3 ? parts[parts.length - 2] : undefined)
-      } else {
-        // Last resort — pass full string as destination, leave country blank
-        // GPT can still generate a guide with partial info
-        country = destination
       }
+      // If no comma (single city name like "Chandigarh"), leave country empty.
+      // The location string is just the city name and GPT will infer the country.
+      // DO NOT set country = destination (avoids "Chandigarh, Chandigarh" confusion).
     }
 
     // ── Supabase client (anon key — no auth required for guide cache) ──────────
@@ -247,9 +248,9 @@ export async function POST(req: NextRequest) {
 
     // ── Generate fresh ────────────────────────────────────────────────────────
     console.log(`[Guide] Generating fresh: ${key}`)
-    const location = state_province
-      ? `${destination}, ${state_province}, ${country}`
-      : `${destination}, ${country}`
+    const location = [destination, state_province, country]
+      .filter(Boolean)
+      .join(', ')
 
     const completion = await openai.chat.completions.create({
       model:       'gpt-4o-mini',

@@ -288,7 +288,7 @@ function CheckRow({
           'mt-0.5 flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors',
           checked
             ? 'bg-[#C97552] border-[#C97552]'
-            : 'border-white/25 bg-white',
+            : 'border-[#D8D0C4] bg-white',
         ].join(' ')}
       >
         {checked && (
@@ -2888,21 +2888,25 @@ function PlanNewInner() {
                   .filter(s => !destinations.some(d => d.name.toLowerCase() === s.name.toLowerCase()))
                   .map((s, i) => (
                     <button
-                      key={`${s.name}-${i}`}
-                      type="button"
-                      onClick={() => {
-                        setFormPrefillName(s.name)
-                        setFormPrefillCountry(s.country)
-                        setFormKey(k => k + 1)
-                        setShowAddForm(true)
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#E8E0D6] text-[#3A3430] text-xs hover:bg-[#EDE5D8] hover:border-[#CCC4B8] hover:text-[#1A1A1A] transition-all"
-                    >
-                      <span>{s.name}</span>
-                      <span className="text-[#C97552] font-medium">{s.match_score}%</span>
-                    </button>
+                        key={`${s.name}-${i}`}
+                        type="button"
+                        onClick={() => {
+                          // Auto-add with 3 default days — user can edit afterwards
+                          const DEFAULT_DAYS = 3
+                          const start = destinations.length > 0
+                            ? addDays(destinations[destinations.length - 1].end_date, 1)
+                            : new Date().toISOString().split('T')[0]
+                          const end = calcEndDate(start, DEFAULT_DAYS)
+                          addDestination(emptyDest(localId(), s.name, s.country, DEFAULT_DAYS, start, end))
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#E8E0D6] text-[#3A3430] text-xs hover:bg-[#C97552] hover:border-[#C97552] hover:text-white active:scale-95 transition-all cursor-pointer"
+                      >
+                        <span>+ {s.name}</span>
+                        <span className="opacity-70 font-medium">{s.match_score}%</span>
+                      </button>
                   ))}
               </div>
+              <p className="text-[10px] text-[#9A8E7E]">Tap to add · 3 days default, edit anytime</p>
             </div>
           )}
 

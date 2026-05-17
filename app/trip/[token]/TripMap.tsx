@@ -66,23 +66,47 @@ export default function TripMap({ pins }: TripMapProps) {
     let cancelled = false
 
     async function geocodeAll() {
-      const BATCH = 4          // parallel per round
-      const DELAY = 120        // ms between batches
+      const BATCH = 4    // parallel per round
+      const DELAY = 120  // ms between batches
 
+      // Step 1: get destination center for location bias so all pins land in
+      // the right country, not a false match on another continent.
+      let biasLat = 0
+      let biasLng = 0
+      try {
+        const firstPin = pins[0]
+        const destQ    = encodeURIComponent(`${firstPin.destination}, ${firstPin.country}`)
+        const destRes  = await fetch(`https://photon.komoot.io/api/?q=${destQ}&limit=1&lang=en`)
+        const destData = await destRes.json()
+        const destFeat = destData.features?.[0]
+        if (destFeat) {
+          ;[biasLng, biasLat] = destFeat.geometry.coordinates as [number, number]
+        }
+      } catch { /* fallback: no bias */ }
+
+      // Step 2: geocode each activity with location bias toward destination
       for (let i = 0; i < pins.length; i += BATCH) {
         if (cancelled) return
         const batch = pins.slice(i, i + BATCH)
 
         const results = await Promise.all(batch.map(async (pin): Promise<GeoPin | null> => {
           try {
-            const q = encodeURIComponent(
-              `${cleanName(pin.name)}, ${pin.destination}, ${pin.country}`
-            )
-            const res  = await fetch(`https://photon.komoot.io/api/?q=${q}&limit=1&lang=en`)
+            const q    = encodeURIComponent(`${cleanName(pin.name)}, ${pin.destination}, ${pin.country}`)
+            const bias = biasLat && biasLng ? `&lat=${biasLat}&lon=${biasLng}` : ''
+            const res  = await fetch(`https://photon.komoot.io/api/?q=${q}&limit=1&lang=en${bias}`)
             const data = await res.json()
             const feat = data.features?.[0]
             if (!feat) return null
             const [lng, lat] = feat.geometry.coordinates as [number, number]
+
+            // Sanity-check: reject results more than ~300 km from the destination center
+            if (biasLat && biasLng) {
+              const dlat = lat - biasLat
+              const dlng = lng - biasLng
+              const distDeg = Math.sqrt(dlat * dlat + dlng * dlng)
+              if (distDeg > 3) return null   // ~300 km — must be a wrong country match
+            }
+
             return { ...pin, lat, lng }
           } catch { return null }
         }))
@@ -90,7 +114,6 @@ export default function TripMap({ pins }: TripMapProps) {
         const valid = results.filter((r): r is GeoPin => r !== null)
         if (valid.length > 0 && !cancelled) {
           setGeoPins(prev => {
-            // Deduplicate by id
             const existing = new Set(prev.map(p => p.id))
             const fresh    = valid.filter(p => !existing.has(p.id))
             return fresh.length ? [...prev, ...fresh] : prev

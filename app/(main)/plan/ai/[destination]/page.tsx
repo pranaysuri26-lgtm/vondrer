@@ -54,6 +54,8 @@ function getCategoryMeta(category: string) {
     return { colour: 'text-cyan-400',    border: 'border-t-cyan-400/60',    gradFrom: 'rgba(34,211,238,0.10)'  }
   if (category.includes('Day Trip') || category.includes('Day'))
     return { colour: 'text-rose-300',    border: 'border-t-rose-300/60',    gradFrom: 'rgba(253,164,175,0.10)' }
+  if (category.includes('Photo'))
+    return { colour: 'text-yellow-500',  border: 'border-t-yellow-500/60',  gradFrom: 'rgba(234,179,8,0.10)'   }
   return   { colour: 'text-[#5C564E]',   border: 'border-t-white/20',       gradFrom: 'rgba(255,255,255,0.05)' }
 }
 
@@ -497,13 +499,26 @@ function BuildModal({
   router:         ReturnType<typeof import('next/navigation').useRouter>
 }) {
   const today = new Date().toISOString().split('T')[0]
-  const [startDate, setStartDate] = useState(today)
-  const [days,      setDays]      = useState(5)
-  const [pace,      setPace]      = useState<'relaxed'|'balanced'|'packed'>('balanced')
-  const [dietary,   setDietary]   = useState<string[]>(onboarding?.dietary_preferences ?? [])
-  const [loading,   setLoading]   = useState(false)
-  const [done,      setDone]      = useState<string | null>(null)
-  const [error,     setError]     = useState('')
+  const [startDate,      setStartDate]      = useState(today)
+  const [days,           setDays]           = useState(5)
+  const [pace,           setPace]           = useState<'relaxed'|'balanced'|'packed'>('balanced')
+  const [dietary,        setDietary]        = useState<string[]>(onboarding?.dietary_preferences ?? [])
+  const [arrivalTime,    setArrivalTime]    = useState('')   // e.g. "14:30"
+  const [departureTime,  setDepartureTime]  = useState('')   // e.g. "18:00"
+  const [orderedPicks,   setOrderedPicks]   = useState<PlanActivityCard[]>(picked)
+  const [loading,        setLoading]        = useState(false)
+  const [done,           setDone]           = useState<string | null>(null)
+  const [error,          setError]          = useState('')
+
+  function movePick(idx: number, dir: -1 | 1) {
+    setOrderedPicks(prev => {
+      const arr = [...prev]
+      const swapIdx = idx + dir
+      if (swapIdx < 0 || swapIdx >= arr.length) return arr
+      ;[arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]]
+      return arr
+    })
+  }
 
   function toggleDietary(id: string) {
     if (id === 'none') { setDietary(['none']); return }
@@ -517,8 +532,8 @@ function BuildModal({
     if (!startDate) { setError('Please pick a start date'); return }
     setLoading(true); setError('')
     try {
-      const pickedNames  = picked.map(p => p.name).join(', ')
-      const clusterAreas = [...new Set(picked.map(p => p.neighbourhood))].join(', ')
+      const pickedNames  = orderedPicks.map(p => p.name).join(', ')
+      const clusterAreas = [...new Set(orderedPicks.map(p => p.neighbourhood))].join(', ')
       const dietaryStr   = dietary.filter(d => d !== 'none').join(', ')
 
       const itinBody = {
@@ -533,9 +548,15 @@ function BuildModal({
         },
         must_do:      pickedNames,
         trip_context: [
-          `The traveler selected these specific activities: ${pickedNames}. Build the entire itinerary around these — they are non-negotiable.`,
+          `The traveler selected these specific activities IN THIS ORDER of priority: ${pickedNames}. Build the itinerary around these — they are non-negotiable.`,
           `Fill remaining slots with complementary activities near ${clusterAreas}.`,
-          accommodation ? `Accommodation is in ${accommodation.neighbourhood}.` : '',
+          accommodation ? `Accommodation is in ${accommodation.neighbourhood} — schedule activities nearby on relevant days.` : '',
+          arrivalTime
+            ? `Flight arrives at ${arrivalTime} on Day 1 — keep morning of Day 1 light and don't schedule anything before ${arrivalTime}.`
+            : '',
+          departureTime
+            ? `Return flight departs at ${departureTime} on the last day — clear the afternoon/evening of the last day for travel to airport.`
+            : '',
           dietaryStr ? `Dietary requirements: ${dietaryStr}. Every restaurant must satisfy these.` : '',
           onboarding?.home_country
             ? `Traveler is from ${onboarding.home_country}${onboarding.home_city ? ` (${onboarding.home_city})` : ''} — tailor cuisine choices accordingly.`
@@ -566,7 +587,7 @@ function BuildModal({
         days, start_date: startDate, end_date: result.end_date,
         itinerary_json: result.itinerary.map(({ day, title, morning, afternoon, evening, day_total_estimate }) =>
           ({ day, title, morning, afternoon, evening, day_total_estimate })),
-        notes: JSON.stringify({ must_do: pickedNames, ai_picks: picked, accommodation: accommodation ?? null }),
+        notes: JSON.stringify({ must_do: pickedNames, ai_picks: orderedPicks, accommodation: accommodation ?? null }),
       })
 
       setDone(trip.share_token ?? trip.id)
@@ -611,11 +632,43 @@ function BuildModal({
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-1.5 mb-5 p-3 bg-[#F5F2ED] border border-[#E8E0D6] rounded-xl">
-              {picked.slice(0, 5).map(p => (
-                <span key={p.id} className="text-xs px-2.5 py-1 rounded-full bg-[#C97552]/15 text-[#C97552] border border-[#C97552]/25">{p.name}</span>
-              ))}
-              {picked.length > 5 && <span className="text-xs px-2.5 py-1 rounded-full bg-[#F0EBE3] text-[#6b5f54]">+{picked.length - 5} more</span>}
+            {/* Reorderable picks list */}
+            <div className="mb-5">
+              <label className="block text-[#5C564E] text-xs font-medium mb-1.5 uppercase tracking-wide">Your picks · drag to reorder priority</label>
+              <div className="space-y-1.5 p-2 bg-[#F5F2ED] border border-[#E8E0D6] rounded-xl">
+                {orderedPicks.map((p, idx) => (
+                  <div key={p.id} className="flex items-center gap-2 px-2.5 py-1.5 bg-white rounded-lg border border-[#E8E0D6]">
+                    <span className="text-[#9A8E7E] text-[10px] font-mono w-4 shrink-0">{idx + 1}</span>
+                    <span className="flex-1 text-xs text-[#1A1A1A] truncate">{p.name}</span>
+                    <div className="flex gap-0.5 shrink-0">
+                      <button type="button" onClick={() => movePick(idx, -1)} disabled={idx === 0}
+                        className="w-5 h-5 rounded flex items-center justify-center text-[#9A8E7E] hover:text-[#1A1A1A] hover:bg-[#EDE5D8] disabled:opacity-25 transition-colors">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
+                      </button>
+                      <button type="button" onClick={() => movePick(idx, 1)} disabled={idx === orderedPicks.length - 1}
+                        className="w-5 h-5 rounded flex items-center justify-center text-[#9A8E7E] hover:text-[#1A1A1A] hover:bg-[#EDE5D8] disabled:opacity-25 transition-colors">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Flight times */}
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[#5C564E] text-xs font-medium mb-1.5 uppercase tracking-wide">Flight arrives</label>
+                <input type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)}
+                  className="w-full bg-white border border-[#E2D8CE] rounded-xl px-3 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"/>
+                <p className="text-[#9A8E7E] text-[10px] mt-1">Day 1 arrival time</p>
+              </div>
+              <div>
+                <label className="block text-[#5C564E] text-xs font-medium mb-1.5 uppercase tracking-wide">Return flight</label>
+                <input type="time" value={departureTime} onChange={e => setDepartureTime(e.target.value)}
+                  className="w-full bg-white border border-[#E2D8CE] rounded-xl px-3 py-2.5 text-[#1A1A1A] text-sm focus:outline-none focus:border-[#C97552]/50 transition-colors"/>
+                <p className="text-[#9A8E7E] text-[10px] mt-1">Last day departure</p>
+              </div>
             </div>
 
             <div className="mb-4">
@@ -894,16 +947,53 @@ export default function AIPlanPage() {
 
         {/* Section label */}
         {(allCards.length > 0 || loading) && (
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center gap-3 mb-4">
             <p className="text-[#1A1A1A]/28 text-[10px] uppercase tracking-widest font-semibold shrink-0">
               Suggestions for {destination}
             </p>
-            <div className="h-px flex-1 bg-white/[0.07]"/>
+            <div className="h-px flex-1 bg-[#E8E0D6]"/>
             {allCards.length > 0 && (
-              <p className="text-[#1A1A1A]/18 text-[10px] shrink-0">{allCards.length} suggestions</p>
+              <p className="text-[#9A8E7E] text-[10px] shrink-0">{allCards.length} suggestions</p>
             )}
           </div>
         )}
+
+        {/* ── Coverage gap widget — appears once 6+ cards loaded ──────────── */}
+        {allCards.length >= 6 && !loading && (() => {
+          const COVERAGE_CHECKS = [
+            { key: 'photo',     label: '📸 Photography',    match: (c: string) => c.includes('Photo')  },
+            { key: 'landmark',  label: '🏛️ Iconic Landmark', match: (c: string) => c.includes('History') || c.includes('Landmark') || c.includes('Experience') },
+            { key: 'daytrip',   label: '🚗 Day Trips',       match: (c: string) => c.includes('Day Trip') || c.includes('Day') },
+            { key: 'nature',    label: '🌿 Nature',           match: (c: string) => c.includes('Nature') || c.includes('Beach') || c.includes('Active') },
+            { key: 'nightlife', label: '🌙 Nightlife',        match: (c: string) => c.includes('Night') },
+            { key: 'food',      label: '🍽️ Food & Drink',    match: (c: string) => c.includes('Food') || c.includes('Cafe') },
+          ]
+          const gaps = COVERAGE_CHECKS.filter(
+            chk => !allCards.some(c => chk.match(c.category))
+          )
+          if (gaps.length === 0) return null
+          return (
+            <div className="mb-5 p-3.5 bg-amber-50 border border-amber-200/60 rounded-xl">
+              <p className="text-[10px] text-amber-700/70 uppercase tracking-widest font-semibold mb-2.5">
+                Not yet in your suggestions
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {gaps.map(g => (
+                  <button
+                    key={g.key}
+                    type="button"
+                    onClick={handleSuggestMore}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white border border-amber-300/60 text-amber-800 text-xs hover:bg-amber-100 transition-colors"
+                    title="Click 'Suggest more' to get these types"
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-amber-600/60 mt-2">Hit &quot;Suggest more&quot; below to fill these gaps</p>
+            </div>
+          )
+        })()}
 
         {/* Flat accumulating card grid — new cards animate in from right */}
         {loading && allCards.length === 0 ? (

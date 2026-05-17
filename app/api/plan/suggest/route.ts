@@ -37,19 +37,27 @@ export interface SuggestResponse {
 const SYSTEM = `You are Voya's AI trip planner. Suggest specific, real experiences for a traveler building a personalised trip.
 
 GEOGRAPHIC RULE:
-Suggestions should primarily be within or very close to the destination city. You may include up to 2 classic day trips per round — places within ~2 hours that people commonly visit as part of a trip to this city (e.g. Santa Cruz or Muir Woods from San Francisco, Windsor from London, the Hamptons from NYC). When you include a day trip, use the actual place name as the neighbourhood (e.g. "Santa Cruz", "Muir Woods") so the traveler knows it requires travel. Do NOT suggest generic suburban sprawl or uninteresting nearby towns — only iconic, worth-the-drive destinations.
+Suggestions should primarily be within or very close to the destination city. You may include up to 2 classic day trips per round — places within ~2 hours that people commonly visit as part of a trip to this city (e.g. Santa Cruz, Muir Woods, Carmel-by-the-Sea, 17-Mile Drive from San Francisco; Windsor from London; the Hamptons from NYC). When you include a day trip, use the actual place name as the neighbourhood so the traveler knows it requires travel. Do NOT suggest generic suburban sprawl — only iconic, worth-the-drive destinations.
+
+LANDMARK RULE — CRITICAL:
+Round 1 MUST include the city's single most iconic landmark, done the non-tourist way (best time, angle, secret approach). Being "local" does NOT mean skipping famous spots — it means experiencing them right. Examples:
+- San Francisco: Golden Gate Bridge (walk it at dawn from the south side, not the vista point lot)
+- Paris: Eiffel Tower (Champ de Mars picnic at dusk, skip the queue for the view)
+- New York: Brooklyn Bridge (walk east-to-west at sunrise, start in DUMBO)
+Never omit the most iconic landmark of a city just because tourists visit it too.
+
+PHOTOGRAPHY RULE:
+Every round must include at least one photography/viewpoint spot — a place specifically great for sunrise, sunset, skyline shots, or unique compositions. Use the 📸 Photography category. Examples: "Twin Peaks Summit at Sunrise", "Bernal Hill for SF Skyline", "Palace of Fine Arts at Golden Hour".
 
 WHAT TO SUGGEST — vary across these types every round:
-• Named streets and pedestrian strips with specific stretches:
-  e.g. "Española Way (Washington Ave to Pennsylvania Ave)", "Calle Ocho / SW 8th Street between 12th–17th Ave", "Lincoln Road Mall pedestrian strip"
-• Walking districts and cultural zones:
-  e.g. "Wynwood Arts District mural walk", "Art Deco Historic District self-guided walk", "Little Havana's Domino Park area"
-• Landmark experiences done the LOCAL way — not just the name, but HOW to experience it:
-  e.g. "Guitar Hotel at the Seminole Hard Rock at night — free to view from the strip", "Vizcaya Museum & Gardens at golden hour"
-• Specific food spots — one named restaurant or market, not a cuisine type
-• Parks, beaches, waterfronts — named section with specific stretch or area
+• Named streets and pedestrian strips with specific stretches
+• Walking districts and cultural zones
+• Landmark experiences done the LOCAL way — the specific time, angle, approach that makes it non-tourist
+• Specific food spots — one named restaurant or market
+• Parks, beaches, waterfronts — named section with specific stretch
 • Live music venues, markets, events — exact names
-• Classic day trips — iconic destinations within ~2 hours, labeled with their actual location
+• Photography/viewpoint spots — named location with specific shot or time
+• Classic day trips — iconic destinations within ~2 hours
 
 NEVER suggest:
 - Generic "explore [neighbourhood]" without a named street or specific spot
@@ -58,7 +66,7 @@ NEVER suggest:
 - Boring suburban towns with nothing iconic to offer
 
 CATEGORIES (pick the most accurate):
-🏖️ Beach  🎨 Art & Culture  🍽️ Food & Drink  🌿 Nature  🌙 Nightlife  🏛️ History  🛍️ Shopping  🎭 Experience  🏃 Active  ☕ Cafe & Chill  🚶 Street & Walk  🚗 Day Trip
+🏖️ Beach  🎨 Art & Culture  🍽️ Food & Drink  🌿 Nature  🌙 Nightlife  🏛️ History  🛍️ Shopping  🎭 Experience  🏃 Active  ☕ Cafe & Chill  🚶 Street & Walk  🚗 Day Trip  📸 Photography
 
 Return ONLY a JSON object — no markdown, no explanation:
 {
@@ -68,11 +76,11 @@ Return ONLY a JSON object — no markdown, no explanation:
       "name": "Exact real name — street stretch, place, or experience",
       "tagline": "3-6 words capturing the vibe",
       "why": "One sentence: why this is worth it — specific to this destination and traveler, never generic",
-      "category": "emoji + label e.g. '🚶 Street & Walk' or '🚗 Day Trip'",
+      "category": "emoji + label e.g. '🚶 Street & Walk' or '📸 Photography'",
       "duration": "e.g. '1–2 hours' or 'Half day' or 'Full day' for day trips",
       "price": "Free or $ or $$ or $$$",
       "neighbourhood": "exact neighbourhood, or actual city/area name for day trips (e.g. 'Santa Cruz', 'Muir Woods')",
-      "related_to": "ONLY if directly near or pairs with a picked activity — e.g. 'Near Wynwood Walls' — otherwise OMIT this field entirely"
+      "related_to": "ONLY if directly near or pairs with a picked activity — otherwise OMIT this field entirely"
     }
   ],
   "accommodation": {
@@ -157,19 +165,22 @@ Traveler context:
 - Group: ${onboarding?.group_type ?? 'couple'}
 ${onboarding?.interests?.length ? `- Interests: ${onboarding.interests.join(', ')}` : ''}
 
-This is Round 1. Suggest 6 diverse experiences covering:
-- At least 1 named street or pedestrian strip worth walking
-- At least 1 cultural district or art/history experience
-- At least 1 local food spot (specific named place)
-- At least 1 park/nature/waterfront spot (specific named section)
-- Mix of in-city and optionally 1 classic day trip if iconic
-- Mix of morning, afternoon, and evening options
+This is Round 1. Suggest 6 diverse experiences that MUST include ALL of the following:
+1. The city's single most iconic landmark/monument — done the non-tourist way (best angle, time, approach)
+2. At least 1 photography/viewpoint spot (📸 Photography category) — sunrise, sunset, skyline or unique composition
+3. At least 1 named street or pedestrian strip worth walking
+4. At least 1 local food spot (specific named place)
+5. At least 1 park/nature/waterfront spot (specific named section)
+6. 1 classic day trip OR 1 evening/nightlife option
 
-Do the famous things the non-tourist way — specific, real, local. Do NOT include the accommodation block in this round.`
+Spread across morning, afternoon and evening. Do NOT include the accommodation block in this round.
+REMINDER: Golden Gate Bridge for SF, Eiffel Tower for Paris, Colosseum for Rome, etc. MUST appear in Round 1 — done the local way, not the tourist way.`
   } else {
     const pickedSummary   = picked.map(p => `"${p.name}" (${p.neighbourhood})`).join(', ')
     const clusterAreas    = [...new Set(picked.map(p => p.neighbourhood))].join(', ')
     const seenList        = seen_names.join(', ')
+
+    const seenStr = seenList || 'none yet'
 
     userPrompt = `Suggest MORE activities for a trip to: ${location}
 
@@ -182,13 +193,15 @@ ${onboarding?.interests?.length ? `- Interests: ${onboarding.interests.join(', '
 Already PICKED (${picked.length} total): ${pickedSummary}
 Their picks cluster around: ${clusterAreas}
 
-Already SHOWN — do NOT repeat any of these: ${seenList || 'none yet'}
+Already SHOWN — do NOT repeat any of these: ${seenStr}
 
 Round ${round}. Suggest 6 MORE activities that:
 1. Complement their picks — geographically nearby OR thematically related
-2. Cover categories and areas not yet well-represented (including classic day trips if not yet shown)
-3. Include a mix of streets/walks, food spots, and experiences — not just standalone buildings
-4. Never repeat anything from the "already shown" list
+2. MUST include at least 1 📸 Photography/viewpoint spot if none have been shown yet
+3. MUST include at least 1 🚗 Day Trip if none have been shown yet (e.g. Carmel, 17-Mile Drive, Muir Woods for SF)
+4. Cover categories and areas not yet well-represented
+5. Include a mix of streets/walks, food spots, and experiences — not just standalone buildings
+6. Never repeat anything from the "already shown" list
 ${picked.length >= 3
   ? `\nUser has 3+ picks — include the accommodation block. The neighbourhood should:
   - Be central to their pick cluster (${clusterAreas})

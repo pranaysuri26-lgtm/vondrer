@@ -65,8 +65,22 @@ NEVER suggest:
 - A single unnamed "local restaurant" — always use a real name
 - Boring suburban towns with nothing iconic to offer
 
-CATEGORIES (pick the most accurate):
-🏖️ Beach  🎨 Art & Culture  🍽️ Food & Drink  🌿 Nature  🌙 Nightlife  🏛️ History  🛍️ Shopping  🎭 Experience  🏃 Active  ☕ Cafe & Chill  🚶 Street & Walk  🚗 Day Trip  📸 Photography
+CATEGORIES — pick the single most accurate one. Read the definitions carefully:
+🏖️ Beach          — beach/coastline/waterfront swimming or sunbathing
+🎨 Art & Culture   — museums, galleries, murals, cultural institutions
+🍽️ Food & Drink    — specific restaurants, markets, food spots (daytime or dinner)
+🌿 Nature          — parks, trails, gardens, wildlife, lakes — any outdoor nature that isn't a beach
+🌙 Nightlife       — ONLY bars, clubs, late-night venues, live music after 9pm. DO NOT use for daytime attractions, sea lions, piers, or family-friendly spots
+🏛️ History         — historic buildings, monuments, heritage sites
+🛍️ Shopping        — markets, malls, boutique streets
+🎭 Experience      — unique one-off activities: tours, cooking classes, escape rooms, boat trips
+🏃 Active          — sports, hiking, cycling, kayaking
+☕ Cafe & Chill    — cafés, coffee shops, bakeries, relaxed spots
+🚶 Street & Walk   — walkable neighbourhoods, pedestrian strips, street scenes
+🚗 Day Trip        — destinations 45+ min outside the city requiring a drive or transit
+📸 Photography     — viewpoints, sunrise/sunset spots, iconic photo locations
+
+NIGHTLIFE RULE: Only assign 🌙 Nightlife to venues that are primarily active after 9pm and centered on drinking, dancing, or late-night entertainment. Sea lions, waterfronts, piers, markets, and tourist attractions are NEVER nightlife.
 
 Return ONLY a JSON object — no markdown, no explanation:
 {

@@ -27,6 +27,35 @@ const DIETARY_OPTIONS = [
   { id: 'gluten_free', label: '🌾 Gluten-free'      },
 ]
 
+// ─── Category safety corrector ────────────────────────────────────────────────
+// Catches obviously wrong AI categorisations (e.g. sea lions → Nightlife)
+// before they reach the UI.
+
+const NIGHTLIFE_WRONG_SIGNALS = [
+  'sea lion', 'pier', 'beach', 'park', 'garden', 'market', 'museum',
+  'tower', 'bridge', 'wharf', 'ferry', 'trail', 'lake', 'bay', 'lookout',
+  'viewpoint', 'sunrise', 'sunset', 'golden gate', 'alcatraz',
+]
+
+function correctCategory(category: string, name: string, tagline: string): string {
+  const text = `${name} ${tagline}`.toLowerCase()
+  if (category.includes('Night') && NIGHTLIFE_WRONG_SIGNALS.some(s => text.includes(s))) {
+    // Re-assign to the most sensible category based on keywords
+    if (text.includes('beach') || text.includes('coast') || text.includes('bay'))
+      return '🏖️ Beach'
+    if (text.includes('sea lion') || text.includes('pier') || text.includes('wharf'))
+      return '🎭 Experience'
+    if (text.includes('park') || text.includes('trail') || text.includes('lake') || text.includes('garden'))
+      return '🌿 Nature'
+    if (text.includes('tower') || text.includes('bridge') || text.includes('lookout') || text.includes('viewpoint'))
+      return '📸 Photography'
+    if (text.includes('market') || text.includes('ferry building'))
+      return '🛍️ Shopping'
+    return '🎭 Experience'
+  }
+  return category
+}
+
 // ─── Category config ──────────────────────────────────────────────────────────
 
 function getCategoryMeta(category: string) {
@@ -174,7 +203,8 @@ function CardDetailSheet({
   onClose:     () => void
   imageUrl?:   string | null
 }) {
-  const meta = getCategoryMeta(card.category)
+  const category = correctCategory(card.category, card.name, card.tagline)
+  const meta = getCategoryMeta(category)
   const [visible,   setVisible]   = useState(false)
   const [action,    setAction]    = useState<'pick' | 'remove' | null>(null)
   const [animating, setAnimating] = useState(false)
@@ -254,7 +284,7 @@ function CardDetailSheet({
               {/* Header */}
               <div className="flex items-start justify-between gap-3 mb-3">
                 <span className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${meta.colour}`}>
-                  {card.category}
+                  {category}
                 </span>
                 <button onClick={close}
                   className="w-7 h-7 rounded-full bg-[#F0EBE3] border border-[#E0D8D0] flex items-center justify-center text-[#6b5f54] hover:bg-[#E2D8CC] transition-colors flex-shrink-0">
@@ -380,7 +410,8 @@ function ActivityCard({
   imageUrl?:   string | null
   onExpand:    (card: PlanActivityCard) => void
 }) {
-  const meta = getCategoryMeta(card.category)
+  const category = correctCategory(card.category, card.name, card.tagline)
+  const meta = getCategoryMeta(category)
 
   return (
     <button
@@ -416,7 +447,7 @@ function ActivityCard({
       <div className="p-3.5">
         {/* Category */}
         <div className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${picked ? 'text-[#C97552]' : meta.colour}`}>
-          {card.category}
+          {category}
         </div>
 
         {/* Name */}

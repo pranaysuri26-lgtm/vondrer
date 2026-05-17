@@ -157,7 +157,7 @@ export default function EditableBlock({
             <button
               onClick={() => { setDraft(displayed); setMode('edit') }}
               title="Edit this block"
-              className="absolute top-2 right-2 opacity-0 group-hover/block:opacity-100 focus:opacity-100 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white transition-all duration-150 shadow-sm"
+              className="absolute top-2 right-2 opacity-70 hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white transition-all duration-150 shadow-sm"
             >
               <PencilIcon />
             </button>
@@ -167,7 +167,7 @@ export default function EditableBlock({
             <button
               onClick={() => { setDraft(displayed); setMode('edit') }}
               title="Edit this block"
-              className="absolute top-2 right-2 opacity-0 group-hover/block:opacity-100 focus:opacity-100 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white transition-all duration-150 shadow-sm"
+              className="absolute top-2 right-2 opacity-70 hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white transition-all duration-150 shadow-sm"
             >
               <PencilIcon />
             </button>
@@ -190,7 +190,7 @@ export default function EditableBlock({
               <button
                 onClick={() => { setDraft(displayed); setMode('edit') }}
                 title="Edit this block"
-                className="opacity-0 group-hover/block:opacity-100 focus:opacity-100 w-6 h-6 rounded-full bg-[#F0EBE3] border border-[#E0D8CF] flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white hover:border-[#C97552] transition-all duration-150"
+                className="opacity-70 hover:opacity-100 focus:opacity-100 w-6 h-6 rounded-full bg-[#F0EBE3] border border-[#E0D8CF] flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white hover:border-[#C97552] transition-all duration-150"
               >
                 <PencilIcon />
               </button>

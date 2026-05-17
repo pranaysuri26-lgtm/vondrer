@@ -230,14 +230,34 @@ export default function TripMap({ pins }: TripMapProps) {
           popupAnchor:  [0, -18],
         })
 
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${pin.name}, ${pin.destination}, ${pin.country}`)}`
+
         const marker = L.marker([pin.lat, pin.lng], { icon })
           .bindPopup(`
-            <div>
+            <div style="min-width:170px;">
               <div style="font-size:9px;color:#9A8E7E;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;font-family:-apple-system,sans-serif;">
                 Day ${pin.day} &middot; ${pin.slot}
               </div>
-              <div style="font-size:13px;font-weight:600;color:#1A1A1A;line-height:1.35;font-family:-apple-system,sans-serif;">
+              <div style="font-size:13px;font-weight:600;color:#1A1A1A;line-height:1.35;font-family:-apple-system,sans-serif;margin-bottom:8px;">
                 ${pin.name}
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <a
+                  href="${mapsUrl}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style="font-size:11px;color:#C97552;font-weight:600;font-family:-apple-system,sans-serif;text-decoration:none;display:flex;align-items:center;gap:3px;"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  Google Maps
+                </a>
+                <span style="color:#E8E0D6;font-size:11px;">|</span>
+                <button
+                  onclick="window.dispatchEvent(new CustomEvent('voya-pin-click',{detail:{day:${pin.day}}}))"
+                  style="font-size:11px;color:#5A504A;font-weight:500;font-family:-apple-system,sans-serif;background:none;border:none;cursor:pointer;padding:0;"
+                >
+                  View day →
+                </button>
               </div>
             </div>
           `, { closeButton: false })

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase'
 import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
+import TripChat from '../TripChat'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,31 @@ function slotLabel(slot: string) {
   if (slot === 'dinner')    return '🍽️ Dinner'
   if (slot === 'evening')   return '🌙 Evening'
   return slot
+}
+
+// ─── Wiki photo hook ──────────────────────────────────────────────────────────
+
+function useWikiPhoto(activity: string) {
+  const [url, setUrl] = useState('')
+  useEffect(() => {
+    const ctrl = new AbortController()
+    const q = encodeURIComponent(activity.replace(/\s+\(.*\)$/, '').trim())
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${q}`, { signal: ctrl.signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.thumbnail?.source) setUrl(d.thumbnail.source) })
+      .catch(() => {})
+    return () => ctrl.abort()
+  }, [activity])
+  return url
+}
+
+// ─── Slot gradient fallback ───────────────────────────────────────────────────
+
+const SLOT_BG: Record<string, string> = {
+  morning:   'from-amber-100 to-orange-50',
+  afternoon: 'from-sky-100   to-blue-50',
+  dinner:    'from-rose-100  to-red-50',
+  evening:   'from-indigo-100 to-purple-50',
 }
 
 // ─── Comment bubble ───────────────────────────────────────────────────────────
@@ -139,6 +165,7 @@ function BlockWithComments({
   const [open,   setOpen]   = useState(false)
   const [text,   setText]   = useState('')
   const pending = comments.filter(c => c.status === 'pending').length
+  const photo   = useWikiPhoto(block.activity)
 
   function submit() {
     if (!text.trim()) return
@@ -149,6 +176,19 @@ function BlockWithComments({
 
   return (
     <div className="space-y-1.5">
+      {/* Photo header */}
+      {photo ? (
+        <div className="relative h-36 -mx-5 mb-3 overflow-hidden">
+          <img
+            src={photo} alt={block.activity}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+        </div>
+      ) : (
+        <div className={`h-14 -mx-5 mb-3 bg-gradient-to-br ${SLOT_BG[slot] ?? 'from-stone-100 to-stone-50'}`} />
+      )}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-[#8A7E6E] uppercase tracking-widest">{slotLabel(slot)}</p>
         <button
@@ -243,11 +283,22 @@ export default function CollaboratePage({
     params.then(p => setToken(p.token))
   }, [params])
 
-  // Check if current user is the organizer
+  // Check if current user is the organizer; also seed their commenter name
   useEffect(() => {
     getSupabaseClient().auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null)
+      const u = data.user
+      setUserId(u?.id ?? null)
+      if (u && !commenterName) {
+        // Use display_name from metadata, fall back to email prefix
+        const name =
+          (u.user_metadata?.full_name as string | undefined) ||
+          (u.user_metadata?.name   as string | undefined) ||
+          (u.email?.split('@')[0]  ?? 'Organizer')
+        setCommenterName(name)
+        setNameSet(true)
+      }
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Initial data load — uses server API route with service role key so
@@ -450,6 +501,23 @@ export default function CollaboratePage({
         </div>
       </div>
 
+      {/* Organizer tip banner — full features live on the main trip page */}
+      {isOrganizer && (
+        <div className="bg-[#FFF8F5] border-b border-[#F0E0D0]">
+          <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
+            <p className="text-xs text-[#9A8E7E]">
+              💡 <span className="text-[#6b5f54]">This is the collaboration view.</span> For AI Chat, Budget &amp; Map →
+            </p>
+            <a
+              href={`/trip/${trip.share_token}`}
+              className="flex-shrink-0 text-xs font-semibold text-[#C97552] hover:text-[#b86644] transition-colors"
+            >
+              Full trip →
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Itinerary */}
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-12">
         {dests.map((dest, di) => {
@@ -524,17 +592,41 @@ export default function CollaboratePage({
         })}
 
         {/* Footer */}
-        <div className="border-t border-[#E8E0D6] pt-8 text-center space-y-2">
+        <div className="border-t border-[#E8E0D6] pt-8 text-center space-y-3 pb-24">
           <p className="text-[#9A8E7E] text-xs">Tap 💬 on any activity to comment or suggest a change.</p>
           {isOrganizer && (
             <p className="text-[#9A8E7E] text-xs">You&apos;re the organizer — you can accept or dismiss suggestions.</p>
           )}
-          <a href={`/trip/${trip.share_token}`}
-            className="inline-block text-xs text-[#8A7E6E] hover:text-[#5A504A] mt-2 transition-colors">
-            View read-only version →
+          {/* Full trip view — includes AI Chat, Budget tracker, Map, Re-plan */}
+          <a
+            href={`/trip/${trip.share_token}`}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#C97552] hover:text-[#b86644] transition-colors mt-1"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            Full trip view (Map · AI Chat · Budget)
           </a>
         </div>
       </main>
+
+      {/* AI Trip Chat — organizer only, same as main trip page */}
+      {isOrganizer && trip && dests.length > 0 && (
+        <TripChat
+          tripId={trip.id}
+          tripName={trip.trip_name}
+          dests={dests.map(d => ({
+            id:               d.id,
+            destination_name: d.destination_name,
+            country:          d.country,
+            days:             d.days,
+            start_date:       d.start_date,
+            end_date:         d.end_date,
+            itinerary_json:   d.itinerary_json,
+            notes:            null,
+          }))}
+        />
+      )}
     </div>
   )
 }

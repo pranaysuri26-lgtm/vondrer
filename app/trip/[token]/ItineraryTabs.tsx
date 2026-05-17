@@ -5,6 +5,7 @@ import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
 import type { SunTimes } from '@/lib/sun'
 import EditableBlock from './EditableBlock'
 import BudgetPanel from './BudgetPanel'
+import DestSpotlights from './DestSpotlights'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -306,6 +307,23 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
 
   const [activeTab,    setActiveTab]    = useState<string>('overview')
   const [replanningDay, setReplanningDay] = useState<number | null>(null)
+
+  // ── Jump to day tab when a map pin is clicked ──────────────────────────────
+  useEffect(() => {
+    function handlePinClick(e: Event) {
+      const day = (e as CustomEvent<{ day: number }>).detail?.day
+      if (!day) return
+      const tabId = `day-${day}`
+      setActiveTab(tabId)
+      // Scroll the tab button into view (horizontal) + scroll page to top of tabs
+      requestAnimationFrame(() => {
+        document.getElementById(`tab-btn-${tabId}`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+        document.getElementById('itinerary-tabs-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+    window.addEventListener('voya-pin-click', handlePinClick)
+    return () => window.removeEventListener('voya-pin-click', handlePinClick)
+  }, [])
   const [replanReason,  setReplanReason]  = useState('')
   const [showReplanFor, setShowReplanFor] = useState<number | null>(null)
 
@@ -357,6 +375,7 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
     const active = activeTab === id
     return (
       <button
+        id={`tab-btn-${id}`}
         onClick={() => setActiveTab(id)}
         className={`whitespace-nowrap px-4 py-3 text-xs font-medium border-b-2 transition-colors flex-shrink-0 ${
           active
@@ -372,7 +391,7 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
   return (
     <>
       {/* ── Sticky tab bar ─────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-[#FAF8F5]/96 backdrop-blur-sm border-b border-[#E8E0D6]">
+      <div id="itinerary-tabs-top" className="sticky top-0 z-10 bg-[#FAF8F5]/96 backdrop-blur-sm border-b border-[#E8E0D6]">
         <div
           className="flex overflow-x-auto max-w-2xl mx-auto px-4"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
@@ -428,6 +447,8 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
                   ) : (
                     <p className="text-[#9A8E7E] text-sm italic py-4">No itinerary generated for this destination.</p>
                   )}
+
+                  <DestSpotlights dest={dest.destination_name} country={dest.country} />
 
                   {idx < localDests.length - 1 && (
                     <div className="mt-6 flex items-center gap-3 py-3 px-4 bg-white border border-[#E8E0D6] rounded-xl">

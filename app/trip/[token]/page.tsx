@@ -11,6 +11,7 @@ import TripChat from './TripChat'
 import VisaStrip from './VisaStrip'
 import CollabPresence from './CollabPresence'
 import LiveModeStrip from './LiveModeStrip'
+import BackButton from './BackButton'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -166,7 +167,8 @@ export default async function SharedTripPage({
 
         {/* Header */}
         <div className="border-b border-[#E8E0D6]">
-          <div className="max-w-2xl mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto px-4 pt-6 pb-8">
+            <BackButton />
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-2">Shared trip</p>

@@ -21,32 +21,71 @@ const PLANS = [
     name:      'Free',
     price:     '$0',
     period:    'forever',
+    sub:       null,
     highlight: false,
-    features:  ['5 trips', 'AI itinerary generation', 'Share links', 'Map view', 'Basic editing'],
-    cta:       'Current plan',
-    ctaHref:   '/trips',
-    ctaStyle:  'border border-[#E0D8CF] text-[#6b5f54]',
+    badge:     null,
+    included: [
+      '5 trips total',
+      'AI itinerary generation',
+      'Shareable trip links',
+      'Map view',
+      'Basic inline editing',
+    ],
+    excluded: [
+      'AI Chat assistant',
+      'Smart re-planning',
+      'Budget tracker',
+      'Visa intelligence',
+      'Real-time collab',
+      'Offline access',
+      'Live trip mode',
+      'API access',
+    ],
+    cta:      'Current plan',
+    ctaHref:  '/trips',
+    ctaStyle: 'border border-[#E0D8CF] text-[#6b5f54]',
   },
   {
     name:      'Pro',
-    price:     '$9',
+    price:     '$4.99',
     period:    '/month',
+    sub:       'billed monthly',
     highlight: true,
-    features:  ['Unlimited trips', 'Everything in Free', ...FEATURES.map(f => f.title)],
-    cta:       'Upgrade to Pro',
-    ctaHref:   '/pro/checkout',
-    ctaStyle:  'bg-[#C97552] text-white hover:bg-[#b86644]',
+    badge:     'Most popular',
+    included: [
+      'Unlimited trips',
+      'Everything in Free',
+      'AI Chat assistant',
+      'Smart re-planning',
+      'Budget tracker',
+      'Visa intelligence',
+      'Real-time collaboration',
+      'Offline trip access',
+      'Live trip mode',
+      'Trip templates',
+    ],
+    excluded: [],
+    cta:      'Upgrade to Pro',
+    ctaHref:  '/pro/checkout',
+    ctaStyle: 'bg-[#C97552] text-white hover:bg-[#b86644]',
   },
   {
     name:      'Annual',
-    price:     '$79',
+    price:     '$29',
     period:    '/year',
+    sub:       '≈ $2.42 / month',
     highlight: false,
-    badge:     'Save 27%',
-    features:  ['Everything in Pro', 'Priority support', 'Early access to new features'],
-    cta:       'Get Annual',
-    ctaHref:   '/pro/checkout?plan=annual',
-    ctaStyle:  'bg-[#1A1A1A] text-white hover:bg-[#333]',
+    badge:     'Save 52%',
+    included: [
+      'Everything in Pro',
+      'White-label API access',
+      'Priority support',
+      'Early access to new features',
+    ],
+    excluded: [],
+    cta:      'Get Annual',
+    ctaHref:  '/pro/checkout?plan=annual',
+    ctaStyle: 'bg-[#1A1A1A] text-white hover:bg-[#333]',
   },
 ]
 
@@ -88,32 +127,39 @@ export default function ProPage() {
                 plan.highlight ? 'border-[#C97552] shadow-lg shadow-[#C97552]/10' : 'border-[#E8E0D6]'
               }`}
             >
-              {plan.highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#C97552] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                  Most popular
-                </span>
-              )}
               {plan.badge && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                  plan.highlight ? 'bg-[#C97552]' : 'bg-emerald-500'
+                }`}>
                   {plan.badge}
                 </span>
               )}
 
               <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-2">{plan.name}</p>
-              <div className="flex items-end gap-1 mb-4">
+              <div className="flex items-end gap-1">
                 <span className="text-3xl font-bold text-[#1A1A1A]">{plan.price}</span>
                 <span className="text-sm text-[#9A8E7E] mb-1">{plan.period}</span>
               </div>
+              {plan.sub && (
+                <p className="text-[11px] text-[#B8B0A4] mt-0.5 mb-4">{plan.sub}</p>
+              )}
+              {!plan.sub && <div className="mb-4" />}
 
-              <ul className="space-y-2 mb-6 flex-1">
-                {plan.features.slice(0, 6).map(f => (
+              <ul className="space-y-1.5 mb-6 flex-1">
+                {plan.included.map(f => (
                   <li key={f} className="flex items-start gap-2 text-xs text-[#5A504A]">
                     <span className="text-emerald-500 mt-0.5 flex-shrink-0">✓</span>
                     {f}
                   </li>
                 ))}
-                {plan.features.length > 6 && (
-                  <li className="text-xs text-[#9A8E7E]">+ {plan.features.length - 6} more</li>
+                {plan.excluded.slice(0, 3).map(f => (
+                  <li key={f} className="flex items-start gap-2 text-xs text-[#C0B8B0] line-through">
+                    <span className="mt-0.5 flex-shrink-0">✗</span>
+                    {f}
+                  </li>
+                ))}
+                {plan.excluded.length > 3 && (
+                  <li className="text-xs text-[#C0B8B0]">+ {plan.excluded.length - 3} more locked</li>
                 )}
               </ul>
 

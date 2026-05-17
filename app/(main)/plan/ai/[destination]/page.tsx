@@ -616,8 +616,8 @@ function BuildModal({
       await supabase.from('trip_destinations').insert({
         trip_id: trip.id, destination_name: destination, country, position: 1,
         days, start_date: startDate, end_date: result.end_date,
-        itinerary_json: result.itinerary.map(({ day, title, morning, afternoon, evening, day_total_estimate }) =>
-          ({ day, title, morning, afternoon, evening, day_total_estimate })),
+        itinerary_json: result.itinerary.map(({ day, title, morning, afternoon, dinner, evening, day_total_estimate }) =>
+          ({ day, title, morning, afternoon, dinner, evening, day_total_estimate })),
         notes: JSON.stringify({ must_do: pickedNames, ai_picks: orderedPicks, accommodation: accommodation ?? null }),
       })
 
@@ -744,6 +744,36 @@ function BuildModal({
                 ))}
               </div>
             </div>
+
+            {/* ─ Book flights & hotels ─────────────────────────────────────────── */}
+            {(() => {
+              const destSlug      = destination.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z-]/g, '')
+              const dateSlug      = startDate ? startDate.replace(/-/g, '').slice(2) : ''
+              const skyUrl        = `https://www.skyscanner.com/transport/flights/anywhere/${destSlug}/${dateSlug}/`
+              const gFlightsUrl   = `https://www.google.com/travel/flights?q=flights+to+${encodeURIComponent(destination)}`
+              const bookUrl       = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(destination)}&checkin=${startDate}&group_adults=2`
+              return (
+                <div className="mb-5 rounded-xl border border-[#E8E0D6] bg-[#F8F5F1] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#E8E0D6]">
+                    <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">✈️ Ready to book?</p>
+                    <p className="text-xs text-[#5C564E] mt-0.5">Lock in flights &amp; hotels before you generate</p>
+                  </div>
+                  <div className="divide-y divide-[#E8E0D6]">
+                    {[
+                      { href: skyUrl,      label: 'Flights → Skyscanner' },
+                      { href: gFlightsUrl, label: 'Flights → Google Flights' },
+                      { href: bookUrl,     label: 'Hotels → Booking.com' },
+                    ].map(({ href, label }) => (
+                      <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-between px-4 py-2.5 hover:bg-[#F0EBE3] transition-colors">
+                        <span className="text-xs text-[#1A1A1A]">{label}</span>
+                        <span className="text-[#C97552] text-xs">→</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
 
             {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 

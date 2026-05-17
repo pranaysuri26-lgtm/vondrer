@@ -4,6 +4,7 @@ import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
 import { geocodeLocation, fetchSunTimes } from '@/lib/sun'
 import type { SunTimes } from '@/lib/sun'
 import TripMap, { type MapPin } from './TripMap'
+import ItineraryTabs from './ItineraryTabs'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,91 +41,6 @@ function formatDateRange(start: string, end: string): string {
     return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${e.getFullYear()}`
   }
   return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('en-US', opts)}`
-}
-
-// ─── Golden hour strip ────────────────────────────────────────────────────────
-
-function GoldenHourStrip({ sun }: { sun: SunTimes }) {
-  return (
-    <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 mb-4">
-      <p className="text-[10px] text-amber-300/60 font-label tracking-widest uppercase mb-2.5">
-        📷 Photo windows · {sun.date}
-      </p>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-indigo-400/70">🌌</span>
-          <span className="text-[#8A7E6E]">Blue AM</span>
-          <span className="text-[#5A504A] tabular-nums ml-auto">{sun.blue_am_start}–{sun.blue_am_end}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-amber-500/70">🌅</span>
-          <span className="text-[#8A7E6E]">Golden PM</span>
-          <span className="text-[#C97552] tabular-nums ml-auto font-medium">{sun.golden_pm_start}–{sun.golden_pm_end}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-amber-500/70">🌅</span>
-          <span className="text-[#8A7E6E]">Golden AM</span>
-          <span className="text-[#C97552] tabular-nums ml-auto font-medium">{sun.golden_am_start}–{sun.golden_am_end}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-indigo-400/70">🌌</span>
-          <span className="text-[#8A7E6E]">Blue PM</span>
-          <span className="text-[#5A504A] tabular-nums ml-auto">{sun.blue_pm_start}–{sun.blue_pm_end}</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Sub-components (server-renderable) ──────────────────────────────────────
-
-function BlockCard({ label, block }: { label: string; block: ItineraryBlock }) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-xs text-[#8A7E6E] uppercase tracking-widest">{label}</p>
-      <p className="text-[#1A1A1A] font-medium text-sm">{block.activity}</p>
-      <p className="text-[#5A504A] text-sm leading-relaxed">{block.description}</p>
-      {block.insider_tip && (
-        <p className="text-[#C97552]/80 text-xs italic">💡 {block.insider_tip}</p>
-      )}
-      <p className="text-[#8A7E6E] text-xs">{block.estimated_cost}</p>
-
-      {/* Additional stops in the same time window */}
-      {block.also_visit && block.also_visit.length > 0 && (
-        <div className="mt-2 space-y-2 border-l-2 border-[#E8E0D6] pl-3">
-          {block.also_visit.map((stop, i) => (
-            <div key={i} className="space-y-0.5">
-              <p className="text-[#1A1A1A] font-medium text-xs">↳ {stop.activity}</p>
-              <p className="text-[#5A504A] text-xs leading-relaxed">{stop.description}</p>
-              <p className="text-[#8A7E6E] text-[11px]">{stop.estimated_cost}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function DayCard({ day }: { day: ItineraryDay }) {
-  return (
-    <div className="bg-white border border-[#E8E0D6] rounded-2xl p-5 space-y-4">
-      <div className="flex items-baseline justify-between gap-2">
-        <h4 className="font-serif italic text-base text-[#1A1A1A] leading-tight">{day.title}</h4>
-        <span className="text-xs text-[#9A8E7E] flex-shrink-0">Day {day.day}</span>
-      </div>
-      <div className="space-y-4 divide-y divide-[#F0EBE3]">
-        <BlockCard label="🌅 Morning"    block={day.morning}   />
-        <div className="pt-4"><BlockCard label="☀️ Afternoon"  block={day.afternoon} /></div>
-        {day.dinner && (
-          <div className="pt-4"><BlockCard label="🍽️ Dinner"   block={day.dinner}    /></div>
-        )}
-        <div className="pt-4"><BlockCard label="🌙 Evening"    block={day.evening}   /></div>
-      </div>
-      <div className="pt-2 border-t border-[#E8E0D6] flex justify-end">
-        <span className="text-xs text-[#C97552]/70">Day total: ~{day.day_total_estimate}</span>
-      </div>
-    </div>
-  )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -262,71 +178,14 @@ export default async function SharedTripPage({
           </div>
         )}
 
-        {/* Itinerary */}
-        <main className="max-w-2xl mx-auto px-4 py-8 space-y-12">
-          {dests.length === 0 && (
-            <p className="text-[#9A8E7E] text-sm text-center py-12">No itinerary details saved for this trip.</p>
-          )}
-
-          {dests.map((dest, idx) => {
-            const dayOffset = dests.slice(0, idx).reduce((s, d) => s + d.days, 0)
-            const days: ItineraryDay[] = Array.isArray(dest.itinerary_json) ? dest.itinerary_json : []
-
-            return (
-              <section key={dest.id}>
-                {/* Destination header */}
-                <div className="border-t border-[#E8E0D6] pt-6 mb-5">
-                  <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-1">
-                    📍 {dest.destination_name.toUpperCase()}, {dest.country.toUpperCase()}
-                    {' · '}
-                    {dest.days === 1
-                      ? `Day ${dayOffset + 1}`
-                      : `Days ${dayOffset + 1}–${dayOffset + dest.days}`
-                    }
-                  </p>
-                  <h2 className="font-serif italic text-2xl text-[#1A1A1A]">{dest.destination_name}</h2>
-                  {dest.start_date && dest.end_date && (
-                    <p className="text-[#8A7E6E] text-xs mt-0.5">{formatDateRange(dest.start_date, dest.end_date)}</p>
-                  )}
-                </div>
-
-                {days.length > 0 ? (
-                  <div className="space-y-4">
-                    {sunTimesMap[dest.id] && (
-                      <GoldenHourStrip sun={sunTimesMap[dest.id]!} />
-                    )}
-                    {days.map(day => <DayCard key={day.day} day={day} />)}
-                  </div>
-                ) : (
-                  <p className="text-[#9A8E7E] text-sm italic py-4">No itinerary generated for this destination.</p>
-                )}
-
-                {/* Inter-destination connector */}
-                {idx < dests.length - 1 && (
-                  <div className="mt-6 flex items-center gap-3 py-3 px-4 bg-white border border-[#E8E0D6] rounded-xl">
-                    <span className="text-base">✈️</span>
-                    <p className="text-sm text-[#6b5f54]">
-                      <span className="text-[#1A1A1A]">{dest.destination_name}</span>
-                      {' → '}
-                      <span className="text-[#1A1A1A]">{dests[idx + 1].destination_name}</span>
-                    </p>
-                  </div>
-                )}
-              </section>
-            )
-          })}
-
-          {/* Footer CTA */}
-          <div className="border-t border-[#E8E0D6] pt-8 text-center space-y-3">
-            <p className="text-[#6b5f54] text-sm">Want to plan your own trip?</p>
-            <a
-              href="https://getvoya.net"
-              className="inline-block bg-[#C97552] text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#b86644] transition-colors"
-            >
-              Plan with Voya →
-            </a>
-          </div>
-        </main>
+        {/* Tab bar + itinerary content (client component) */}
+        <ItineraryTabs
+          dests={dests}
+          sunTimesMap={sunTimesMap}
+          totalDays={trip.total_days}
+          startDate={trip.start_date ?? ''}
+          endDate={trip.end_date ?? ''}
+        />
       </div>
     </div>
   )

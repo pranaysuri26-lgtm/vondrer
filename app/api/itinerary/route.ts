@@ -10,11 +10,18 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface ItineraryStop {
+  activity:       string
+  description:    string
+  estimated_cost: string
+}
+
 export interface ItineraryBlock {
   activity:       string
   description:    string
   insider_tip:    string
   estimated_cost: string
+  also_visit?:    ItineraryStop[]   // additional stops in the same time window
 }
 
 export interface ItineraryDay {
@@ -807,9 +814,15 @@ Flag cobblestone streets. Note narrow café entrances. Stroller-friendly routes 
 Note lift availability at transit stations and major attractions.` : ''}` : ''
 
   // ── Must do / Nice to do ──────────────────────────────────────────────────────
+  const mustDoCount = must_do ? must_do.split(',').filter(Boolean).length : 0
+  const picksPerDay = mustDoCount > 0 ? Math.ceil(mustDoCount / days) : 0
   const mustDoSection = must_do ? `
-MUST DO — always include, build the trip around these. Non-negotiable:
-<must_do>${must_do}</must_do>` : ''
+MUST DO — ALL ${mustDoCount} activities MUST appear in the itinerary. Zero may be dropped.
+Picks per day average: ~${picksPerDay}. Use also_visit to fit multiple stops per time block.
+If ${picksPerDay} > 4: pack aggressively — morning and afternoon each get 2-3 stops via also_visit.
+<must_do>${must_do}</must_do>
+
+VERIFICATION: Before finalising, count how many must_do items appear in your output (primary activity + also_visit). The count MUST equal ${mustDoCount}. If any are missing, add them.` : ''
 
   const niceToDoSection = nice_to_do ? `
 NICE TO DO — include if schedule allows:
@@ -985,39 +998,52 @@ Schema per day:
   "day": number,
   "title": "evocative title — never just 'Day 1'",
   "morning": {
-    "activity": "specific real place name",
-    "description": "2-3 sentences — what to do, why it's worth it",
-    "insider_tip": "genuinely useful local knowledge",
-    "estimated_cost": "$X per person${travelerCount >= 3 ? ` / $${travelerCount}X group total` : ''}"
+    "activity": "primary stop name",
+    "description": "2-3 sentences",
+    "insider_tip": "local knowledge",
+    "estimated_cost": "$X per person${travelerCount >= 3 ? ` / $${travelerCount}X group total` : ''}",
+    "also_visit": [
+      {
+        "activity": "second stop in the same morning window",
+        "description": "1-2 sentences — quick, punchy",
+        "estimated_cost": "$X per person"
+      }
+    ]
   },
-  "afternoon": { same structure },
+  "afternoon": { same structure — also_visit for extra afternoon stops },
   "dinner": {
-    "activity": "ALWAYS a specific named restaurant — never 'dinner at a local spot'",
-    "description": "2-3 sentences: what to order, why it fits this group's dietary needs and budget",
-    "insider_tip": "reservation advice, best table, what to skip on the menu",
+    "activity": "ALWAYS a specific named restaurant",
+    "description": "what to order, why it fits dietary needs and budget",
+    "insider_tip": "reservation advice, best table",
     "estimated_cost": "$X per person${travelerCount >= 3 ? ` / $${travelerCount}X group total` : ''}"
   },
   "evening": {
-    "activity": "post-dinner option — dessert spot, bar, live music, night walk, OR 'Early night in' if day was packed",
-    "description": "light option — this is AFTER dinner, so keep it optional and easy",
+    "activity": "post-dinner: dessert, bar, night walk, OR 'Early night in' if day was full",
+    "description": "light, optional",
     "insider_tip": "...",
-    "estimated_cost": "$0–$X per person"
+    "estimated_cost": "$0–$X per person",
+    "also_visit": [ { optional extra evening stop } ]
   },
   "day_total_estimate": "$X–$Y per person${travelerCount >= 3 ? ` (group: $${travelerCount}×)` : ''}"
 }
 
-DINNER RULES — MANDATORY:
-- Every single day MUST have a dinner block with a SPECIFIC named restaurant
-- Never use "a local restaurant", "grab dinner nearby", or any unnamed venue in the dinner slot
-- Dinner must match the group's dietary requirements, budget tier, and be within logical distance of the day's activities
-- If the user's must-do list doesn't include a dinner option, YOU MUST FIND ONE that fits — this is non-negotiable
-- For the last day: if departure is before dinner time, use the dinner slot for a farewell lunch instead — name it explicitly
+ACTIVITY PACKING — CRITICAL RULES:
+- The also_visit array lets each time block contain 2–3 stops. USE IT when the user has many picks.
+- A realistic packed day can include: morning (2-3 stops) + afternoon (2-3 stops) + dinner + evening (1-2 stops) = up to 9 activities in one day
+- Example from user's own SF day: Morning: Boudin Bakery breakfast → Muni ride → Lombard Street. Afternoon: Chinatown → Coit Tower. Dinner: Nepalese restaurant. Evening: Pier 39 → Ghirardelli Square → Fisherman's Wharf stroll. That's 9 activities — ALL fit.
+- EVERY SINGLE activity from must_do MUST appear somewhere in the itinerary — in primary activity OR also_visit. Zero drops allowed.
+- If picks_per_day > 4: use also_visit extensively to fit everything in
+- If picks_per_day <= 3: also_visit is optional — fill gaps with AI-chosen complementary stops instead
 
-GAP-FILLING RULES — AI MUST complete the itinerary:
-- If the user's picked activities leave gaps (e.g. no morning activity, no nature, no food), FILL THEM with the best local options
-- Never leave a slot empty or use filler like "free time" without a named recommendation
-- "Free time" should be: "Free afternoon — [specific optional activity if they want it] or relax at [named park/café]"
-- For every day that only has 1–2 user-picked activities, the AI MUST add complementary activities to round out the day
+DINNER RULES — MANDATORY:
+- Every day MUST have a dinner block with a SPECIFIC named restaurant
+- Never use "a local restaurant" or any unnamed venue
+- Dinner must match dietary requirements and budget
+- Last day with early departure: use dinner slot for farewell lunch
+
+GAP-FILLING RULES:
+- Every empty slot must have a named recommendation — never just "free time"
+- Slots with 0 user picks: AI adds the best local option for that time + neighbourhood
 
 ABSOLUTE RULES:
 - SPECIFIC real place names only — never "a local restaurant" or "a park"
@@ -1115,7 +1141,7 @@ export async function POST(req: NextRequest) {
   try {
     const response = await anthropic.messages.create({
       model:      'claude-haiku-4-5',
-      max_tokens: 4000,
+      max_tokens: 8000,
       system:     [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
       messages:   [{ role: 'user', content: userPrompt }],
     })

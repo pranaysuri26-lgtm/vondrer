@@ -162,6 +162,17 @@ function BlockWithComments({
       <p className="text-[#5A504A] text-sm leading-relaxed">{block.description}</p>
       {block.insider_tip && <p className="text-[#C97552]/80 text-xs italic">💡 {block.insider_tip}</p>}
       <p className="text-[#8A7E6E] text-xs">{block.estimated_cost}</p>
+      {block.also_visit && block.also_visit.length > 0 && (
+        <div className="mt-2 space-y-2 border-l-2 border-[#E8E0D6] pl-3">
+          {block.also_visit.map((stop, i) => (
+            <div key={i} className="space-y-0.5">
+              <p className="text-[#1A1A1A] font-medium text-xs">↳ {stop.activity}</p>
+              <p className="text-[#5A504A] text-xs leading-relaxed">{stop.description}</p>
+              <p className="text-[#8A7E6E] text-[11px]">{stop.estimated_cost}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {open && (
         <div className="mt-3 space-y-3 border-t border-[#E8E0D6] pt-3">

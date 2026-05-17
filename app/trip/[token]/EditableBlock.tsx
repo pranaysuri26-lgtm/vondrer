@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { ItineraryBlock } from '@/app/api/itinerary/route'
+import { useWikiPhoto } from '@/hooks/useWikiPhoto'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,19 +69,8 @@ export default function EditableBlock({
   const [alternatives, setAlternatives]   = useState<ItineraryBlock[]>([])
   const [error, setError]                 = useState('')
   const [savedFlash, setSavedFlash]       = useState(false)
-  const [photoUrl, setPhotoUrl]           = useState(block.photo_url ?? '')
-
-  // Lazy Wikipedia photo fetch
-  useEffect(() => {
-    if (photoUrl) return
-    const ctrl = new AbortController()
-    const q = encodeURIComponent(displayed.activity.replace(/\s+\(.*\)$/, '').trim())
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${q}`, { signal: ctrl.signal })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.thumbnail?.source) setPhotoUrl(d.thumbnail.source) })
-      .catch(() => {})
-    return () => ctrl.abort()
-  }, [displayed.activity, photoUrl])
+  // Search-based Wikipedia photo (handles fuzzy / variant names)
+  const photoUrl = useWikiPhoto(displayed.activity, block.photo_url ?? undefined)
 
   // ── Persist block to DB ───────────────────────────────────────────────────────
   async function save(blockToSave: ItineraryBlock) {

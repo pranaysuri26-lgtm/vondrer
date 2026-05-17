@@ -64,21 +64,7 @@ function fmtWindow(start?: string, end?: string): string {
   return end ? `${fmt12(start)} – ${fmt12(end)}` : fmt12(start)
 }
 
-/** Wikipedia REST API photo — free, no key */
-function useWikiPhoto(activity: string, existingUrl?: string) {
-  const [url, setUrl] = useState(existingUrl ?? '')
-  useEffect(() => {
-    if (url) return
-    const ctrl = new AbortController()
-    const q = encodeURIComponent(activity.replace(/\s+\(.*\)$/, '').trim())
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${q}`, { signal: ctrl.signal })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.thumbnail?.source) setUrl(d.thumbnail.source) })
-      .catch(() => {})
-    return () => ctrl.abort()
-  }, [activity, url])
-  return url
-}
+import { useWikiPhoto } from '@/hooks/useWikiPhoto'
 
 // ─── Slot color / gradient fallback ───────────────────────────────────────────
 

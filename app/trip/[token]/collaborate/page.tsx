@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase'
 import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
 import TripChat from '../TripChat'
+import { useWikiPhoto } from '@/hooks/useWikiPhoto'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,22 +63,6 @@ function slotLabel(slot: string) {
   if (slot === 'dinner')    return '🍽️ Dinner'
   if (slot === 'evening')   return '🌙 Evening'
   return slot
-}
-
-// ─── Wiki photo hook ──────────────────────────────────────────────────────────
-
-function useWikiPhoto(activity: string) {
-  const [url, setUrl] = useState('')
-  useEffect(() => {
-    const ctrl = new AbortController()
-    const q = encodeURIComponent(activity.replace(/\s+\(.*\)$/, '').trim())
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${q}`, { signal: ctrl.signal })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.thumbnail?.source) setUrl(d.thumbnail.source) })
-      .catch(() => {})
-    return () => ctrl.abort()
-  }, [activity])
-  return url
 }
 
 // ─── Slot gradient fallback ───────────────────────────────────────────────────

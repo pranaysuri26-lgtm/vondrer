@@ -90,25 +90,41 @@ export default function TripMap({ pins }: TripMapProps) {
         const batch = pins.slice(i, i + BATCH)
 
         const results = await Promise.all(batch.map(async (pin): Promise<GeoPin | null> => {
-          try {
-            const q    = encodeURIComponent(`${cleanName(pin.name)}, ${pin.destination}, ${pin.country}`)
-            const bias = biasLat && biasLng ? `&lat=${biasLat}&lon=${biasLng}` : ''
-            const res  = await fetch(`https://photon.komoot.io/api/?q=${q}&limit=1&lang=en${bias}`)
-            const data = await res.json()
-            const feat = data.features?.[0]
-            if (!feat) return null
-            const [lng, lat] = feat.geometry.coordinates as [number, number]
+          const bias = biasLat && biasLng ? `&lat=${biasLat}&lon=${biasLng}` : ''
 
-            // Sanity-check: reject results more than ~300 km from the destination center
-            if (biasLat && biasLng) {
-              const dlat = lat - biasLat
-              const dlng = lng - biasLng
-              const distDeg = Math.sqrt(dlat * dlat + dlng * dlng)
-              if (distDeg > 3) return null   // ~300 km — must be a wrong country match
-            }
+          async function tryQuery(q: string): Promise<[number, number] | null> {
+            try {
+              const res  = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=en${bias}`)
+              const data = await res.json()
+              const feat = data.features?.[0]
+              if (!feat) return null
+              const [lng, lat] = feat.geometry.coordinates as [number, number]
+              // Sanity-check: reject results more than ~300 km from destination center
+              if (biasLat && biasLng) {
+                const distDeg = Math.sqrt((lat - biasLat) ** 2 + (lng - biasLng) ** 2)
+                if (distDeg > 3) return null
+              }
+              return [lat, lng]
+            } catch { return null }
+          }
 
-            return { ...pin, lat, lng }
-          } catch { return null }
+          // Attempt 1: cleaned activity name + destination
+          let coords = await tryQuery(`${cleanName(pin.name)}, ${pin.destination}, ${pin.country}`)
+
+          // Attempt 2: first 3 words of the activity name + destination (handles descriptive names)
+          if (!coords) {
+            const shortName = cleanName(pin.name).split(/\s+/).slice(0, 3).join(' ')
+            coords = await tryQuery(`${shortName}, ${pin.destination}, ${pin.country}`)
+          }
+
+          // Attempt 3: fall back to destination center with a tiny jitter so stacked pins spread out
+          if (!coords && biasLat && biasLng) {
+            const jitter = () => (Math.random() - 0.5) * 0.018   // ~1 km spread
+            coords = [biasLat + jitter(), biasLng + jitter()]
+          }
+
+          if (!coords) return null
+          return { ...pin, lat: coords[0], lng: coords[1] }
         }))
 
         const valid = results.filter((r): r is GeoPin => r !== null)

@@ -174,7 +174,7 @@ export default function EditableBlock({
           </div>
         )}
 
-        {/* Stop badge + label + time (+ pencil when no photo) */}
+        {/* Stop badge + label + time */}
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-2">
             {stopNum !== undefined && (
@@ -184,18 +184,7 @@ export default function EditableBlock({
             )}
             <p className="text-xs text-[#8A7E6E] uppercase tracking-widest">{label}</p>
           </div>
-          <div className="flex items-center gap-1.5">
-            {time && <span className="text-xs text-[#C97552] font-medium tabular-nums">{time}</span>}
-            {!photoUrl && (
-              <button
-                onClick={() => { setDraft(displayed); setMode('edit') }}
-                title="Edit this block"
-                className="opacity-70 hover:opacity-100 focus:opacity-100 w-6 h-6 rounded-full bg-[#F0EBE3] border border-[#E0D8CF] flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white hover:border-[#C97552] transition-all duration-150"
-              >
-                <PencilIcon />
-              </button>
-            )}
-          </div>
+          {time && <span className="text-xs text-[#C97552] font-medium tabular-nums">{time}</span>}
         </div>
 
         {/* Content */}
@@ -221,6 +210,15 @@ export default function EditableBlock({
             ))}
           </div>
         )}
+
+        {/* Always-visible edit button */}
+        <button
+          onClick={() => { setDraft(displayed); setMode('edit') }}
+          className="mt-3 flex items-center gap-1.5 text-xs text-[#9A8E7E] border border-[#E0D8CF] rounded-full px-3 py-1.5 hover:border-[#C97552]/50 hover:text-[#C97552] hover:bg-[#FFF8F5] transition-all"
+        >
+          <PencilIcon />
+          Edit
+        </button>
       </div>
     )
   }

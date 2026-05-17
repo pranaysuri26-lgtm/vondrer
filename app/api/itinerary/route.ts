@@ -22,7 +22,8 @@ export interface ItineraryDay {
   title:               string
   morning:             ItineraryBlock
   afternoon:           ItineraryBlock
-  evening:             ItineraryBlock
+  dinner:              ItineraryBlock   // always a restaurant / food recommendation
+  evening:             ItineraryBlock   // optional: bars, dessert, nightlife, or early night
   day_total_estimate:  string
 }
 
@@ -990,9 +991,33 @@ Schema per day:
     "estimated_cost": "$X per person${travelerCount >= 3 ? ` / $${travelerCount}X group total` : ''}"
   },
   "afternoon": { same structure },
-  "evening": { same structure },
+  "dinner": {
+    "activity": "ALWAYS a specific named restaurant — never 'dinner at a local spot'",
+    "description": "2-3 sentences: what to order, why it fits this group's dietary needs and budget",
+    "insider_tip": "reservation advice, best table, what to skip on the menu",
+    "estimated_cost": "$X per person${travelerCount >= 3 ? ` / $${travelerCount}X group total` : ''}"
+  },
+  "evening": {
+    "activity": "post-dinner option — dessert spot, bar, live music, night walk, OR 'Early night in' if day was packed",
+    "description": "light option — this is AFTER dinner, so keep it optional and easy",
+    "insider_tip": "...",
+    "estimated_cost": "$0–$X per person"
+  },
   "day_total_estimate": "$X–$Y per person${travelerCount >= 3 ? ` (group: $${travelerCount}×)` : ''}"
 }
+
+DINNER RULES — MANDATORY:
+- Every single day MUST have a dinner block with a SPECIFIC named restaurant
+- Never use "a local restaurant", "grab dinner nearby", or any unnamed venue in the dinner slot
+- Dinner must match the group's dietary requirements, budget tier, and be within logical distance of the day's activities
+- If the user's must-do list doesn't include a dinner option, YOU MUST FIND ONE that fits — this is non-negotiable
+- For the last day: if departure is before dinner time, use the dinner slot for a farewell lunch instead — name it explicitly
+
+GAP-FILLING RULES — AI MUST complete the itinerary:
+- If the user's picked activities leave gaps (e.g. no morning activity, no nature, no food), FILL THEM with the best local options
+- Never leave a slot empty or use filler like "free time" without a named recommendation
+- "Free time" should be: "Free afternoon — [specific optional activity if they want it] or relax at [named park/café]"
+- For every day that only has 1–2 user-picked activities, the AI MUST add complementary activities to round out the day
 
 ABSOLUTE RULES:
 - SPECIFIC real place names only — never "a local restaurant" or "a park"

@@ -99,9 +99,12 @@ function DayCard({ day }: { day: ItineraryDay }) {
         <span className="text-xs text-[#9A8E7E] flex-shrink-0">Day {day.day}</span>
       </div>
       <div className="space-y-4 divide-y divide-[#F0EBE3]">
-        <BlockCard label="🌅 Morning"   block={day.morning}   />
-        <div className="pt-4"><BlockCard label="☀️ Afternoon" block={day.afternoon} /></div>
-        <div className="pt-4"><BlockCard label="🌙 Evening"   block={day.evening}   /></div>
+        <BlockCard label="🌅 Morning"    block={day.morning}   />
+        <div className="pt-4"><BlockCard label="☀️ Afternoon"  block={day.afternoon} /></div>
+        {day.dinner && (
+          <div className="pt-4"><BlockCard label="🍽️ Dinner"   block={day.dinner}    /></div>
+        )}
+        <div className="pt-4"><BlockCard label="🌙 Evening"    block={day.evening}   /></div>
       </div>
       <div className="pt-2 border-t border-[#E8E0D6] flex justify-end">
         <span className="text-xs text-[#C97552]/70">Day total: ~{day.day_total_estimate}</span>

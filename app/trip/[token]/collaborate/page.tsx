@@ -58,6 +58,7 @@ function formatDate(d: string) {
 function slotLabel(slot: string) {
   if (slot === 'morning')   return '🌅 Morning'
   if (slot === 'afternoon') return '☀️ Afternoon'
+  if (slot === 'dinner')    return '🍽️ Dinner'
   if (slot === 'evening')   return '🌙 Evening'
   return slot
 }
@@ -465,6 +466,7 @@ export default function CollaboratePage({
                   const slots: Array<{ slot: string; block: ItineraryBlock }> = [
                     { slot: 'morning',   block: day.morning   },
                     { slot: 'afternoon', block: day.afternoon },
+                    ...(day.dinner ? [{ slot: 'dinner', block: day.dinner }] : []),
                     { slot: 'evening',   block: day.evening   },
                   ]
                   return (

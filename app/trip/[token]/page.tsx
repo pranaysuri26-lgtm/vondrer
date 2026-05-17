@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
 import { geocodeLocation, fetchSunTimes } from '@/lib/sun'
 import type { SunTimes } from '@/lib/sun'
+import TripMap, { type MapPin } from './TripMap'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -171,113 +172,162 @@ export default async function SharedTripPage({
     })
   )
 
+  // ─── Build map pins from all itinerary activities ──────────────────────────────
+  const mapPins: MapPin[] = []
+  dests.forEach((dest, idx) => {
+    const dayOffset = dests.slice(0, idx).reduce((s, d) => s + d.days, 0)
+    const days: ItineraryDay[] = Array.isArray(dest.itinerary_json) ? dest.itinerary_json : []
+    days.forEach(day => {
+      const globalDay = dayOffset + day.day
+      const slots: Array<{ slot: string; block: ItineraryBlock | null | undefined }> = [
+        { slot: 'Morning',   block: day.morning   },
+        { slot: 'Afternoon', block: day.afternoon },
+        { slot: 'Dinner',    block: day.dinner    },
+        { slot: 'Evening',   block: day.evening   },
+      ]
+      slots.forEach(({ slot, block }) => {
+        if (block?.activity) {
+          mapPins.push({
+            id:          `${dest.id}-${globalDay}-${slot}`,
+            name:        block.activity,
+            day:         globalDay,
+            slot,
+            destination: dest.destination_name,
+            country:     dest.country,
+          })
+        }
+      })
+    })
+  })
+
+  const hasMap = mapPins.length > 0
+
   return (
-    <div className="min-h-screen bg-[#FAF8F5]">
-      {/* Header */}
-      <div className="border-b border-[#E8E0D6]">
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-2">Shared trip</p>
-              <h1 className="font-serif italic text-3xl text-[#1A1A1A] leading-tight">
-                {trip.trip_name}
-              </h1>
-              {trip.start_date && trip.end_date && (
-                <p className="text-[#6b5f54] text-sm mt-2">
-                  {formatDateRange(trip.start_date, trip.end_date)}
-                  {trip.total_days > 0 && (
-                    <span className="ml-2 text-[#9A8E7E]">· {trip.total_days} {trip.total_days === 1 ? 'day' : 'days'}</span>
-                  )}
-                </p>
-              )}
-            </div>
-            {/* Voya wordmark */}
-            <a
-              href="https://getvoya.net"
-              className="flex-shrink-0 text-[#9A8E7E] text-xs hover:text-[#5A504A] transition-colors mt-1"
-            >
-              Made with Voya
-            </a>
-          </div>
+    <div className={`bg-[#FAF8F5] ${hasMap ? 'lg:flex lg:h-screen lg:overflow-hidden' : 'min-h-screen'}`}>
 
-          {/* Destination pills */}
-          {dests.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {dests.map(d => (
-                <span key={d.id} className="text-xs text-[#5C564E] bg-[#EDE5D8] border border-[#D8D0C4] rounded-full px-3 py-1">
-                  📍 {d.destination_name}, {d.country}
-                </span>
-              ))}
-            </div>
-          )}
+      {/* ── LEFT: Sticky map panel (desktop) ───────────────────────────────────── */}
+      {hasMap && (
+        <div className="hidden lg:flex lg:w-[420px] lg:flex-shrink-0 lg:h-full border-r border-[#E8E0D6]">
+          <TripMap pins={mapPins} />
         </div>
-      </div>
+      )}
 
-      {/* Itinerary */}
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-12">
-        {dests.length === 0 && (
-          <p className="text-[#9A8E7E] text-sm text-center py-12">No itinerary details saved for this trip.</p>
-        )}
+      {/* ── RIGHT: Scrollable content ───────────────────────────────────────────── */}
+      <div className={`flex-1 min-w-0 min-h-screen lg:min-h-0 ${hasMap ? 'lg:overflow-y-auto' : ''}`}>
 
-        {dests.map((dest, idx) => {
-          const dayOffset = dests.slice(0, idx).reduce((s, d) => s + d.days, 0)
-          const days: ItineraryDay[] = Array.isArray(dest.itinerary_json) ? dest.itinerary_json : []
-
-          return (
-            <section key={dest.id}>
-              {/* Destination header */}
-              <div className="border-t border-[#E8E0D6] pt-6 mb-5">
-                <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-1">
-                  📍 {dest.destination_name.toUpperCase()}, {dest.country.toUpperCase()}
-                  {' · '}
-                  {dest.days === 1
-                    ? `Day ${dayOffset + 1}`
-                    : `Days ${dayOffset + 1}–${dayOffset + dest.days}`
-                  }
-                </p>
-                <h2 className="font-serif italic text-2xl text-[#1A1A1A]">{dest.destination_name}</h2>
-                {dest.start_date && dest.end_date && (
-                  <p className="text-[#8A7E6E] text-xs mt-0.5">{formatDateRange(dest.start_date, dest.end_date)}</p>
+        {/* Header */}
+        <div className="border-b border-[#E8E0D6]">
+          <div className="max-w-2xl mx-auto px-4 py-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-2">Shared trip</p>
+                <h1 className="font-serif italic text-3xl text-[#1A1A1A] leading-tight">
+                  {trip.trip_name}
+                </h1>
+                {trip.start_date && trip.end_date && (
+                  <p className="text-[#6b5f54] text-sm mt-2">
+                    {formatDateRange(trip.start_date, trip.end_date)}
+                    {trip.total_days > 0 && (
+                      <span className="ml-2 text-[#9A8E7E]">· {trip.total_days} {trip.total_days === 1 ? 'day' : 'days'}</span>
+                    )}
+                  </p>
                 )}
               </div>
+              {/* Voya wordmark */}
+              <a
+                href="https://getvoya.net"
+                className="flex-shrink-0 text-[#9A8E7E] text-xs hover:text-[#5A504A] transition-colors mt-1"
+              >
+                Made with Voya
+              </a>
+            </div>
 
-              {days.length > 0 ? (
-                <div className="space-y-4">
-                  {sunTimesMap[dest.id] && (
-                    <GoldenHourStrip sun={sunTimesMap[dest.id]!} />
-                  )}
-                  {days.map(day => <DayCard key={day.day} day={day} />)}
-                </div>
-              ) : (
-                <p className="text-[#9A8E7E] text-sm italic py-4">No itinerary generated for this destination.</p>
-              )}
-
-              {/* Inter-destination connector */}
-              {idx < dests.length - 1 && (
-                <div className="mt-6 flex items-center gap-3 py-3 px-4 bg-white border border-[#E8E0D6] rounded-xl">
-                  <span className="text-base">✈️</span>
-                  <p className="text-sm text-[#6b5f54]">
-                    <span className="text-[#1A1A1A]">{dest.destination_name}</span>
-                    {' → '}
-                    <span className="text-[#1A1A1A]">{dests[idx + 1].destination_name}</span>
-                  </p>
-                </div>
-              )}
-            </section>
-          )
-        })}
-
-        {/* Footer CTA */}
-        <div className="border-t border-[#E8E0D6] pt-8 text-center space-y-3">
-          <p className="text-[#6b5f54] text-sm">Want to plan your own trip?</p>
-          <a
-            href="https://getvoya.net"
-            className="inline-block bg-[#C97552] text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#b86644] transition-colors"
-          >
-            Plan with Voya →
-          </a>
+            {/* Destination pills */}
+            {dests.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {dests.map(d => (
+                  <span key={d.id} className="text-xs text-[#5C564E] bg-[#EDE5D8] border border-[#D8D0C4] rounded-full px-3 py-1">
+                    📍 {d.destination_name}, {d.country}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </main>
+
+        {/* Mobile map strip (below header, above itinerary) */}
+        {hasMap && (
+          <div className="lg:hidden h-[220px] border-b border-[#E8E0D6]">
+            <TripMap pins={mapPins} />
+          </div>
+        )}
+
+        {/* Itinerary */}
+        <main className="max-w-2xl mx-auto px-4 py-8 space-y-12">
+          {dests.length === 0 && (
+            <p className="text-[#9A8E7E] text-sm text-center py-12">No itinerary details saved for this trip.</p>
+          )}
+
+          {dests.map((dest, idx) => {
+            const dayOffset = dests.slice(0, idx).reduce((s, d) => s + d.days, 0)
+            const days: ItineraryDay[] = Array.isArray(dest.itinerary_json) ? dest.itinerary_json : []
+
+            return (
+              <section key={dest.id}>
+                {/* Destination header */}
+                <div className="border-t border-[#E8E0D6] pt-6 mb-5">
+                  <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-1">
+                    📍 {dest.destination_name.toUpperCase()}, {dest.country.toUpperCase()}
+                    {' · '}
+                    {dest.days === 1
+                      ? `Day ${dayOffset + 1}`
+                      : `Days ${dayOffset + 1}–${dayOffset + dest.days}`
+                    }
+                  </p>
+                  <h2 className="font-serif italic text-2xl text-[#1A1A1A]">{dest.destination_name}</h2>
+                  {dest.start_date && dest.end_date && (
+                    <p className="text-[#8A7E6E] text-xs mt-0.5">{formatDateRange(dest.start_date, dest.end_date)}</p>
+                  )}
+                </div>
+
+                {days.length > 0 ? (
+                  <div className="space-y-4">
+                    {sunTimesMap[dest.id] && (
+                      <GoldenHourStrip sun={sunTimesMap[dest.id]!} />
+                    )}
+                    {days.map(day => <DayCard key={day.day} day={day} />)}
+                  </div>
+                ) : (
+                  <p className="text-[#9A8E7E] text-sm italic py-4">No itinerary generated for this destination.</p>
+                )}
+
+                {/* Inter-destination connector */}
+                {idx < dests.length - 1 && (
+                  <div className="mt-6 flex items-center gap-3 py-3 px-4 bg-white border border-[#E8E0D6] rounded-xl">
+                    <span className="text-base">✈️</span>
+                    <p className="text-sm text-[#6b5f54]">
+                      <span className="text-[#1A1A1A]">{dest.destination_name}</span>
+                      {' → '}
+                      <span className="text-[#1A1A1A]">{dests[idx + 1].destination_name}</span>
+                    </p>
+                  </div>
+                )}
+              </section>
+            )
+          })}
+
+          {/* Footer CTA */}
+          <div className="border-t border-[#E8E0D6] pt-8 text-center space-y-3">
+            <p className="text-[#6b5f54] text-sm">Want to plan your own trip?</p>
+            <a
+              href="https://getvoya.net"
+              className="inline-block bg-[#C97552] text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#b86644] transition-colors"
+            >
+              Plan with Voya →
+            </a>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

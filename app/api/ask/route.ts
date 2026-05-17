@@ -108,15 +108,42 @@ ALL OTHER QUESTIONS (packing, visas, tips, restaurants, comparisons, what to see
           stream:     true,
         })
 
+        // We buffer text and only flush up to (but not including) the <TRIP_JSON> tag.
+        // Because the tag arrives across multiple chunks we can't strip per-chunk.
+        let sendBuffer = ''
+
         for await (const event of stream) {
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            fullText += event.delta.text
-            // Strip the TRIP_JSON tag before sending to client
-            const visible = event.delta.text.replace(/<TRIP_JSON>[\s\S]*$/, '')
-            if (visible) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: visible })}\n\n`))
+            fullText    += event.delta.text
+            sendBuffer  += event.delta.text
+
+            // If the tag has fully arrived, flush everything before it and stop
+            if (sendBuffer.includes('<TRIP_JSON>')) {
+              const safe = sendBuffer.split('<TRIP_JSON>')[0]
+              if (safe) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: safe })}\n\n`))
+              sendBuffer = '' // discard the rest — tag + JSON payload
+              break
+            }
+
+            // If we might be mid-tag (e.g. buffer ends with '<TRIP_' or '<TRIP_JS'),
+            // hold back the tail in case the next chunk completes the tag
+            const tagStart = sendBuffer.lastIndexOf('<')
+            if (tagStart !== -1 && '<TRIP_JSON>'.startsWith(sendBuffer.slice(tagStart))) {
+              // flush everything before the potential tag start, hold the rest
+              const safe = sendBuffer.slice(0, tagStart)
+              if (safe) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: safe })}\n\n`))
+              sendBuffer = sendBuffer.slice(tagStart)
+            } else {
+              // No tag risk — flush the whole buffer
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: sendBuffer })}\n\n`))
+              sendBuffer = ''
             }
           }
+        }
+
+        // Flush any remaining safe text (no tag found at all)
+        if (sendBuffer && !sendBuffer.includes('<TRIP_JSON>')) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: sendBuffer })}\n\n`))
         }
 
         // ── Detect itinerary intent ──────────────────────────────────────────

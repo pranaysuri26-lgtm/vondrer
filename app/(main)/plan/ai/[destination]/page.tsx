@@ -767,37 +767,68 @@ export default function AIPlanPage() {
   useEffect(() => { allCardsRef.current   = allCards   }, [allCards])
   useEffect(() => { roundNumRef.current   = roundNum   }, [roundNum])
 
-  // ── Parallel image prefetch — fires for every new batch of cards ─────────
-  // Uses neighbourhood as query (e.g. "Mission District San Francisco") which
-  // reliably hits Wikipedia. Falls back to the card name if neighbourhood is
-  // the same as destination (e.g. day trips like "Point Reyes").
+  // ── Image prefetch — activity-name-first, concurrency-limited, deduped ───
+  // Strategy: use the specific activity name as query ("Coit Tower", "Baker Beach")
+  // so Wikipedia returns the right place image — not the neighbourhood article
+  // which causes every card in Mission District to get the same old SF panorama.
+  // Concurrency cap of 3 prevents hammering the server (which caused lag).
+  // After all results arrive, deduplicate URLs so two cards never share one image.
   useEffect(() => {
     const unloaded = allCards.filter(c => !(c.id in imageMap))
     if (unloaded.length === 0) return
 
-    Promise.all(
-      unloaded.map(async (card) => {
-        // Build a neighbourhood-first query; fall back to the activity name for day trips
-        const nbhd = card.neighbourhood?.trim() ?? ''
-        const q = nbhd && nbhd.toLowerCase() !== destination.toLowerCase()
-          ? `${nbhd} ${destination}`
-          : `${card.name} ${destination}`
+    async function fetchImage(card: PlanActivityCard): Promise<{ id: string; url: string | null }> {
+      // Strip generic time-of-day suffixes so "Baker Beach Sunset" → "Baker Beach"
+      const cleanName = card.name
+        .replace(/\s+at\s+(sunrise|sunset|dawn|dusk|night|golden hour)/gi, '')
+        .replace(/\s+(sunrise|sunset|day trip)/gi, '')
+        .trim()
+
+      // Try the specific activity name first, then add city for disambiguation
+      const queries = [
+        cleanName,
+        `${cleanName} ${destination}`,
+      ]
+
+      for (const q of queries) {
         try {
           const d = await fetch(
             `/api/destination-image?q=${encodeURIComponent(q)}&count=1`
           ).then(r => r.json())
-          return { id: card.id, url: (d.url as string | null) ?? null }
-        } catch {
-          return { id: card.id, url: null }
-        }
-      })
-    ).then(results => {
+          const url = (d.url as string | null) ?? null
+          if (url) return { id: card.id, url }
+        } catch { /* try next */ }
+      }
+      return { id: card.id, url: null }
+    }
+
+    // Run at most 3 concurrent fetches to avoid hammering and UI lag
+    async function fetchBatched() {
+      const CONCURRENCY = 3
+      const results: { id: string; url: string | null }[] = []
+      for (let i = 0; i < unloaded.length; i += CONCURRENCY) {
+        const batch = unloaded.slice(i, i + CONCURRENCY)
+        const batchResults = await Promise.all(batch.map(fetchImage))
+        results.push(...batchResults)
+      }
+
       setImageMap(prev => {
         const next = { ...prev }
-        results.forEach(({ id, url }) => { if (url) next[id] = url })
+        // Deduplicate: track URLs already assigned in this update pass
+        const usedUrls = new Set(Object.values(prev))
+        results.forEach(({ id, url }) => {
+          if (url && !usedUrls.has(url)) {
+            next[id] = url
+            usedUrls.add(url)
+          }
+          // If URL already used by another card, leave this card imageless (shimmer)
+          // rather than showing the same photo twice
+        })
         return next
       })
-    })
+    }
+
+    fetchBatched()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCards])
 
@@ -839,9 +870,22 @@ export default function AIPlanPage() {
 
       const incoming: PlanActivityCard[] = data.cards ?? []
 
-      // Client-side dedup — filter any card whose name already exists (AI sometimes ignores the list)
-      const existingNames = new Set(allCardsRef.current.map(c => c.name.toLowerCase()))
-      const deduped = incoming.filter(c => !existingNames.has(c.name.toLowerCase()))
+      // Client-side dedup — exact + fuzzy match to catch "Twin Peaks Summit" vs "Twin Peaks"
+      // Fuzzy: if either name contains all significant words (4+ chars) of the other → duplicate
+      const existingNames = allCardsRef.current.map(c => c.name.toLowerCase())
+      function isTooSimilar(a: string, b: string): boolean {
+        if (a === b) return true
+        const words = (s: string) => s.split(/\s+/).filter(w => w.length >= 4)
+        const aWords = words(a)
+        const bWords = words(b)
+        // If 2+ significant words overlap, treat as duplicate
+        const overlap = aWords.filter(w => bWords.includes(w)).length
+        return overlap >= 2
+      }
+      const deduped = incoming.filter(c => {
+        const nameLower = c.name.toLowerCase()
+        return !existingNames.some(ex => isTooSimilar(ex, nameLower))
+      })
 
       const incomingIds = new Set(deduped.map(c => c.id))
 

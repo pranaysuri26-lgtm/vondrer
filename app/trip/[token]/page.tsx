@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
 import { geocodeLocation, fetchSunTimes } from '@/lib/sun'
 import type { SunTimes } from '@/lib/sun'
@@ -52,21 +54,37 @@ export default async function SharedTripPage({
 }) {
   const { token } = await params
 
-  // Server component — use service role key to bypass RLS for public share links.
-  // Falls back to anon key if service role key not set (requires a public read policy then).
+  // Service-role client: bypass RLS so public share links always load.
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Fetch trip by share_token
+  // SSR auth client: read the logged-in user (if any) from cookies.
+  const cookieStore = await cookies()
+  const supabaseSsr = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => { /* read-only in server components */ },
+      },
+    }
+  )
+  const { data: { user } } = await supabaseSsr.auth.getUser()
+
+  // Fetch trip by share_token (include user_id for ownership check)
   const { data: trip, error: tripErr } = await supabase
     .from('trips')
-    .select('id, trip_name, total_days, start_date, end_date, share_token')
+    .select('id, trip_name, total_days, start_date, end_date, share_token, user_id')
     .eq('share_token', token)
     .single()
 
   if (tripErr || !trip) notFound()
+
+  // True only when the authenticated user owns this trip — enables inline editing.
+  const isOwner = !!(user && user.id === trip.user_id)
 
   const { data: destinations } = await supabase
     .from('trip_destinations')
@@ -185,6 +203,8 @@ export default async function SharedTripPage({
           totalDays={trip.total_days}
           startDate={trip.start_date ?? ''}
           endDate={trip.end_date ?? ''}
+          isOwner={isOwner}
+          tripId={trip.id}
         />
       </div>
     </div>

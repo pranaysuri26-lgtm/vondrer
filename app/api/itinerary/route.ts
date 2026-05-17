@@ -21,6 +21,9 @@ export interface ItineraryBlock {
   description:    string
   insider_tip:    string
   estimated_cost: string
+  start_time?:    string            // "HH:MM" 24-h e.g. "09:00"
+  end_time?:      string            // "HH:MM" 24-h e.g. "12:00"
+  photo_url?:     string            // resolved client-side from Wikipedia; stored in DB after first view
   also_visit?:    ItineraryStop[]   // additional stops in the same time window
 }
 
@@ -1014,6 +1017,8 @@ Schema per day:
   "title": "evocative title — never just 'Day 1'",
   "morning": {
     "activity": "primary stop name",
+    "start_time": "HH:MM",
+    "end_time": "HH:MM",
     "description": "2-3 sentences",
     "insider_tip": "local knowledge",
     "estimated_cost": "$X per person${travelerCount >= 3 ? ` / $${travelerCount}X group total` : ''}",
@@ -1025,15 +1030,19 @@ Schema per day:
       }
     ]
   },
-  "afternoon": { same structure — also_visit for extra afternoon stops },
+  "afternoon": { same structure with start_time/end_time — also_visit for extra afternoon stops },
   "dinner": {
     "activity": "ALWAYS a specific named restaurant",
+    "start_time": "HH:MM",
+    "end_time": "HH:MM",
     "description": "what to order, why it fits dietary needs and budget",
     "insider_tip": "reservation advice, best table",
     "estimated_cost": "$X per person${travelerCount >= 3 ? ` / $${travelerCount}X group total` : ''}"
   },
   "evening": {
     "activity": "post-dinner: dessert, bar, night walk, OR 'Early night in' if day was full",
+    "start_time": "HH:MM",
+    "end_time": "HH:MM",
     "description": "light, optional",
     "insider_tip": "...",
     "estimated_cost": "$0–$X per person",
@@ -1041,6 +1050,14 @@ Schema per day:
   },
   "day_total_estimate": "$X–$Y per person${travelerCount >= 3 ? ` (group: $${travelerCount}×)` : ''}"
 }
+
+TIME WINDOW RULES — always include start_time / end_time for morning / afternoon / dinner / evening:
+- Morning:   typically 08:00–12:30 (adjust for activity type: ferries at 08:00, museums from 09:00)
+- Afternoon: typically 12:30–17:30 (lunch activities start ~12:30; sightseeing from 13:00)
+- Dinner:    typically 18:30–20:30 (fine dining 19:00–21:00; casual 18:00–19:30)
+- Evening:   typically 20:30–23:00 (bars/dessert after dinner; shorter if early-night)
+Adjust realistically — a ferry leaves at 08:30, not a generic 09:00. A museum that closes at 17:00 should end by 16:30.
+Use 24-hour "HH:MM" format only. Never include AM/PM in the JSON.
 
 ACTIVITY PACKING — CRITICAL RULES:
 - The also_visit array lets each time block contain 2–3 stops. USE IT when the user has many picks.

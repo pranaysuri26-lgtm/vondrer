@@ -87,10 +87,17 @@ export default function TripMap({ pins: initialPins }: TripMapProps) {
     setStatus('geocoding')
     let cancelled = false
 
-    // Drop cached coords for any pin whose activity name has changed — forces re-geocode
+    // Keep old coords when the activity name changes — re-geocoding a renamed/abbreviated
+    // name often falls back to destination jitter which is worse than the old position.
+    // Remove only pins that no longer exist; update name/slot in-place for renames.
     setGeoPins(prev => {
-      const nameMap = new Map(pins.map(p => [p.id, p.name]))
-      return prev.filter(g => nameMap.get(g.id) === g.name)
+      const pinMap = new Map(pins.map(p => [p.id, p]))
+      return prev
+        .filter(g => pinMap.has(g.id))
+        .map(g => {
+          const cur = pinMap.get(g.id)!
+          return cur.name !== g.name || cur.slot !== g.slot ? { ...g, name: cur.name, slot: cur.slot } : g
+        })
     })
 
     async function geocodeAll() {

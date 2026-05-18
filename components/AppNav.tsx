@@ -129,7 +129,7 @@ export default function AppNav() {
   // ── Desktop nav ─────────────────────────────────────────────────────────────
   const DesktopNav = (
     <nav className="hidden md:flex sticky top-0 z-30 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E8E0D6] px-8 h-14 items-center justify-between">
-      <Link href="/discover" className="font-serif italic text-xl text-[#1A1A1A] select-none tracking-wide hover:text-[#C97552] transition-colors">
+      <Link href="/" className="font-serif italic text-xl text-[#1A1A1A] select-none tracking-wide hover:text-[#C97552] transition-colors">
         Vondrer
       </Link>
 

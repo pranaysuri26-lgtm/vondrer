@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import type { ItineraryBlock, ItineraryResult, PreTripInfo } from '@/app/api/itinerary/route'
+import VisaInlineBlock from '@/components/VisaInlineBlock'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2836,6 +2837,17 @@ function PlanNewInner() {
                     onChange={h => updateDestination(dest.id, { hotel: h })}
                   />
                 </div>
+
+                {/* Visa intel */}
+                {dest.country && (
+                  <div className="px-4 pb-3">
+                    <VisaInlineBlock
+                      homeCountry={profile?.home_country ?? ''}
+                      destCountry={dest.country}
+                      variant="light"
+                    />
+                  </div>
+                )}
 
                 {/* Local transport */}
                 <div className="px-4 pb-3">

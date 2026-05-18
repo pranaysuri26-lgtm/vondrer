@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { detectCurrency, displayBudget, type CurrencyInfo } from '@/lib/currency'
 import type { RecommendedDestination, TransportMode, Accommodation } from '@/lib/recommendations'
+import VisaInlineBlock from '@/components/VisaInlineBlock'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -862,6 +863,7 @@ function ImageCarousel({ dest, compact = false }: { dest: RecommendedDestination
 
 function DestinationCard({
   dest, rank, locked, currency, gemEmphasis = false, dietaryPrefs = [], homeCity = '',
+  homeCountry = '',
   isSaved = false, isSaving = false, onSave,
 }: {
   dest:          RecommendedDestination
@@ -871,6 +873,7 @@ function DestinationCard({
   gemEmphasis?:  boolean
   dietaryPrefs?: string[]
   homeCity?:     string
+  homeCountry?:  string
   isSaved?:      boolean
   isSaving?:     boolean
   onSave?:       (dest: RecommendedDestination) => void
@@ -1068,6 +1071,13 @@ function DestinationCard({
             <AccommodationBlock acc={dest.accommodation} destName={dest.name} />
           )}
 
+          {/* Visa intel */}
+          <VisaInlineBlock
+            homeCountry={homeCountry}
+            destCountry={dest.country}
+            variant="dark"
+          />
+
           {/* Budget + Best time */}
           {(dest.budget_per_day_usd || dest.best_time_to_visit) && (
             <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-[#2A2A2E] pt-3">
@@ -1236,6 +1246,7 @@ export default function DiscoverPage() {
   const [currency, setCurrency]         = useState<CurrencyInfo>({ symbol: '$', code: 'USD', rate: 1 })
   const [dietaryPrefs, setDietaryPrefs] = useState<string[]>([])
   const [homeCity, setHomeCity]         = useState<string>('')
+  const [homeCountry, setHomeCountry]   = useState<string>('')
   const [errorMsg, setErrorMsg]         = useState('')
   const [retryCount, setRetryCount]     = useState(0)
   const [slow, setSlow]                 = useState(false)
@@ -1393,7 +1404,7 @@ export default function DiscoverPage() {
               setState('error')
             } else {
               // Commit everything at once — paywall boundaries are now stable
-              if (metaCurrency) setCurrency(detectCurrency(metaCurrency))
+              if (metaCurrency) { setCurrency(detectCurrency(metaCurrency)); setHomeCountry(metaCurrency) }
               if (metaCity)     setHomeCity(metaCity)
               if (metaDietary.length > 0) setDietaryPrefs(metaDietary)
               setDestinations(buffer)
@@ -1432,7 +1443,7 @@ export default function DiscoverPage() {
 
             if (!cancelled && refreshed.length > 0) {
               setDestinations(refreshed)
-              if (refreshCountry) setCurrency(detectCurrency(refreshCountry))
+              if (refreshCountry) { setCurrency(detectCurrency(refreshCountry)); setHomeCountry(refreshCountry) }
               if (refreshCity)    setHomeCity(refreshCity)
               if (refreshDietary.length > 0) setDietaryPrefs(refreshDietary)
             }
@@ -1631,6 +1642,7 @@ export default function DiscoverPage() {
                     currency={currency}
                     dietaryPrefs={dietaryPrefs}
                     homeCity={homeCity}
+                    homeCountry={homeCountry}
                     isSaved={true}
                     isSaving={savingId === key}
                     onSave={toggleSave}
@@ -1657,6 +1669,7 @@ export default function DiscoverPage() {
                 currency={currency}
                 dietaryPrefs={dietaryPrefs}
                 homeCity={homeCity}
+                homeCountry={homeCountry}
                 isSaved={savedIds.has(key)}
                 isSaving={savingId === key}
                 onSave={toggleSave}

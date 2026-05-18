@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { InspirationResult } from '@/app/api/plan/inspiration/route'
 
-type Step = 'input' | 'loading' | 'result'
+type Step = 'input' | 'loading' | 'result' | 'generating'
 
 export default function InspirationPage() {
   const router = useRouter()
@@ -26,7 +26,6 @@ export default function InspirationPage() {
     reader.onload = e => {
       const dataUrl = e.target?.result as string
       setPreview(dataUrl)
-      // strip the data:image/...;base64, prefix
       setImgB64(dataUrl.split(',')[1])
     }
     reader.readAsDataURL(file)
@@ -57,19 +56,30 @@ export default function InspirationPage() {
     }
   }
 
-  function usePlan() {
+  async function generate() {
     if (!result) return
-    const params = new URLSearchParams({
-      dest:      result.destination,
-      country:   result.country,
-      days:      String(result.days),
-      budget:    result.budget,
-      interests: result.interests.join(','),
-    })
-    if (result.activities?.length > 0) {
-      params.set('must_do', result.activities.join('\n'))
+    setError('')
+    setStep('generating')
+    try {
+      const res = await fetch('/api/plan/auto-generate', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          destination: result.destination,
+          country:     result.country,
+          days:        result.days,
+          budget:      result.budget,
+          interests:   result.interests,
+          activities:  result.activities ?? [],
+        }),
+      })
+      const data = await res.json() as { share_token?: string; error?: string }
+      if (!res.ok || !data.share_token) throw new Error(data.error ?? 'Generation failed.')
+      router.push(`/trip/${data.share_token}`)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setStep('result')
     }
-    router.push(`/plan/new?${params}`)
   }
 
   return (
@@ -81,17 +91,24 @@ export default function InspirationPage() {
           <p className="text-xs text-[#C97552] uppercase tracking-widest mb-2">Plan from inspiration</p>
           <h1 className="font-serif italic text-3xl text-[#1A1A1A] mb-3">Show us what inspires you</h1>
           <p className="text-[#6b5f54] text-sm">
-            Paste a travel article URL, drop a photo, or describe a place — we&apos;ll extract the destination and pre-fill your plan.
+            Paste a travel article URL, drop a photo, or describe a place — we&apos;ll extract the destination and build your itinerary.
           </p>
           <p className="text-[11px] text-[#9A8E7E] mt-2">
             Works with travel blogs, articles &amp; websites. For Instagram posts, use a screenshot or copy the caption.
           </p>
         </div>
 
-        {step === 'loading' && (
+        {(step === 'loading' || step === 'generating') && (
           <div className="flex flex-col items-center py-20 gap-4">
             <div className="w-10 h-10 border-2 border-[#C97552] border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-[#9A8E7E]">Analysing your inspiration…</p>
+            <p className="text-sm text-[#9A8E7E]">
+              {step === 'loading' ? 'Analysing your inspiration…' : 'Building your itinerary…'}
+            </p>
+            {step === 'generating' && (
+              <p className="text-xs text-[#B8B0A4] text-center max-w-xs">
+                This takes about 20–30 seconds. We&apos;re crafting a full day-by-day plan just for you.
+              </p>
+            )}
           </div>
         )}
 
@@ -223,12 +240,14 @@ export default function InspirationPage() {
               )}
             </div>
 
+            {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+
             <div className="flex gap-3">
               <button onClick={() => setStep('input')} className="flex-1 py-3 border border-[#E0D8CF] text-sm text-[#6b5f54] rounded-full hover:border-[#C8C0B4] transition-colors">
                 ← Try again
               </button>
-              <button onClick={usePlan} className="flex-1 py-3 bg-[#C97552] text-white text-sm font-semibold rounded-full hover:bg-[#b86644] transition-colors">
-                Plan this trip →
+              <button onClick={generate} className="flex-1 py-3 bg-[#C97552] text-white text-sm font-semibold rounded-full hover:bg-[#b86644] transition-colors">
+                Generate itinerary →
               </button>
             </div>
           </div>

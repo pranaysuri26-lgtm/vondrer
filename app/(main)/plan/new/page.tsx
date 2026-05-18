@@ -2264,7 +2264,7 @@ function PlanNewInner() {
   const [occasionEventName,  setOccasionEventName]  = useState<string>('')
   const [tripContext,     setTripContext]      = useState<string>('')
 
-  // Pre-open add form if dest pre-filled from discover or inspiration
+  // Pre-open add form if dest pre-filled from discover
   useEffect(() => {
     if ((prefillDest || prefillCountry) && !formPrefillUsed) {
       setFormPrefillName(prefillDest)
@@ -2661,6 +2661,7 @@ function PlanNewInner() {
     setGenerating(false)
   }, [destinations, profile, group, tripInterests, tripPace, specialOccasion, occasionPerson, occasionDate, occasionTime, occasionVenue, occasionEventName, accessibility, tripContext, transportLegs])
 
+  // Keep ref in sync so the auto-trigger effect can call the latest version
   // ── Save ──────────────────────────────────────────────────────────────────────
   const saveTrip = useCallback(async () => {
     if (destinations.length === 0) return

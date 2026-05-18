@@ -76,7 +76,6 @@ export default function EditableBlock({
     setMode('saving')
     setError('')
     try {
-      console.log('[EditableBlock save] slot:', slot, 'day:', day, '| activity:', blockToSave.activity, '| desc:', blockToSave.description?.slice(0, 80))
       const res = await fetch(`/api/trip/${tripId}/save-block`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -86,7 +85,6 @@ export default function EditableBlock({
         const data = await res.json()
         throw new Error(data.error ?? 'Save failed')
       }
-      console.log('[EditableBlock save] success, calling onSaved')
       onSaved(blockToSave)   // parent updates its localDests → block prop refreshes
       setMode('read')
       setSavedFlash(true)
@@ -282,6 +280,19 @@ export default function EditableBlock({
         className="w-full text-sm font-medium text-[#1A1A1A] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
       />
 
+      {/* Warn when activity name changed but description wasn't updated yet */}
+      {draft.activity.trim() !== block.activity.trim() && draft.description === block.description && block.description && (
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-700">
+          <span>Description still refers to the old activity</span>
+          <button
+            type="button"
+            onClick={() => setDraft(d => ({ ...d, description: '' }))}
+            className="font-medium underline underline-offset-2 flex-shrink-0"
+          >
+            Clear it
+          </button>
+        </div>
+      )}
       <textarea
         value={draft.description}
         onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}

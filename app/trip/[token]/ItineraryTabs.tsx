@@ -331,21 +331,13 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
   const [localDests, setLocalDests] = useState<SerializableDest[]>(dests)
 
   function handleBlockUpdate(destId: string, day: number, slot: string, block: ItineraryBlock) {
-    console.log('[handleBlockUpdate] destId:', destId, 'day:', day, 'slot:', slot, '| activity:', block.activity, '| desc:', block.description?.slice(0, 80))
-    setLocalDests(prev => {
-      const next = prev.map(dest => {
-        if (dest.id !== destId) return dest
-        const itinerary = (dest.itinerary_json ?? []).map(d =>
-          d.day === day ? { ...d, [slot]: block } : d
-        )
-        return { ...dest, itinerary_json: itinerary }
-      })
-      // Look in the specific dest, not across all dests (avoids same day# in multiple dests)
-      const updatedDest = next.find(d => d.id === destId)
-      const updatedDay  = updatedDest?.itinerary_json?.find(d => d.day === day)
-      console.log('[handleBlockUpdate] patched desc:', (updatedDay as any)?.[slot]?.description?.slice(0, 80))
-      return next
-    })
+    setLocalDests(prev => prev.map(dest => {
+      if (dest.id !== destId) return dest
+      const itinerary = (dest.itinerary_json ?? []).map(d =>
+        d.day === day ? { ...d, [slot]: block } : d
+      )
+      return { ...dest, itinerary_json: itinerary }
+    }))
   }
 
   // Build a flat ordered list of every (globalDay, day, dest) across all destinations

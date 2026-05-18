@@ -76,7 +76,7 @@ export default function EditableBlock({
     setMode('saving')
     setError('')
     try {
-      console.log('[EditableBlock save] sending:', { slot, day, activity: blockToSave.activity, description: blockToSave.description?.slice(0, 60) })
+      console.log('[EditableBlock save] slot:', slot, 'day:', day, '| activity:', blockToSave.activity, '| desc:', blockToSave.description?.slice(0, 80))
       const res = await fetch(`/api/trip/${tripId}/save-block`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },

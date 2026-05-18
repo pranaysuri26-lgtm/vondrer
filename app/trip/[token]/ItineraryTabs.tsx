@@ -331,7 +331,7 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
   const [localDests, setLocalDests] = useState<SerializableDest[]>(dests)
 
   function handleBlockUpdate(destId: string, day: number, slot: string, block: ItineraryBlock) {
-    console.log('[handleBlockUpdate]', { destId, day, slot, activity: block.activity, description: block.description?.slice(0, 60) })
+    console.log('[handleBlockUpdate] destId:', destId, 'day:', day, 'slot:', slot, '| activity:', block.activity, '| desc:', block.description?.slice(0, 80))
     setLocalDests(prev => {
       const next = prev.map(dest => {
         if (dest.id !== destId) return dest
@@ -340,8 +340,10 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
         )
         return { ...dest, itinerary_json: itinerary }
       })
-      const updated = next.flatMap(d => d.itinerary_json ?? []).find(d => d.day === day)
-      console.log('[handleBlockUpdate] after patch, slot value:', (updated as any)?.[slot]?.description?.slice(0, 60))
+      // Look in the specific dest, not across all dests (avoids same day# in multiple dests)
+      const updatedDest = next.find(d => d.id === destId)
+      const updatedDay  = updatedDest?.itinerary_json?.find(d => d.day === day)
+      console.log('[handleBlockUpdate] patched desc:', (updatedDay as any)?.[slot]?.description?.slice(0, 80))
       return next
     })
   }

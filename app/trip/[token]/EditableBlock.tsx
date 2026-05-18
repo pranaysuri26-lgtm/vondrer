@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { ItineraryBlock } from '@/app/api/itinerary/route'
 import { useWikiPhoto } from '@/hooks/useWikiPhoto'
 
@@ -17,8 +17,8 @@ export interface EditableBlockProps {
   slot:         'morning' | 'afternoon' | 'dinner' | 'evening'
   destination:  string
   country:      string
-  dayContext?:  Record<string, string | undefined>   // slot → activity name (for AI context)
-  stopNum?:     number                               // numbered badge position in timeline
+  dayContext?:  Record<string, string | undefined>
+  stopNum?:     number
   onSaved:      (updated: ItineraryBlock) => void
 }
 
@@ -36,8 +36,6 @@ const SLOT_BG: Record<string, string> = {
   '🍽️ Dinner':    'from-rose-100   to-red-50',
   '🌙 Evening':   'from-indigo-100 to-purple-50',
 }
-
-// ─── Pencil icon ──────────────────────────────────────────────────────────────
 
 function PencilIcon() {
   return (
@@ -63,22 +61,15 @@ export default function EditableBlock({
   label, block, tripId, destId, day, slot,
   destination, country, dayContext, stopNum, onSaved,
 }: EditableBlockProps) {
-  const [mode, setMode]                   = useState<Mode>('read')
-  const [draft, setDraft]                 = useState<ItineraryBlock>(block)
-  const [displayed, setDisplayed]         = useState<ItineraryBlock>(block)
-  const [alternatives, setAlternatives]   = useState<ItineraryBlock[]>([])
-  const [error, setError]                 = useState('')
-  const [savedFlash, setSavedFlash]       = useState(false)
+  const [mode, setMode]               = useState<Mode>('read')
+  const [draft, setDraft]             = useState<ItineraryBlock>(block)
+  const [alternatives, setAlternatives] = useState<ItineraryBlock[]>([])
+  const [error, setError]             = useState('')
+  const [savedFlash, setSavedFlash]   = useState(false)
 
-  // Keep displayed in sync with block prop when not actively editing
-  // (handles parent repopulating the block, e.g. after replan)
-  useEffect(() => {
-    if (mode === 'read') setDisplayed(block)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [block])
-
-  // Search-based Wikipedia photo (handles fuzzy / variant names)
-  const photoUrl = useWikiPhoto(displayed.activity, destination, displayed.photo_url ?? undefined)
+  // Read mode always renders from the `block` prop — the parent is the single source
+  // of truth. No local copy needed; onSaved() updates the parent which re-passes block.
+  const photoUrl = useWikiPhoto(block.activity, destination, block.photo_url ?? undefined)
 
   // ── Persist block to DB ───────────────────────────────────────────────────────
   async function save(blockToSave: ItineraryBlock) {
@@ -94,10 +85,8 @@ export default function EditableBlock({
         const data = await res.json()
         throw new Error(data.error ?? 'Save failed')
       }
-      setDisplayed(blockToSave)
-      onSaved(blockToSave)
+      onSaved(blockToSave)   // parent updates its localDests → block prop refreshes
       setMode('read')
-      // Brief success flash
       setSavedFlash(true)
       setTimeout(() => setSavedFlash(false), 1800)
     } catch (err: unknown) {
@@ -116,7 +105,7 @@ export default function EditableBlock({
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           destination, country, day, slot,
-          current_activity: displayed.activity,
+          current_activity: block.activity,
           day_context: dayContext,
         }),
       })
@@ -134,10 +123,10 @@ export default function EditableBlock({
   // READ MODE
   // ═══════════════════════════════════════════════════════════════════════════
   if (mode === 'read') {
-    const time = displayed.start_time
-      ? displayed.end_time
-        ? `${fmt12(displayed.start_time)} – ${fmt12(displayed.end_time)}`
-        : fmt12(displayed.start_time)
+    const time = block.start_time
+      ? block.end_time
+        ? `${fmt12(block.start_time)} – ${fmt12(block.end_time)}`
+        : fmt12(block.start_time)
       : ''
 
     return (
@@ -146,14 +135,13 @@ export default function EditableBlock({
         {photoUrl ? (
           <div className="relative h-40 -mx-5 mb-3 overflow-hidden">
             <img
-              src={photoUrl} alt={displayed.activity}
+              src={photoUrl} alt={block.activity}
               className="w-full h-full object-cover"
               loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-            {/* Pencil button overlaid on photo */}
             <button
-              onClick={() => { setDraft(displayed); setMode('edit') }}
+              onClick={() => { setDraft(block); setMode('edit') }}
               title="Edit this block"
               className="absolute top-2 right-2 opacity-70 hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white transition-all duration-150 shadow-sm"
             >
@@ -163,7 +151,7 @@ export default function EditableBlock({
         ) : (
           <div className={`relative h-20 -mx-5 mb-3 bg-gradient-to-br ${SLOT_BG[label] ?? 'from-stone-100 to-stone-50'}`}>
             <button
-              onClick={() => { setDraft(displayed); setMode('edit') }}
+              onClick={() => { setDraft(block); setMode('edit') }}
               title="Edit this block"
               className="absolute top-2 right-2 opacity-70 hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white transition-all duration-150 shadow-sm"
             >
@@ -187,19 +175,19 @@ export default function EditableBlock({
 
         {/* Content */}
         <p className={`text-[#1A1A1A] font-semibold text-sm mb-1 transition-colors ${savedFlash ? 'text-emerald-600' : ''}`}>
-          {displayed.activity}
+          {block.activity}
           {savedFlash && <span className="ml-1.5 text-xs font-normal text-emerald-500">✓ saved</span>}
         </p>
-        <p className="text-[#5A504A] text-sm leading-relaxed">{displayed.description}</p>
-        {displayed.insider_tip && (
-          <p className="text-[#C97552]/80 text-xs italic mt-1">💡 {displayed.insider_tip}</p>
+        <p className="text-[#5A504A] text-sm leading-relaxed">{block.description}</p>
+        {block.insider_tip && (
+          <p className="text-[#C97552]/80 text-xs italic mt-1">💡 {block.insider_tip}</p>
         )}
-        <p className="text-[#8A7E6E] text-xs mt-1">{displayed.estimated_cost}</p>
+        <p className="text-[#8A7E6E] text-xs mt-1">{block.estimated_cost}</p>
 
         {/* also_visit sub-stops */}
-        {displayed.also_visit && displayed.also_visit.length > 0 && (
+        {block.also_visit && block.also_visit.length > 0 && (
           <div className="mt-2.5 space-y-2 border-l-2 border-[#E8E0D6] pl-3">
-            {displayed.also_visit.map((stop, i) => (
+            {block.also_visit.map((stop, i) => (
               <div key={i} className="space-y-0.5">
                 <p className="text-[#1A1A1A] font-medium text-xs">↳ {stop.activity}</p>
                 <p className="text-[#5A504A] text-xs leading-relaxed">{stop.description}</p>
@@ -211,7 +199,7 @@ export default function EditableBlock({
 
         {/* Always-visible edit button */}
         <button
-          onClick={() => { setDraft(displayed); setMode('edit') }}
+          onClick={() => { setDraft(block); setMode('edit') }}
           className="mt-3 flex items-center gap-1.5 text-xs text-[#9A8E7E] border border-[#E0D8CF] rounded-full px-3 py-1.5 hover:border-[#C97552]/50 hover:text-[#C97552] hover:bg-[#FFF8F5] transition-all"
         >
           <PencilIcon />
@@ -284,7 +272,6 @@ export default function EditableBlock({
     <div className="space-y-2 p-3.5 bg-[#F8F5F1] rounded-xl border border-[#E0D8CF]">
       <p className="text-xs text-[#8A7E6E] uppercase tracking-widest">{label}</p>
 
-      {/* Activity name */}
       <input
         value={draft.activity}
         onChange={e => setDraft(d => ({ ...d, activity: e.target.value }))}
@@ -293,7 +280,6 @@ export default function EditableBlock({
         className="w-full text-sm font-medium text-[#1A1A1A] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
       />
 
-      {/* Description */}
       <textarea
         value={draft.description}
         onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
@@ -303,7 +289,6 @@ export default function EditableBlock({
         className="w-full text-sm text-[#5A504A] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 resize-none disabled:opacity-50"
       />
 
-      {/* Insider tip */}
       <input
         value={draft.insider_tip ?? ''}
         onChange={e => setDraft(d => ({ ...d, insider_tip: e.target.value }))}
@@ -312,7 +297,6 @@ export default function EditableBlock({
         className="w-full text-xs text-[#C97552] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
       />
 
-      {/* Cost */}
       <input
         value={draft.estimated_cost ?? ''}
         onChange={e => setDraft(d => ({ ...d, estimated_cost: e.target.value }))}
@@ -323,9 +307,7 @@ export default function EditableBlock({
 
       {error && <p className="text-red-400 text-xs">{error}</p>}
 
-      {/* Action buttons */}
       <div className="flex gap-2 pt-0.5">
-        {/* Cancel */}
         <button
           onClick={() => { setMode('read'); setError('') }}
           disabled={isSaving}
@@ -334,7 +316,6 @@ export default function EditableBlock({
           Cancel
         </button>
 
-        {/* AI alternatives */}
         <button
           onClick={loadAlternatives}
           disabled={isSaving}
@@ -343,7 +324,6 @@ export default function EditableBlock({
           ↻ AI suggest
         </button>
 
-        {/* Save */}
         <button
           onClick={() => save(draft)}
           disabled={isSaving || !draft.activity.trim()}

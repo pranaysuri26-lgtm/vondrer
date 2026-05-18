@@ -394,6 +394,74 @@ export default function EditableBlock({
         className="w-full text-xs text-[#8A7E6E] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
       />
 
+      {/* Sub-stops (also_visit) */}
+      <div className="space-y-2 pt-1">
+        {(draft.also_visit ?? []).length > 0 && (
+          <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">↳ Sub-stops</p>
+        )}
+        {(draft.also_visit ?? []).map((sub, i) => (
+          <div key={i} className="space-y-1.5 pl-3 border-l-2 border-[#E0D8CF]">
+            <div className="flex gap-1.5 items-start">
+              <input
+                value={sub.activity}
+                onChange={e => setDraft(d => ({
+                  ...d,
+                  also_visit: (d.also_visit ?? []).map((s, j) => j === i ? { ...s, activity: e.target.value } : s)
+                }))}
+                placeholder="Activity name"
+                disabled={isSaving}
+                className="flex-1 text-xs font-medium text-[#1A1A1A] bg-white border border-[#D8D0C4] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => setDraft(d => ({
+                  ...d,
+                  also_visit: (d.also_visit ?? []).filter((_, j) => j !== i)
+                }))}
+                disabled={isSaving}
+                className="flex-shrink-0 mt-0.5 text-[#B8B0A4] hover:text-red-400 disabled:opacity-40 transition-colors p-1"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <textarea
+              value={sub.description}
+              onChange={e => setDraft(d => ({
+                ...d,
+                also_visit: (d.also_visit ?? []).map((s, j) => j === i ? { ...s, description: e.target.value } : s)
+              }))}
+              rows={2}
+              placeholder="Description (optional)"
+              disabled={isSaving}
+              className="w-full text-xs text-[#5A504A] bg-white border border-[#D8D0C4] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C97552]/60 resize-none disabled:opacity-50"
+            />
+            <input
+              value={sub.estimated_cost ?? ''}
+              onChange={e => setDraft(d => ({
+                ...d,
+                also_visit: (d.also_visit ?? []).map((s, j) => j === i ? { ...s, estimated_cost: e.target.value } : s)
+              }))}
+              placeholder="Estimated cost (optional)"
+              disabled={isSaving}
+              className="w-full text-[11px] text-[#8A7E6E] bg-white border border-[#D8D0C4] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
+            />
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setDraft(d => ({
+            ...d,
+            also_visit: [...(d.also_visit ?? []), { activity: '', description: '', estimated_cost: '' }]
+          }))}
+          disabled={isSaving}
+          className="text-xs text-[#9A8E7E] hover:text-[#C97552] disabled:opacity-40 flex items-center gap-1 transition-colors"
+        >
+          + Add sub-stop
+        </button>
+      </div>
+
       {error && <p className="text-red-400 text-xs">{error}</p>}
 
       <div className="flex gap-2 pt-0.5">

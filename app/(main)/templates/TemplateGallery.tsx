@@ -10,6 +10,12 @@ const CAT_EMOJI: Record<string, string> = {
   foodie: '🍜', romantic: '💑', family: '👨‍👩‍👧', backpacker: '🎒',
 }
 
+interface DestinationLeg {
+  destination_name: string
+  country:          string
+  days:             number
+}
+
 interface Template {
   id:               string
   title:            string
@@ -20,6 +26,17 @@ interface Template {
   category:         string[]
   copies:           number
   views:            number
+  destinations:     DestinationLeg[]
+}
+
+interface SelectedLeg {
+  key:              string    // `${template_id}:${leg_index}`
+  template_id:      string
+  leg_index:        number
+  destination_name: string
+  country:          string
+  days:             number
+  template_title:   string
 }
 
 function Spinner() {
@@ -34,8 +51,9 @@ function Spinner() {
 export default function TemplateGallery({ templates }: { templates: Template[] }) {
   const router = useRouter()
 
-  const [filter,   setFilter]   = useState<string | null>(null)
-  const [selected, setSelected] = useState<string[]>([])        // ordered selection
+  const [filter,    setFilter]    = useState<string | null>(null)
+  const [selected,  setSelected]  = useState<SelectedLeg[]>([])   // ordered selection
+  const [expanded,  setExpanded]  = useState<Set<string>>(new Set())
   const [showModal, setShowModal] = useState(false)
   const [tripName,  setTripName]  = useState('')
   const [creating,  setCreating]  = useState(false)
@@ -45,15 +63,53 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
     filter ? templates.filter(t => t.category?.includes(filter)) : templates
   , [templates, filter])
 
-  // Ordered selected templates (preserving selection order)
+  // Ordered selected legs (already ordered by insertion)
   const orderedSelected = selected
-    .map(id => templates.find(t => t.id === id))
-    .filter((t): t is Template => !!t)
 
-  function toggleSelect(id: string) {
-    setSelected(prev =>
-      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-    )
+  function toggleExpanded(id: string) {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleLeg(tmpl: Template, legIndex: number, leg: DestinationLeg) {
+    const key = `${tmpl.id}:${legIndex}`
+    setSelected(prev => {
+      const exists = prev.findIndex(l => l.key === key)
+      if (exists !== -1) return prev.filter(l => l.key !== key)
+      return [...prev, {
+        key,
+        template_id:      tmpl.id,
+        leg_index:        legIndex,
+        destination_name: leg.destination_name,
+        country:          leg.country,
+        days:             leg.days,
+        template_title:   tmpl.title,
+      }]
+    })
+  }
+
+  function toggleWholeTemplate(tmpl: Template) {
+    const key = `${tmpl.id}:0`
+    setSelected(prev => {
+      const exists = prev.findIndex(l => l.key === key)
+      if (exists !== -1) return prev.filter(l => l.key !== key)
+      return [...prev, {
+        key,
+        template_id:      tmpl.id,
+        leg_index:        0,
+        destination_name: tmpl.destination_name,
+        country:          tmpl.country,
+        days:             tmpl.days,
+        template_title:   tmpl.title,
+      }]
+    })
+  }
+
+  function removeLeg(key: string) {
+    setSelected(prev => prev.filter(l => l.key !== key))
   }
 
   function moveUp(idx: number) {
@@ -75,8 +131,7 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
   }
 
   function openModal() {
-    // Auto-name from selected destinations
-    const names = orderedSelected.map(t => t.destination_name)
+    const names = orderedSelected.map(l => l.destination_name)
     setTripName(names.join(' + '))
     setShowModal(true)
     setError('')
@@ -88,14 +143,17 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
   }
 
   async function createTrip() {
-    if (!tripName.trim() || selected.length === 0) return
+    if (!tripName.trim() || orderedSelected.length === 0) return
     setCreating(true)
     setError('')
     try {
       const res = await fetch('/api/trips/from-templates', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ name: tripName.trim(), template_ids: selected }),
+        body:    JSON.stringify({
+          name: tripName.trim(),
+          legs: orderedSelected.map(l => ({ template_id: l.template_id, leg_index: l.leg_index })),
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to create trip')
@@ -106,7 +164,7 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
     }
   }
 
-  const totalDays = orderedSelected.reduce((s, t) => s + t.days, 0)
+  const totalDays = orderedSelected.reduce((s, l) => s + l.days, 0)
 
   return (
     <>
@@ -154,26 +212,43 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-28">
           {filtered.map(t => {
-            const isSelected = selected.includes(t.id)
-            const selIdx     = selected.indexOf(t.id)
+            const isMultiDest   = Array.isArray(t.destinations) && t.destinations.length > 1
+            const isExpandedCard = expanded.has(t.id)
+            // Count how many legs of this template are selected
+            const selectedLegsForTemplate = selected.filter(l => l.template_id === t.id)
+            const hasAnyLegSelected = selectedLegsForTemplate.length > 0
+            // For single-dest cards, check if the whole template is selected
+            const wholeKey = `${t.id}:0`
+            const isWholeSel = !isMultiDest && selected.some(l => l.key === wholeKey)
+
             return (
               <div
                 key={t.id}
-                onClick={() => toggleSelect(t.id)}
+                onClick={() => {
+                  if (isMultiDest) {
+                    toggleExpanded(t.id)
+                  } else {
+                    toggleWholeTemplate(t)
+                  }
+                }}
                 className={`relative bg-white border rounded-2xl overflow-hidden cursor-pointer transition-all group ${
-                  isSelected
+                  hasAnyLegSelected
                     ? 'border-[#C97552] ring-2 ring-[#C97552]/20 shadow-sm'
                     : 'border-[#E8E0D6] hover:border-[#C97552]/40'
                 }`}
               >
                 {/* Selection badge */}
                 <div className={`absolute top-3 right-3 z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                  isSelected
+                  hasAnyLegSelected
                     ? 'bg-[#C97552] border-[#C97552] text-white'
                     : 'bg-white/80 border-[#D8D0C4] group-hover:border-[#C97552]/50'
                 }`}>
-                  {isSelected ? (
-                    <span className="text-[10px] font-bold">{selIdx + 1}</span>
+                  {hasAnyLegSelected ? (
+                    <span className="text-[10px] font-bold">{selectedLegsForTemplate.length}</span>
+                  ) : isMultiDest ? (
+                    <svg className="w-3 h-3 text-[#D8D0C4] group-hover:text-[#C97552]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
+                    </svg>
                   ) : (
                     <svg className="w-3 h-3 text-transparent group-hover:text-[#C97552]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
@@ -183,7 +258,7 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
 
                 {/* Gradient header */}
                 <div className={`h-20 bg-gradient-to-br transition-all ${
-                  isSelected ? 'from-[#C97552]/30 to-[#E8D5C4]/50' : 'from-[#C97552]/20 to-[#E8D5C4]/40'
+                  hasAnyLegSelected ? 'from-[#C97552]/30 to-[#E8D5C4]/50' : 'from-[#C97552]/20 to-[#E8D5C4]/40'
                 } flex items-end px-4 pb-2`}>
                   <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">
                     {t.destination_name}, {t.country}
@@ -191,7 +266,7 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
                 </div>
 
                 <div className="p-4">
-                  <h3 className={`font-serif italic text-base mb-1 transition-colors ${isSelected ? 'text-[#C97552]' : 'text-[#1A1A1A] group-hover:text-[#C97552]'}`}>
+                  <h3 className={`font-serif italic text-base mb-1 transition-colors ${hasAnyLegSelected ? 'text-[#C97552]' : 'text-[#1A1A1A] group-hover:text-[#C97552]'}`}>
                     {t.title}
                   </h3>
                   {t.description && (
@@ -212,7 +287,7 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
                   </div>
 
                   {/* Single-use link (stops propagation so it doesn't toggle selection) */}
-                  {!isSelected && (
+                  {!isWholeSel && !isMultiDest && (
                     <a
                       href={`/plan?template=${t.id}`}
                       onClick={e => e.stopPropagation()}
@@ -220,6 +295,45 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
                     >
                       Use alone →
                     </a>
+                  )}
+
+                  {/* Expanded legs (multi-dest cards) */}
+                  {isMultiDest && isExpandedCard && (
+                    <div
+                      onClick={e => e.stopPropagation()}
+                      className="mt-3 border-t border-[#F0EBE3] pt-3 space-y-1"
+                    >
+                      <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest mb-2">Pick destinations</p>
+                      {t.destinations.map((leg, li) => {
+                        const legKey  = `${t.id}:${li}`
+                        const legSel  = selected.some(l => l.key === legKey)
+                        return (
+                          <div
+                            key={li}
+                            onClick={e => { e.stopPropagation(); toggleLeg(t, li, leg) }}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors ${
+                              legSel ? 'bg-[#FFF8F5] border border-[#C97552]/30' : 'hover:bg-[#F8F5F1]'
+                            }`}
+                          >
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                              legSel
+                                ? 'bg-[#C97552] border-[#C97552]'
+                                : 'bg-white border-[#D8D0C4]'
+                            }`}>
+                              {legSel && (
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-[#1A1A1A]">{leg.destination_name}, {leg.country}</p>
+                            </div>
+                            <p className="text-[11px] text-[#9A8E7E] flex-shrink-0">{leg.days} {leg.days === 1 ? 'day' : 'days'}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
               </div>
@@ -234,7 +348,7 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
           <div className="pointer-events-auto bg-[#1A1A1A] text-white rounded-2xl shadow-2xl px-5 py-3.5 flex items-center gap-4 max-w-sm w-full">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">
-                {selected.length} {selected.length === 1 ? 'template' : 'templates'} selected
+                {selected.length} {selected.length === 1 ? 'destination' : 'destinations'} selected
               </p>
               <p className="text-xs text-white/60 mt-0.5">{totalDays} days total</p>
             </div>
@@ -292,14 +406,14 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
                   <span className="normal-case text-[#B8B0A4] ml-1">— drag to reorder</span>
                 </label>
                 <div className="space-y-2">
-                  {orderedSelected.map((t, i) => (
-                    <div key={t.id} className="flex items-center gap-3 p-3 bg-[#F8F5F1] rounded-xl border border-[#E8E0D6]">
+                  {orderedSelected.map((l, i) => (
+                    <div key={l.key} className="flex items-center gap-3 p-3 bg-[#F8F5F1] rounded-xl border border-[#E8E0D6]">
                       <span className="w-5 h-5 rounded-full bg-[#C97552] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#1A1A1A] truncate">{t.destination_name}</p>
-                        <p className="text-xs text-[#9A8E7E]">{t.days} {t.days === 1 ? 'day' : 'days'} · {t.title}</p>
+                        <p className="text-sm font-medium text-[#1A1A1A] truncate">{l.destination_name}</p>
+                        <p className="text-xs text-[#9A8E7E]">{l.days} {l.days === 1 ? 'day' : 'days'} · {l.template_title}</p>
                       </div>
                       <div className="flex flex-col gap-0.5 flex-shrink-0">
                         <button
@@ -322,7 +436,7 @@ export default function TemplateGallery({ templates }: { templates: Template[] }
                         </button>
                       </div>
                       <button
-                        onClick={() => toggleSelect(t.id)}
+                        onClick={() => removeLeg(l.key)}
                         className="text-[#B8B0A4] hover:text-red-400 transition-colors p-1 flex-shrink-0"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

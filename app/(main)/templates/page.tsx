@@ -6,6 +6,12 @@ import TemplateGallery from './TemplateGallery'
 export const metadata: Metadata = { title: 'Trip Templates — Vondrer' }
 export const revalidate = 60   // re-fetch every minute
 
+interface DestinationLeg {
+  destination_name: string
+  country:          string
+  days:             number
+}
+
 interface Template {
   id:               string
   title:            string
@@ -16,6 +22,7 @@ interface Template {
   category:         string[]
   copies:           number
   views:            number
+  destinations:     DestinationLeg[]
 }
 
 async function getTemplates(): Promise<Template[]> {
@@ -25,7 +32,7 @@ async function getTemplates(): Promise<Template[]> {
   )
   const { data } = await supabase
     .from('trip_templates')
-    .select('id, title, description, destination_name, country, days, category, copies, views')
+    .select('id, title, description, destination_name, country, days, category, copies, views, destinations')
     .eq('is_public', true)
     .order('copies', { ascending: false })
     .limit(60)

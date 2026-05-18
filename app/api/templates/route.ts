@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('trip_templates')
-    .select('id, title, description, destination_name, country, days, category, views, copies, created_at')
+    .select('id, title, description, destination_name, country, days, category, views, copies, created_at, destinations')
     .eq('is_public', true)
     .order('copies', { ascending: false })
     .limit(40)
@@ -114,6 +114,11 @@ export async function POST(req: NextRequest) {
       days:             dests!.reduce((s, d) => s + d.days, 0),
       category,
       itinerary_json:   dests?.map(d => d.itinerary_json),
+      destinations:     dests?.map(d => ({
+        destination_name: d.destination_name,
+        country:          d.country,
+        days:             d.days,
+      })) ?? [],
       is_public,
     })
     .select('id')

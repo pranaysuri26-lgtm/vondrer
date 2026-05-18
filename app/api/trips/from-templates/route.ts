@@ -4,9 +4,14 @@ import { cookies } from 'next/headers'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
+interface LegRef {
+  template_id: string
+  leg_index:   number
+}
+
 interface FromTemplatesBody {
-  name:         string
-  template_ids: string[]
+  name: string
+  legs: LegRef[]
 }
 
 // ─── POST /api/trips/from-templates ──────────────────────────────────────────
@@ -36,15 +41,17 @@ export async function POST(req: NextRequest) {
   try { body = await req.json() }
   catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }) }
 
-  const { name, template_ids } = body
-  if (!name || !Array.isArray(template_ids) || template_ids.length === 0)
+  const { name, legs } = body
+  if (!name || !Array.isArray(legs) || legs.length === 0)
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   // ── Fetch templates ───────────────────────────────────────────────────────────
+  const uniqueTemplateIds = [...new Set(legs.map((l: LegRef) => l.template_id))]
+
   const { data: templates, error: templatesErr } = await supabase
     .from('trip_templates')
-    .select('id, title, destination_name, country, days, itinerary_json, copies')
-    .in('id', template_ids)
+    .select('id, title, destination_name, country, days, itinerary_json, destinations, copies')
+    .in('id', uniqueTemplateIds)
 
   if (templatesErr)
     return NextResponse.json({ error: templatesErr.message }, { status: 500 })
@@ -52,14 +59,24 @@ export async function POST(req: NextRequest) {
   if (!templates || templates.length === 0)
     return NextResponse.json({ error: 'Templates not found' }, { status: 404 })
 
-  // Preserve the order from template_ids (DB may return in any order)
   const templateMap = new Map(templates.map(t => [t.id, t]))
-  const orderedTemplates = template_ids
-    .map(id => templateMap.get(id))
-    .filter((t): t is NonNullable<typeof t> => t != null)
+
+  // Build one destRow per leg
+  const destRows = legs.map((leg: LegRef) => {
+    const tmpl = templateMap.get(leg.template_id)!
+    const legDests: { destination_name: string; country: string; days: number }[] =
+      Array.isArray(tmpl.destinations) && tmpl.destinations.length > 0
+        ? tmpl.destinations
+        : [{ destination_name: tmpl.destination_name, country: tmpl.country, days: tmpl.days }]
+    const legDest = legDests[leg.leg_index] ?? legDests[0]
+    const legItinerary = Array.isArray(tmpl.itinerary_json)
+      ? (tmpl.itinerary_json[leg.leg_index] ?? tmpl.itinerary_json[0] ?? null)
+      : null
+    return { ...legDest, itinerary_json: legItinerary }
+  })
 
   // ── Create trip ───────────────────────────────────────────────────────────────
-  const totalDays = orderedTemplates.reduce((sum, t) => sum + (t.days ?? 0), 0)
+  const totalDays = destRows.reduce((sum, d) => sum + (d.days ?? 0), 0)
 
   const { data: trip, error: tripErr } = await supabase
     .from('trips')
@@ -76,13 +93,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: tripErr?.message ?? 'Failed to create trip' }, { status: 500 })
 
   // ── Create trip_destinations ──────────────────────────────────────────────────
-  const destinations = orderedTemplates.map((t, index) => ({
+  const destinations = destRows.map((d, index) => ({
     trip_id:          trip.id,
-    destination_name: t.destination_name,
-    country:          t.country,
-    days:             t.days,
+    destination_name: d.destination_name,
+    country:          d.country,
+    days:             d.days,
     position:         index,
-    itinerary_json:   Array.isArray(t.itinerary_json) ? (t.itinerary_json[0] ?? null) : null,
+    itinerary_json:   d.itinerary_json,
   }))
 
   const { error: destErr } = await supabase
@@ -92,9 +109,9 @@ export async function POST(req: NextRequest) {
   if (destErr)
     return NextResponse.json({ error: destErr.message }, { status: 500 })
 
-  // ── Increment copies on each template (fire-and-forget) ───────────────────────
+  // ── Increment copies on each unique template once (fire-and-forget) ──────────
   void Promise.all(
-    templates.map(t =>
+    [...templateMap.entries()].map(([, t]) =>
       supabase
         .from('trip_templates')
         .update({ copies: (t.copies ?? 0) + 1 })

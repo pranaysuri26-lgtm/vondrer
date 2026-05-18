@@ -162,7 +162,19 @@ export default function TripMap({ pins: initialPins }: TripMapProps) {
             coords = await tryQuery(`${shortName}, ${pin.destination}, ${pin.country}`)
           }
 
-          // Attempt 3: fall back to destination center with a tiny jitter so stacked pins spread out
+          // Attempt 3: activity name only — catches places in a different city than the destination
+          // (e.g. "Santa Cruz Boardwalk Beach" on a San Jose trip)
+          if (!coords) {
+            coords = await tryQuery(cleanName(pin.name))
+          }
+
+          // Attempt 4: first 2 words only — handles misspellings and over-qualified names
+          if (!coords) {
+            const twoWords = cleanName(pin.name).split(/\s+/).slice(0, 2).join(' ')
+            if (twoWords) coords = await tryQuery(twoWords)
+          }
+
+          // Attempt 5: fall back to destination center with a tiny jitter so stacked pins spread out
           if (!coords && biasLat && biasLng) {
             const jitter = () => (Math.random() - 0.5) * 0.018   // ~1 km spread
             coords = [biasLat + jitter(), biasLng + jitter()]

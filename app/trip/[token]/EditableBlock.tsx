@@ -173,6 +173,12 @@ export default function EditableBlock({
     }
   }
 
+  // ── Clear / delete this slot ─────────────────────────────────────────────────
+  async function clearSlot() {
+    const empty: ItineraryBlock = { activity: '', description: '', insider_tip: '', estimated_cost: '' }
+    await save(empty)
+  }
+
   // ── Load 3 AI alternatives ────────────────────────────────────────────────────
   async function loadAlternatives() {
     setMode('loading-alts')
@@ -231,6 +237,29 @@ export default function EditableBlock({
   // ═══════════════════════════════════════════════════════════════════════════
   // READ MODE
   // ═══════════════════════════════════════════════════════════════════════════
+  if (mode === 'read' && !block.activity?.trim()) {
+    return (
+      <div className="group/block relative">
+        <div className={`relative h-16 -mx-5 mb-3 bg-gradient-to-br ${SLOT_BG[label] ?? 'from-stone-100 to-stone-50'} opacity-40`}>
+          <button
+            onClick={() => { setDraft(block); setMode('edit') }}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-[#8A7E6E] hover:bg-[#C97552] hover:text-white transition-all shadow-sm"
+          >
+            <PencilIcon />
+          </button>
+        </div>
+        <p className="text-xs text-[#8A7E6E] uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-sm text-[#B8B0A4] italic">No activity set</p>
+        <button
+          onClick={() => { setDraft(block); setMode('edit') }}
+          className="mt-2 text-xs text-[#C97552] hover:underline"
+        >
+          + Add activity
+        </button>
+      </div>
+    )
+  }
+
   if (mode === 'read') {
     const time = block.start_time
       ? block.end_time
@@ -527,6 +556,21 @@ export default function EditableBlock({
           className="flex-1 py-2 text-xs bg-[#C97552] text-white rounded-full hover:bg-[#b86644] transition-colors disabled:opacity-40 flex items-center justify-center gap-1"
         >
           {isSaving ? <><Spinner /> Saving…</> : '✓ Save'}
+        </button>
+      </div>
+
+      {/* Delete / clear this slot */}
+      <div className="border-t border-[#EDE8E1] pt-2.5">
+        <button
+          type="button"
+          onClick={clearSlot}
+          disabled={isSaving || moving}
+          className="text-xs text-[#B8B0A4] hover:text-red-400 disabled:opacity-40 flex items-center gap-1 transition-colors"
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          Remove activity
         </button>
       </div>
 

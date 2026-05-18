@@ -78,13 +78,14 @@ const SLOT_BG: Record<string, string> = {
 // ─── Block card ────────────────────────────────────────────────────────────────
 
 function BlockCard({
-  label, block, stopNum,
+  label, block, stopNum, destination,
 }: {
-  label:   string
-  block:   ItineraryBlock
-  stopNum: number
+  label:       string
+  block:       ItineraryBlock
+  stopNum:     number
+  destination: string
 }) {
-  const photo = useWikiPhoto(block.activity, block.photo_url)
+  const photo = useWikiPhoto(block.activity, destination, block.photo_url)
   const time  = fmtWindow(block.start_time, block.end_time)
 
   return (
@@ -170,7 +171,7 @@ function TravelConnector({ from, to }: { from?: string; to?: string }) {
 
 // ─── Day card (sequential numbered timeline) ───────────────────────────────────
 
-function DayCard({ day }: { day: ItineraryDay }) {
+function DayCard({ day, destination }: { day: ItineraryDay; destination: string }) {
   const slots: Array<{ label: string; block: ItineraryBlock }> = [
     { label: '🌅 Morning',   block: day.morning   },
     { label: '☀️ Afternoon', block: day.afternoon },
@@ -190,7 +191,7 @@ function DayCard({ day }: { day: ItineraryDay }) {
       {slots.map(({ label, block }, i) => (
         <div key={i}>
           <div className="px-5 pt-4 pb-4">
-            <BlockCard label={label} block={block} stopNum={i + 1} />
+            <BlockCard label={label} block={block} stopNum={i + 1} destination={destination} />
           </div>
           {i < slots.length - 1 && (
             <TravelConnector from={block.end_time} to={slots[i + 1].block.start_time} />
@@ -433,7 +434,7 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
                       {days.map(day => (
                         /* Clicking a day card jumps to that day tab */
                         <div key={day.day} onClick={() => setActiveTab(`day-${dayOffset + day.day}`)} className="cursor-pointer">
-                          <DayCard day={day} />
+                          <DayCard day={day} destination={dest.destination_name} />
                         </div>
                       ))}
                     </div>
@@ -557,7 +558,7 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
                             onSaved={b => handleBlockUpdate(dest.id, day.day, slotKey, b)}
                           />
                         ) : (
-                          <BlockCard label={label} block={block} stopNum={stopNum} />
+                          <BlockCard label={label} block={block} stopNum={stopNum} destination={dest.destination_name} />
                         )}
                       </div>
                       {i < slots.length - 1 && (

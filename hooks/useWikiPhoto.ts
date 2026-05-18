@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
  * Two-step: search for the best-matching article, then get its thumbnail.
  * This handles spelling variants, subtitles, and descriptive names.
  */
-export function useWikiPhoto(activity: string, existingUrl?: string): string {
+export function useWikiPhoto(activity: string, destination: string, existingUrl?: string): string {
   const [url, setUrl] = useState(existingUrl ?? '')
 
   useEffect(() => {
@@ -23,11 +23,14 @@ export function useWikiPhoto(activity: string, existingUrl?: string): string {
         .replace(/\s{2,}/g, ' ')
         .trim()
 
+      // Include city name so "House of Nanking" finds the SF restaurant not the Chinese city
+      const query = destination ? `${clean} ${destination}` : clean
+
       try {
         // Step 1: Wikipedia full-text search — handles fuzzy / variant names
         const searchUrl =
           `https://en.wikipedia.org/w/api.php?action=query&list=search` +
-          `&srsearch=${encodeURIComponent(clean)}&format=json&origin=*&srlimit=1`
+          `&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=1`
         const searchRes  = await fetch(searchUrl, { signal: ctrl.signal })
         const searchData = await searchRes.json()
         const title      = searchData.query?.search?.[0]?.title as string | undefined
@@ -44,7 +47,8 @@ export function useWikiPhoto(activity: string, existingUrl?: string): string {
 
     load()
     return () => ctrl.abort()
-  }, [activity]) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity, destination])
 
   return url
 }

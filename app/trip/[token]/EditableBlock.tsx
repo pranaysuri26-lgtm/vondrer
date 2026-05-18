@@ -310,42 +310,24 @@ export default function EditableBlock({
         className="w-full text-sm font-medium text-[#1A1A1A] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
       />
 
-      {/* When activity name changed and description is still the old one OR is empty */}
-      {draft.activity.trim() !== block.activity.trim() &&
-       (!draft.description.trim() || draft.description === block.description) && (
-        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-          <span className="text-[11px] text-amber-700 leading-snug">
-            Description still refers to the old activity
-          </span>
-          <div className="flex gap-1.5 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setDraft(d => ({ ...d, description: '' }))}
-              disabled={describing || isSaving}
-              className="text-[11px] text-amber-700 underline underline-offset-2 disabled:opacity-40"
-            >
-              Clear
-            </button>
-            <span className="text-amber-300 text-[11px]">·</span>
-            <button
-              type="button"
-              onClick={describeActivity}
-              disabled={describing || isSaving}
-              className="text-[11px] font-semibold text-[#C97552] hover:text-[#b86644] transition-colors disabled:opacity-40 flex items-center gap-1"
-            >
-              {describing ? <><Spinner /> Writing…</> : '✨ AI write'}
-            </button>
-          </div>
-        </div>
-      )}
-      <textarea
-        value={draft.description}
-        onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
-        rows={3}
-        placeholder="Description"
-        disabled={isSaving}
-        className="w-full text-sm text-[#5A504A] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 resize-none disabled:opacity-50"
-      />
+      <div className="relative">
+        <textarea
+          value={draft.description}
+          onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
+          rows={3}
+          placeholder="Description"
+          disabled={isSaving || describing}
+          className="w-full text-sm text-[#5A504A] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 resize-none disabled:opacity-50"
+        />
+        <button
+          type="button"
+          onClick={describeActivity}
+          disabled={describing || isSaving || !draft.activity.trim()}
+          className="absolute bottom-2 right-2 flex items-center gap-1 text-[11px] font-medium text-[#C97552] bg-white border border-[#E8D8CC] rounded-full px-2 py-0.5 hover:bg-[#FFF8F5] hover:border-[#C97552]/50 transition-all disabled:opacity-40 shadow-sm"
+        >
+          {describing ? <><Spinner /> Writing…</> : '✨ AI write'}
+        </button>
+      </div>
 
       <input
         value={draft.insider_tip ?? ''}

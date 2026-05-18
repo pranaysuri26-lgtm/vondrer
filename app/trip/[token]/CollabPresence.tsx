@@ -65,29 +65,41 @@ export default function CollabPresence({ tripId, myUserId, myName }: Props) {
     }
   }, [tripId, myUserId, myName])
 
-  async function copyLink() {
-    await navigator.clipboard.writeText(window.location.href)
+  function collabUrl() {
+    const base = window.location.origin + window.location.pathname
+    // If already on /collaborate, use as-is; otherwise append /collaborate
+    return base.endsWith('/collaborate') ? base : `${base}/collaborate`
+  }
+
+  async function copyCollabLink() {
+    await navigator.clipboard.writeText(collabUrl())
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const inviteButton = (
+    <button
+      onClick={copyCollabLink}
+      className="flex items-center gap-1.5 text-xs font-medium text-[#C97552] hover:text-[#b86644] transition-colors border border-[#C97552]/30 hover:border-[#C97552]/60 rounded-full px-3 py-1"
+    >
+      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+      </svg>
+      {copied ? 'Link copied!' : 'Invite to collaborate'}
+    </button>
+  )
+
   if (viewers.length <= 1) {
-    // Just the share button when alone
     return (
-      <button
-        onClick={copyLink}
-        className="flex items-center gap-1.5 text-xs text-[#9A8E7E] hover:text-[#C97552] transition-colors"
-      >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-        </svg>
-        {copied ? 'Copied!' : 'Share trip'}
-      </button>
+      <div className="flex items-center gap-3">
+        {inviteButton}
+        <span className="text-[10px] text-[#B8B0A4]">Friends can comment &amp; suggest changes — no login needed</span>
+      </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3 flex-wrap">
       {/* Viewer avatars (max 4) */}
       <div className="flex -space-x-2">
         {viewers.slice(0, 4).map(v => (
@@ -107,11 +119,7 @@ export default function CollabPresence({ tripId, myUserId, myName }: Props) {
         )}
       </div>
       <span className="text-xs text-[#9A8E7E]">{viewers.length} viewing</span>
-
-      {/* Share button */}
-      <button onClick={copyLink} className="text-xs text-[#9A8E7E] hover:text-[#C97552] transition-colors ml-1">
-        {copied ? '✓ Copied' : 'Share →'}
-      </button>
+      {inviteButton}
     </div>
   )
 }

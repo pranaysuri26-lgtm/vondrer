@@ -160,25 +160,29 @@ export default function TripMap({ pins: initialPins }: TripMapProps) {
             } catch { return null }
           }
 
-          // Attempt 1: cleaned activity name + destination
-          let coords = await tryQuery(`${cleanName(pin.name)}, ${pin.destination}, ${pin.country}`)
+          const clean     = cleanName(pin.name)
+          const words     = clean.split(/\s+/).filter(Boolean)
+          const threeWord = words.slice(0, 3).join(' ')
+          const twoWord   = words.slice(0, 2).join(' ')
 
-          // Attempt 2: first 3 words of the activity name + destination (handles descriptive names)
-          if (!coords) {
-            const shortName = cleanName(pin.name).split(/\s+/).slice(0, 3).join(' ')
-            coords = await tryQuery(`${shortName}, ${pin.destination}, ${pin.country}`)
+          // Attempt 1: name only, no destination qualifier.
+          // Tried first so a place like "Santa Cruz Broadwalk Beach" on a San Jose trip
+          // isn't hijacked by a local "Santa Cruz Ave" match.
+          let coords = await tryQuery(clean)
+
+          // Attempt 2: first 3 words, no destination — handles descriptive names
+          if (!coords && threeWord !== clean) {
+            coords = await tryQuery(threeWord)
           }
 
-          // Attempt 3: activity name only — catches places in a different city than the destination
-          // (e.g. "Santa Cruz Boardwalk Beach" on a San Jose trip)
+          // Attempt 3: name + destination + country — helps local venues with common names
           if (!coords) {
-            coords = await tryQuery(cleanName(pin.name))
+            coords = await tryQuery(`${clean}, ${pin.destination}, ${pin.country}`)
           }
 
-          // Attempt 4: first 2 words only — handles misspellings and over-qualified names
-          if (!coords) {
-            const twoWords = cleanName(pin.name).split(/\s+/).slice(0, 2).join(' ')
-            if (twoWords) coords = await tryQuery(twoWords)
+          // Attempt 4: first 2 words — broader fallback for misspellings / very long names
+          if (!coords && twoWord && twoWord !== threeWord) {
+            coords = await tryQuery(twoWord)
           }
 
           // Attempt 5: fall back to destination center with a tiny jitter so stacked pins spread out

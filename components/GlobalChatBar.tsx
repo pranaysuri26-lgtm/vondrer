@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useChat } from '@/context/ChatContext'
 import type { ChatMessage } from '@/context/ChatContext'
+import { getSupabaseClient } from '@/lib/supabase'
 
 // ─── Page context labels ───────────────────────────────────────────────────────
 
@@ -100,12 +101,33 @@ export default function GlobalChatBar() {
   const pathname = usePathname()
   const { messages, isLoading, sendMessage, clearChat } = useChat()
 
-  const [open,  setOpen]  = useState(false)
-  const [input, setInput] = useState('')
+  const [open,   setOpen]  = useState(false)
+  const [input,  setInput] = useState('')
+  const [isPro,  setIsPro] = useState<boolean | null>(null)  // null = loading
 
   const bottomRef  = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLTextAreaElement>(null)
   const panelRef   = useRef<HTMLDivElement>(null)
+
+  // Check pro status on mount
+  useEffect(() => {
+    async function checkPro() {
+      try {
+        const supabase = getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { setIsPro(false); return }
+        const { data } = await supabase
+          .from('subscriptions')
+          .select('tier, expires_at')
+          .eq('user_id', user.id)
+          .single()
+        if (!data) { setIsPro(false); return }
+        const active = !data.expires_at || new Date(data.expires_at) > new Date()
+        setIsPro(active && data.tier !== 'free')
+      } catch { setIsPro(false) }
+    }
+    checkPro()
+  }, [])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -223,67 +245,83 @@ export default function GlobalChatBar() {
         )}
 
         {/* ── Input bar (always visible) ─────────────────────────────────────── */}
-        <div className="
-          bg-white border border-[#E0D8CF] shadow-lg
-          /* mobile */
-          mx-3 rounded-2xl
-          /* desktop */
-          md:mx-0 md:rounded-2xl
-        ">
-          <div className="flex items-end gap-2 px-3 py-2.5">
-            {/* Vondrer dot */}
-            <button
-              onClick={() => setOpen(o => !o)}
-              className="w-7 h-7 rounded-full bg-[#C97552] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mb-0.5 hover:bg-[#b86644] transition-colors"
-            >
-              {open ? '▾' : 'V'}
-            </button>
-
-            {/* Textarea */}
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => {
-                setInput(e.target.value)
-                // Auto-expand up to 3 lines
-                e.target.style.height = 'auto'
-                e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px'
-              }}
-              onKeyDown={handleKey}
-              onFocus={() => setOpen(true)}
-              placeholder={placeholder(pathname)}
-              rows={1}
-              className="flex-1 text-sm text-[#1A1A1A] bg-transparent resize-none focus:outline-none placeholder:text-[#B8B0A4] leading-5"
-              style={{ height: '20px', maxHeight: '80px' }}
-            />
-
-            {/* Send button */}
-            <button
-              onClick={submit}
-              disabled={!input.trim() || isLoading}
-              className="w-7 h-7 rounded-full bg-[#C97552] text-white flex items-center justify-center flex-shrink-0 mb-0.5 hover:bg-[#b86644] disabled:opacity-30 transition-all"
-            >
-              {isLoading
-                ? <span className="w-3 h-3 border border-white/60 border-t-white rounded-full animate-spin" />
-                : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-              }
-            </button>
-          </div>
-
-          {/* Unread indicator — shown when panel is closed and there are messages */}
-          {!open && hasMessages && (
-            <div className="px-4 pb-2 -mt-1">
+        {isPro === false ? (
+          /* ── LOCKED state for free users ── */
+          <Link
+            href="/pro"
+            className="block mx-3 md:mx-0 bg-white border border-[#E0D8CF] shadow-lg rounded-2xl px-3 py-2.5 hover:border-[#C97552]/50 hover:bg-[#FFF8F5] transition-all group"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-[#F0EBE3] text-[#C97552] text-[11px] font-bold flex items-center justify-center flex-shrink-0">
+                🔒
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-[#B8B0A4] truncate">AI Chat assistant</p>
+                <p className="text-[10px] text-[#C97552] font-medium group-hover:underline">Pro feature — upgrade to unlock →</p>
+              </div>
+            </div>
+          </Link>
+        ) : (
+          /* ── UNLOCKED state for pro users (or while loading) ── */
+          <div className="
+            bg-white border border-[#E0D8CF] shadow-lg
+            mx-3 rounded-2xl
+            md:mx-0 md:rounded-2xl
+          ">
+            <div className="flex items-end gap-2 px-3 py-2.5">
+              {/* Vondrer dot */}
               <button
-                onClick={() => setOpen(true)}
-                className="text-[10px] text-[#C97552] hover:underline"
+                onClick={() => setOpen(o => !o)}
+                className="w-7 h-7 rounded-full bg-[#C97552] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mb-0.5 hover:bg-[#b86644] transition-colors"
               >
-                ↑ {messages.length} message{messages.length !== 1 ? 's' : ''} in this session
+                {open ? '▾' : 'V'}
+              </button>
+
+              {/* Textarea */}
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => {
+                  setInput(e.target.value)
+                  e.target.style.height = 'auto'
+                  e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px'
+                }}
+                onKeyDown={handleKey}
+                onFocus={() => setOpen(true)}
+                placeholder={placeholder(pathname)}
+                rows={1}
+                className="flex-1 text-sm text-[#1A1A1A] bg-transparent resize-none focus:outline-none placeholder:text-[#B8B0A4] leading-5"
+                style={{ height: '20px', maxHeight: '80px' }}
+              />
+
+              {/* Send button */}
+              <button
+                onClick={submit}
+                disabled={!input.trim() || isLoading}
+                className="w-7 h-7 rounded-full bg-[#C97552] text-white flex items-center justify-center flex-shrink-0 mb-0.5 hover:bg-[#b86644] disabled:opacity-30 transition-all"
+              >
+                {isLoading
+                  ? <span className="w-3 h-3 border border-white/60 border-t-white rounded-full animate-spin" />
+                  : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                }
               </button>
             </div>
-          )}
-        </div>
+
+            {/* Unread indicator */}
+            {!open && hasMessages && (
+              <div className="px-4 pb-2 -mt-1">
+                <button
+                  onClick={() => setOpen(true)}
+                  className="text-[10px] text-[#C97552] hover:underline"
+                >
+                  ↑ {messages.length} message{messages.length !== 1 ? 's' : ''} in this session
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   )

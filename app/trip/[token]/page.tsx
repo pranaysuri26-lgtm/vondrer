@@ -91,15 +91,24 @@ export default async function SharedTripPage({
   // True only when the authenticated user owns this trip — enables inline editing.
   const isOwner = !!(user && user.id === trip.user_id)
 
-  // Fetch home country from user profile for visa intel (best-effort)
+  // Fetch home country for visa intel — try onboarding_responses first, fall back to user_profiles
   let homeCountry = ''
   if (user) {
-    const { data: profile } = await supabase
-      .from('user_profiles')
+    const { data: onboarding } = await supabase
+      .from('onboarding_responses')
       .select('home_country')
       .eq('user_id', user.id)
       .single()
-    homeCountry = profile?.home_country ?? ''
+    homeCountry = onboarding?.home_country ?? ''
+
+    if (!homeCountry) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('home_country')
+        .eq('user_id', user.id)
+        .single()
+      homeCountry = profile?.home_country ?? ''
+    }
   }
 
   const { data: destinations } = await supabase

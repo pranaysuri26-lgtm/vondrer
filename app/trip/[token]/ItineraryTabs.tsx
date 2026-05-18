@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
 import type { SunTimes } from '@/lib/sun'
+import type { DealsResult, DealTip, HotelPick } from '@/app/api/trip/[tripId]/deals/route'
 import EditableBlock from './EditableBlock'
 import BudgetPanel from './BudgetPanel'
 import DestSpotlights from './DestSpotlights'
@@ -246,7 +247,23 @@ function GoldenHourStrip({ sun }: { sun: SunTimes }) {
 
 // ─── Booking link card ─────────────────────────────────────────────────────────
 
-function BookingLink({ href, title, subtitle }: { href: string; title: string; subtitle: string }) {
+function BookingLink({ href, title, subtitle, compact }: { href: string; title: string; subtitle: string; compact?: boolean }) {
+  if (compact) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex-1 flex items-center justify-between px-3 py-2.5 bg-white border border-[#E8E0D6] rounded-xl hover:border-[#C97552]/30 hover:bg-[#FFF8F5] transition-all group"
+      >
+        <div>
+          <p className="font-medium text-xs text-[#1A1A1A]">{title}</p>
+          <p className="text-[10px] text-[#8A7E6E]">{subtitle}</p>
+        </div>
+        <span className="text-[#C97552] text-xs group-hover:translate-x-0.5 transition-transform ml-1">→</span>
+      </a>
+    )
+  }
   return (
     <a
       href={href}
@@ -259,6 +276,49 @@ function BookingLink({ href, title, subtitle }: { href: string; title: string; s
         <p className="text-xs text-[#8A7E6E] mt-0.5">{subtitle}</p>
       </div>
       <span className="text-[#C97552] text-sm group-hover:translate-x-0.5 transition-transform flex-shrink-0">→</span>
+    </a>
+  )
+}
+
+function DealCard({ tip }: { tip: DealTip }) {
+  return (
+    <div className="flex gap-3 p-4 bg-white border border-[#E8E0D6] rounded-2xl">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-sm text-[#1A1A1A]">{tip.title}</p>
+          {tip.badge && (
+            <span className="text-[10px] bg-[#EAF4EF] text-[#3D7A5A] border border-[#C0DFD0] px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+              {tip.badge}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-[#6b5f54] mt-1 leading-relaxed">{tip.detail}</p>
+      </div>
+    </div>
+  )
+}
+
+function HotelCard({ hotel }: { hotel: HotelPick }) {
+  return (
+    <a
+      href={hotel.booking_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block p-4 bg-white border border-[#E8E0D6] rounded-2xl hover:border-[#C97552]/30 hover:bg-[#FFF8F5] transition-all group"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-medium text-sm text-[#1A1A1A]">{hotel.name}</p>
+            <span className="text-[10px] text-[#9A8E7E] bg-[#F0EBE3] px-2 py-0.5 rounded-full flex-shrink-0">
+              {hotel.area}
+            </span>
+          </div>
+          <p className="text-xs text-[#6b5f54] mt-1 leading-relaxed">{hotel.why}</p>
+          <p className="text-xs text-[#C97552] font-medium mt-1.5">{hotel.price_range}</p>
+        </div>
+        <span className="text-[#C97552] text-sm group-hover:translate-x-0.5 transition-transform flex-shrink-0 mt-0.5">→</span>
+      </div>
     </a>
   )
 }
@@ -318,6 +378,26 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
     const day = dayMatch ? parseInt(dayMatch[1], 10) : null
     window.dispatchEvent(new CustomEvent('vondrer-tab-change', { detail: { day } }))
   }, [activeTab])
+
+  // ── Deals: fetch once when the deals tab is first opened ──────────────────
+  const [deals,        setDeals]        = useState<DealsResult | null>(null)
+  const [dealsLoading, setDealsLoading] = useState(false)
+  const [dealsError,   setDealsError]   = useState('')
+  const dealsFetched = useRef(false)
+
+  useEffect(() => {
+    if (activeTab !== 'deals' || dealsFetched.current || !tripId) return
+    dealsFetched.current = true
+    setDealsLoading(true)
+    fetch(`/api/trip/${tripId}/deals`)
+      .then(r => r.json())
+      .then((data: DealsResult & { error?: string }) => {
+        if (data.error) setDealsError(data.error)
+        else setDeals(data)
+      })
+      .catch(() => setDealsError('Could not load deals.'))
+      .finally(() => setDealsLoading(false))
+  }, [activeTab, tripId])
   const [replanReason,  setReplanReason]  = useState('')
   const [showReplanFor, setShowReplanFor] = useState<number | null>(null)
 
@@ -613,52 +693,87 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
               )}
             </div>
 
-            {/* Flights */}
-            <div className="space-y-2">
-              <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">✈️ Flights to {primaryDest}</p>
-              <BookingLink
-                href={skyscannerUrl}
-                title="Search on Skyscanner"
-                subtitle="Best price comparison across all airlines"
-              />
-              <BookingLink
-                href={googleFlightsUrl}
-                title="Search on Google Flights"
-                subtitle="Track prices and set fare alerts"
-              />
-            </div>
+            {/* AI-generated deals */}
+            {dealsLoading && (
+              <div className="space-y-3">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="h-16 bg-[#F0EBE3] rounded-2xl animate-pulse" />
+                ))}
+                <p className="text-xs text-[#9A8E7E] text-center pt-1">Finding the best options for {primaryDest}…</p>
+              </div>
+            )}
 
-            {/* Hotels */}
-            <div className="space-y-2">
-              <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">🏨 Hotels in {primaryDest}</p>
-              <BookingLink
-                href={bookingUrl}
-                title="Search on Booking.com"
-                subtitle="Free cancellation options available"
-              />
-              <BookingLink
-                href={googleHotelsUrl}
-                title="Search on Google Hotels"
-                subtitle="Compare prices across booking sites"
-              />
-            </div>
+            {dealsError && (
+              <p className="text-sm text-red-400 text-center py-4">{dealsError}</p>
+            )}
 
-            {/* Vondrer CTA */}
-            <div className="p-5 rounded-2xl border border-[#C97552]/20 bg-[#C97552]/5">
-              <p className="text-xs text-[#C97552] uppercase tracking-widest mb-2">Vondrer Deals</p>
-              <p className="text-[#1A1A1A] font-medium text-sm mb-1">Daily curated travel offers</p>
-              <p className="text-[#6b5f54] text-xs mb-4">
-                Flight promotions, hotel deals, card bonuses and travel tips — AI-curated daily for your home country.
-              </p>
-              <a
-                href="https://getvondrer.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block text-xs bg-[#C97552] text-white px-4 py-2 rounded-full hover:bg-[#b86644] transition-colors"
-              >
-                Explore Vondrer Deals →
-              </a>
-            </div>
+            {deals && !dealsLoading && (
+              <>
+                {/* Flight tips */}
+                {deals.flight_tips?.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">✈️ Flights to {primaryDest}</p>
+                    {deals.flight_tips.map((tip, i) => (
+                      <DealCard key={i} tip={tip} />
+                    ))}
+                    <div className="flex gap-2 pt-1">
+                      <BookingLink href={skyscannerUrl}    title="Skyscanner"     subtitle="All airlines" compact />
+                      <BookingLink href={googleFlightsUrl} title="Google Flights" subtitle="Fare alerts"  compact />
+                    </div>
+                  </div>
+                )}
+
+                {/* Hotel picks */}
+                {deals.hotel_picks?.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">🏨 Where to stay in {primaryDest}</p>
+                    {deals.hotel_picks.map((hotel, i) => (
+                      <HotelCard key={i} hotel={hotel} />
+                    ))}
+                    <div className="flex gap-2 pt-1">
+                      <BookingLink href={bookingUrl}      title="Booking.com"   subtitle="Free cancellation" compact />
+                      <BookingLink href={googleHotelsUrl} title="Google Hotels" subtitle="Compare prices"    compact />
+                    </div>
+                  </div>
+                )}
+
+                {/* Money tips */}
+                {deals.money_tips?.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">💳 Money &amp; payments</p>
+                    {deals.money_tips.map((tip, i) => (
+                      <DealCard key={i} tip={tip} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Local hacks */}
+                {deals.local_hacks?.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">🗺️ Local hacks</p>
+                    {deals.local_hacks.map((tip, i) => (
+                      <DealCard key={i} tip={tip} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Static search links shown before deals load */}
+            {!deals && !dealsLoading && (
+              <>
+                <div className="space-y-2">
+                  <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">✈️ Flights to {primaryDest}</p>
+                  <BookingLink href={skyscannerUrl}    title="Search on Skyscanner"    subtitle="Best price comparison across all airlines" />
+                  <BookingLink href={googleFlightsUrl} title="Search on Google Flights" subtitle="Track prices and set fare alerts" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">🏨 Hotels in {primaryDest}</p>
+                  <BookingLink href={bookingUrl}      title="Search on Booking.com" subtitle="Free cancellation options available" />
+                  <BookingLink href={googleHotelsUrl} title="Search on Google Hotels" subtitle="Compare prices across booking sites" />
+                </div>
+              </>
+            )}
           </div>
         )}
         {/* ─ Budget tab (owner only) ─────────────────────────────────────────── */}

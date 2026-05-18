@@ -12,6 +12,7 @@ import VisaStrip from './VisaStrip'
 import CollabPresence from './CollabPresence'
 import LiveModeStrip from './LiveModeStrip'
 import BackButton from './BackButton'
+import PublishTemplateButton from './PublishTemplateButton'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -193,13 +194,18 @@ export default async function SharedTripPage({
                   </p>
                 )}
               </div>
-              {/* Vondrer wordmark */}
-              <a
-                href="https://vondrer.com"
-                className="flex-shrink-0 text-[#9A8E7E] text-xs hover:text-[#5A504A] transition-colors mt-1"
-              >
-                Made with Vondrer
-              </a>
+              {/* Owner actions */}
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                {isOwner && trip.id && (
+                  <PublishTemplateButton tripId={trip.id} />
+                )}
+                <a
+                  href="https://vondrer.com"
+                  className="text-[#9A8E7E] text-xs hover:text-[#5A504A] transition-colors"
+                >
+                  Made with Vondrer
+                </a>
+              </div>
             </div>
 
             {/* Destination pills */}

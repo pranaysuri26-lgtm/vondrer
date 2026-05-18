@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase'
 
 interface UserData {
-  name:       string
   isReturner: boolean
 }
 
@@ -21,19 +20,13 @@ export default function HomePage() {
         if (!user) { setLoading(false); return }
 
         // Get first name from user metadata or email
-        const fullName = user.user_metadata?.full_name as string | undefined
-        const email    = user.email ?? ''
-        const name     = fullName
-          ? fullName.split(' ')[0]
-          : email.split('@')[0].replace(/[^a-zA-Z]/g, '') || 'there'
-
         // Returning = has at least one trip
         const { count } = await supabase
           .from('trips')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
 
-        setUserData({ name, isReturner: (count ?? 0) > 0 })
+        setUserData({ isReturner: (count ?? 0) > 0 })
       } catch {
         /* silent */
       } finally {
@@ -46,8 +39,8 @@ export default function HomePage() {
   const greeting = !userData
     ? null
     : userData.isReturner
-    ? `Welcome back, ${userData.name}!`
-    : `Hi, ${userData.name}!`
+    ? 'Welcome back, Vondrer!'
+    : 'Hi! Welcome to Vondrer'
 
   const subline = !userData
     ? null

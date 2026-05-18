@@ -1137,23 +1137,59 @@ Return the JSON array of ${days} day objects. Nothing else.`
 // ─── POST /api/itinerary ──────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // ── Auth ─────────────────────────────────────────────────────────────────────
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
+  // ── Auth — supports both session cookies and Bearer API keys ─────────────────
+  const authHeader = req.headers.get('Authorization')
+  const bearerKey  = authHeader?.startsWith('Bearer vondrer_')
+    ? authHeader.slice(7)
+    : null
+
+  const supabaseAdmin = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cs) => cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
-      },
-    }
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
   )
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  let userId: string | null = null
+
+  if (bearerKey) {
+    // API key auth — hash the key and look it up
+    const { createHash } = await import('crypto')
+    const keyHash = createHash('sha256').update(bearerKey).digest('hex')
+    const { data: keyRow } = await supabaseAdmin
+      .from('api_keys')
+      .select('user_id, id')
+      .eq('key_hash', keyHash)
+      .single()
+
+    if (!keyRow) return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
+
+    userId = keyRow.user_id
+
+    // Update last_used_at and increment requests_count (fire-and-forget)
+    supabaseAdmin.from('api_keys').update({
+      last_used_at:   new Date().toISOString(),
+      requests_count: supabaseAdmin.rpc('increment_requests', { key_id: keyRow.id }),
+    }).eq('id', keyRow.id).then(() => {})
+
+  } else {
+    // Session cookie auth (normal app flow)
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: (cs) => cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
+        },
+      }
+    )
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    userId = user.id
   }
+
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // ── Parse body ────────────────────────────────────────────────────────────────
   let body: ItineraryRequest

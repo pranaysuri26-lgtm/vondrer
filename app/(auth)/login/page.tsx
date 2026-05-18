@@ -1,9 +1,44 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseClient } from '@/lib/supabase'
+
+const TRIPS = [
+  {
+    photo:       'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=800&q=80&auto=format',
+    destination: 'Kyoto, Japan',
+    days:        7,
+    budget:      '$95/day',
+    style:       'Cultural Immersion',
+    stops:       ['Fushimi Inari Shrine', 'Arashiyama Bamboo Grove', 'Philosopher\'s Path'],
+  },
+  {
+    photo:       'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80&auto=format',
+    destination: 'Santorini, Greece',
+    days:        5,
+    budget:      '$140/day',
+    style:       'Slow Travel',
+    stops:       ['Oia Sunset Viewpoint', 'Akrotiri Ruins', 'Red Beach'],
+  },
+  {
+    photo:       'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&q=80&auto=format',
+    destination: 'Bali, Indonesia',
+    days:        10,
+    budget:      '$60/day',
+    style:       'Adventure + Wellness',
+    stops:       ['Tegallalang Rice Terraces', 'Uluwatu Temple', 'Seminyak Beach'],
+  },
+  {
+    photo:       'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800&q=80&auto=format',
+    destination: 'Barcelona, Spain',
+    days:        4,
+    budget:      '$110/day',
+    style:       'Food & Architecture',
+    stops:       ['Sagrada Família', 'El Born Market', 'Barceloneta Beach'],
+  },
+]
 
 export default function LoginPage() {
   const router  = useRouter()
@@ -11,6 +46,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
+  const [trip,     setTrip]     = useState(TRIPS[0])
+
+  useEffect(() => {
+    setTrip(TRIPS[Math.floor(Math.random() * TRIPS.length)])
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -128,41 +168,63 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* ── Right: travel photo panel (desktop only) ───────────────────────────── */}
+      {/* ── Right: destination photo panel (desktop only) ─────────────────────── */}
       <div className="hidden lg:block flex-1 relative overflow-hidden">
+        {/* Destination photo */}
         <img
-          src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=85&auto=format"
-          alt="Travel"
-          className="absolute inset-0 w-full h-full object-cover"
+          src={trip.photo}
+          alt={trip.destination}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+          loading="eager"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1A1A1A]/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A1A]/70 via-[#1A1A1A]/10 to-transparent" />
 
-        {/* Floating boarding-pass style card — matches landing page */}
-        <div className="absolute bottom-12 left-10 right-10">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-2xl max-w-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">Vondrer · AI Itinerary</span>
-              <span className="font-serif italic text-sm text-[#1A1A1A]">Vondrer</span>
-            </div>
-            <p className="font-serif italic text-2xl text-[#1A1A1A] mb-3">5 Days in Tokyo</p>
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              <div>
-                <p className="text-[#9A8E7E] uppercase tracking-widest text-[10px]">Departs</p>
-                <p className="font-medium text-[#1A1A1A] mt-0.5">Jun 15</p>
-              </div>
-              <div>
-                <p className="text-[#9A8E7E] uppercase tracking-widest text-[10px]">Budget</p>
-                <p className="font-medium text-[#1A1A1A] mt-0.5">$80/day</p>
-              </div>
-              <div>
-                <p className="text-[#9A8E7E] uppercase tracking-widest text-[10px]">Stops</p>
-                <p className="font-medium text-[#1A1A1A] mt-0.5">18 picks</p>
+        {/* Trip card */}
+        <div className="absolute bottom-12 left-10 right-10 max-w-sm">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl">
+
+            {/* Card destination thumbnail */}
+            <div className="relative h-28 overflow-hidden">
+              <img src={trip.photo} alt={trip.destination} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+              <div className="absolute bottom-2.5 left-3.5 right-3.5 flex items-end justify-between">
+                <p className="font-serif italic text-xl text-white leading-tight">
+                  {trip.days} Days in {trip.destination.split(',')[0]}
+                </p>
+                <span className="text-[9px] bg-white/20 backdrop-blur-sm text-white border border-white/30 rounded-full px-2 py-0.5 uppercase tracking-widest">
+                  {trip.style}
+                </span>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-[#E8E0D6] flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-xs text-[#6b5f54]">AI-planned · fully editable</span>
+
+            {/* Card body */}
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">{trip.destination}</span>
+                <span className="text-[10px] text-[#C97552] font-medium">{trip.budget}</span>
+              </div>
+
+              {/* Stops */}
+              <div className="space-y-1.5 mb-3">
+                {trip.stops.map((stop, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-[#F0EBE3] text-[#C97552] text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="text-xs text-[#5A504A]">{stop}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-3 border-t border-[#E8E0D6] flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-[11px] text-[#6b5f54]">AI-planned · fully editable</span>
+                </div>
+                <span className="font-serif italic text-xs text-[#9A8E7E]">Vondrer</span>
+              </div>
             </div>
+
           </div>
         </div>
       </div>

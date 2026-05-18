@@ -1597,16 +1597,51 @@ export default function DiscoverPage() {
             </p>
           </button>
 
-          {/* Search — coming soon */}
-          <div className="flex flex-col items-start gap-1 rounded-2xl border border-[#E8E0D6] bg-[#F5F2ED] px-4 py-4 opacity-50 cursor-not-allowed select-none">
+          {/* Search */}
+          <button
+            onClick={() => setMode('search')}
+            className={`flex flex-col items-start gap-1 rounded-2xl border px-4 py-4 text-left transition-all duration-200 ${
+              mode === 'search'
+                ? 'border-[#C97552]/45 bg-[#C97552]/6'
+                : 'border-[#E8E0D6] bg-[#F5F2ED] hover:border-[#D0C8BC] hover:bg-white'
+            }`}
+          >
             <div className="flex items-center gap-2">
               <span className="text-base leading-none">🔍</span>
-              <span className="text-sm font-medium text-[#5A504A]">I know where I&apos;m going</span>
-              <span className="text-[10px] bg-[#E8E0D6] text-[#9A8E7E] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide">Soon</span>
+              <span className={`text-sm font-medium ${mode === 'search' ? 'text-[#1A1A1A]' : 'text-[#5A504A]'}`}>
+                I know where I&apos;m going
+              </span>
             </div>
-            <p className="text-[11px] leading-snug text-[#8A7E6E]">Get local intel for any destination</p>
-          </div>
+            <p className={`text-[11px] leading-snug ${mode === 'search' ? 'text-[#6b5f54]' : 'text-[#8A7E6E]'}`}>
+              Get local intel for any destination
+            </p>
+          </button>
         </div>
+
+        {/* ── Search panel ──────────────────────────────────────────────────── */}
+        {mode === 'search' && (
+          <div className="mb-8">
+            <p className="text-[#4A4440] text-sm font-medium mb-4">Where are you going?</p>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                placeholder="City, country, or region..."
+                autoFocus
+                className="flex-1 bg-white border border-[#E2D8CE] rounded-xl px-4 py-3 text-sm text-[#1A1A1A] placeholder-[#9A8E7E] outline-none focus:border-[#C97552]/40 focus:bg-[#F5F0EA] transition-all"
+              />
+              <button
+                onClick={handleSearch}
+                disabled={!searchQuery.trim()}
+                className="flex-shrink-0 bg-[#C97552] text-white text-sm font-medium px-5 py-3 rounded-xl hover:bg-[#b86644] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Get local guide →
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Saved destinations (always visible) ───────────────────────────── */}
         {savedDestinations.length > 0 && (
@@ -1690,21 +1725,6 @@ export default function DiscoverPage() {
         {/* Footer */}
         <div className="mt-12 pt-8 border-t border-[#E8E0D6] text-center">
           <p className="text-[#A8A09A] text-xs">Results refresh when your profile changes.</p>
-        </div>
-
-        {/* Coming Soon footer */}
-        <div className="mt-16 mb-4 rounded-3xl border border-[#E8E0D6] bg-white px-8 py-10 text-center">
-          <p className="text-2xl mb-3">🚀</p>
-          <h3 className="font-serif italic text-2xl text-[#1A1A1A] mb-2">More coming soon</h3>
-          <p className="text-[#6b5f54] text-sm max-w-sm mx-auto mb-6">
-            Real-time collaboration, budget tracking, visa intelligence, and more — all in the works.
-          </p>
-          <a
-            href="https://vondrer.com"
-            className="inline-block bg-[#C97552] text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#b86644] transition-colors"
-          >
-            Join the waitlist →
-          </a>
         </div>
       </main>
     </div>

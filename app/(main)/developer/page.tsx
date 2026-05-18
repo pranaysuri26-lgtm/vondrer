@@ -143,7 +143,7 @@ export default function DeveloperPage() {
         {/* Quick-start docs */}
         <div className="bg-[#1A1A1A] rounded-2xl p-5 space-y-3">
           <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">Quick start</p>
-          <pre className="text-xs text-emerald-400 overflow-auto leading-relaxed">{`curl -X POST https://vondrer.com/api/itinerary \\
+          <pre className="text-xs text-emerald-400 overflow-auto leading-relaxed">{`curl -X POST https://www.vondrer.com/api/itinerary \\
   -H "Authorization: Bearer vondrer_your_key_here" \\
   -H "Content-Type: application/json" \\
   -d '{

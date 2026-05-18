@@ -2202,6 +2202,7 @@ function PlanNewInner() {
   const prefillCountry   = searchParams.get('country')   ?? ''
   const prefillDays      = parseInt(searchParams.get('days') ?? '0', 10) || 0
   const prefillInterests = (searchParams.get('interests') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+  const prefillBudget    = searchParams.get('budget') ?? ''
 
   const [tripName,     setTripName]     = useState('')
   const [destinations, setDestinations] = useState<TripDestination[]>([])
@@ -2252,6 +2253,8 @@ function PlanNewInner() {
   const [accessibility,   setAccessibility]   = useState<AccessibilityInfo>({ needs: [], max_walking_minutes: null })
   const [tripInterests,   setTripInterests]   = useState<string[]>([])
   const [tripPace,        setTripPace]        = useState<'packed'|'balanced'|'relaxed'>('balanced')
+  // Budget: inspiration param > profile default (set after profile loads)
+  const [tripBudget,      setTripBudget]      = useState<string>(prefillBudget || '')
   const [specialOccasion,    setSpecialOccasion]    = useState<string>('none')
   const [occasionPerson,     setOccasionPerson]     = useState<string>('')
   const [occasionDate,       setOccasionDate]       = useState<string>('')
@@ -2292,6 +2295,8 @@ function PlanNewInner() {
 
       if (profileResult.data) {
         const data = profileResult.data
+        // Only fall back to profile budget if inspiration didn't supply one
+        if (!prefillBudget) setTripBudget(data.budget_per_day ?? '50-150')
         setProfile({
           budget_per_day:       data.budget_per_day      ?? '50-150',
           group_type:           data.group_type          ?? 'couple',
@@ -2441,7 +2446,7 @@ function PlanNewInner() {
           current_activity:    currentActivity,
           replacement_request: request,
           action:              'replace',
-          user_profile:        profile ? { budget_per_day: profile.budget_per_day, group_type: profile.group_type, dietary_preferences: profile.dietary_preferences } : undefined,
+          user_profile:        profile ? { budget_per_day: tripBudget || profile.budget_per_day, group_type: profile.group_type, dietary_preferences: profile.dietary_preferences } : undefined,
           full_day_context:    fullDayContext,
           hotel_neighbourhood: dest?.hotel?.neighbourhood || undefined,
           group:               { ...group },
@@ -2493,7 +2498,7 @@ function PlanNewInner() {
           time_of_day:         slot,
           replacement_request: request,
           action:              'add',
-          user_profile:        profile ? { budget_per_day: profile.budget_per_day, group_type: profile.group_type, dietary_preferences: profile.dietary_preferences } : undefined,
+          user_profile:        profile ? { budget_per_day: tripBudget || profile.budget_per_day, group_type: profile.group_type, dietary_preferences: profile.dietary_preferences } : undefined,
           full_day_context:    fullDayContext,
           hotel_neighbourhood: dest?.hotel?.neighbourhood || undefined,
           group:               { ...group },
@@ -2585,7 +2590,7 @@ function PlanNewInner() {
             country:      dest.country,
             days:         dest.days,
             start_date:   dest.start_date,
-            user_profile: profile ?? undefined,
+            user_profile: profile ? { ...profile, budget_per_day: tripBudget || profile.budget_per_day } : undefined,
             group:        { ...group },
             flights:      f.status === 'booked' ? {
               arrival_date:   f.arrival_date   || undefined,
@@ -2757,6 +2762,31 @@ function PlanNewInner() {
           interests={tripInterests} pace={tripPace}
           onInterestsChange={setTripInterests} onPaceChange={setTripPace}
         />
+
+        {/* Budget */}
+        <div className="bg-white border border-[#E8E0D6] rounded-2xl p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-[#7A6E64] uppercase tracking-widest font-label">Budget per day</p>
+            {prefillBudget && tripBudget === prefillBudget && (
+              <span className="text-[10px] text-[#C97552] bg-[#FFF0EA] border border-[#F0D8CC] rounded-full px-2 py-0.5">From inspiration</span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            {(['under-20','20-50','50-150','150-300','300+'] as const).map(tier => (
+              <button
+                key={tier}
+                onClick={() => setTripBudget(tier)}
+                className={`py-2 rounded-xl text-xs font-medium border transition-all ${
+                  tripBudget === tier
+                    ? 'bg-[#C97552] text-white border-[#C97552]'
+                    : 'bg-white text-[#5A504A] border-[#E0D8CF] hover:border-[#C97552]/50'
+                }`}
+              >
+                {tier === 'under-20' ? '<$20' : tier === '300+' ? '$300+' : `$${tier}`}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Special occasion */}
         <SpecialOccasionSection

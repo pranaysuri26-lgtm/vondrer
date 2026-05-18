@@ -76,6 +76,7 @@ export default function EditableBlock({
     setMode('saving')
     setError('')
     try {
+      console.log('[EditableBlock save] sending:', { slot, day, activity: blockToSave.activity, description: blockToSave.description?.slice(0, 60) })
       const res = await fetch(`/api/trip/${tripId}/save-block`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -85,6 +86,7 @@ export default function EditableBlock({
         const data = await res.json()
         throw new Error(data.error ?? 'Save failed')
       }
+      console.log('[EditableBlock save] success, calling onSaved')
       onSaved(blockToSave)   // parent updates its localDests → block prop refreshes
       setMode('read')
       setSavedFlash(true)

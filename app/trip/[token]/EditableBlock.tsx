@@ -70,7 +70,7 @@ export default function EditableBlock({
   const [error, setError]                 = useState('')
   const [savedFlash, setSavedFlash]       = useState(false)
   // Search-based Wikipedia photo (handles fuzzy / variant names)
-  const photoUrl = useWikiPhoto(displayed.activity, block.photo_url ?? undefined)
+  const photoUrl = useWikiPhoto(displayed.activity, destination, block.photo_url ?? undefined)
 
   // ── Persist block to DB ───────────────────────────────────────────────────────
   async function save(blockToSave: ItineraryBlock) {

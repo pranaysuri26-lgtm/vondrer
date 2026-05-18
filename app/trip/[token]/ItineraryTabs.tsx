@@ -400,6 +400,40 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
   }, [activeTab, tripId])
   const [replanReason,  setReplanReason]  = useState('')
   const [showReplanFor, setShowReplanFor] = useState<number | null>(null)
+  const [addStopFor,    setAddStopFor]    = useState<{ destId: string; day: number } | null>(null)
+  const [addStopForm,   setAddStopForm]   = useState({ activity: '', start_time: '', end_time: '', description: '', estimated_cost: '' })
+  const [addStopSaving, setAddStopSaving] = useState(false)
+
+  async function saveExtraStop() {
+    if (!addStopFor || !addStopForm.activity.trim()) return
+    setAddStopSaving(true)
+    const block: import('@/app/api/itinerary/route').ItineraryBlock = {
+      activity:       addStopForm.activity.trim(),
+      description:    addStopForm.description.trim(),
+      insider_tip:    '',
+      estimated_cost: addStopForm.estimated_cost.trim(),
+      start_time:     addStopForm.start_time || undefined,
+      end_time:       addStopForm.end_time   || undefined,
+    }
+    // Optimistic update
+    setLocalDests(prev => prev.map(d => {
+      if (d.id !== addStopFor.destId) return d
+      const itinerary = (d.itinerary_json ?? []).map(dy =>
+        dy.day === addStopFor.day
+          ? { ...dy, extra_stops: [...(dy.extra_stops ?? []), block] }
+          : dy
+      )
+      return { ...d, itinerary_json: itinerary }
+    }))
+    await fetch(`/api/trip/${tripId}/extra-stop`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ destination_id: addStopFor.destId, day: addStopFor.day, block }),
+    })
+    setAddStopFor(null)
+    setAddStopForm({ activity: '', start_time: '', end_time: '', description: '', estimated_cost: '' })
+    setAddStopSaving(false)
+  }
 
   async function replanDay(destId: string, dayNumber: number, destName: string, country: string, existingDay: ItineraryDay) {
     setReplanningDay(dayNumber)
@@ -651,9 +685,67 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
                   ))
                 })()}
 
-                {/* Day total */}
-                <div className="px-5 py-3 border-t border-[#E8E0D6] flex justify-end bg-[#FAF8F5]">
+                {/* Extra (user-added) stops */}
+                {(day.extra_stops ?? []).length > 0 && (
+                  <>
+                    <div className="border-t border-[#F8F4F0]" />
+                    {(day.extra_stops ?? []).map((stop, idx) => (
+                      <div key={idx} className="px-5 pt-4 pb-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">
+                                {stop.start_time ? `${stop.start_time}${stop.end_time ? ` – ${stop.end_time}` : ''}` : '+ Extra'}
+                              </span>
+                            </div>
+                            <p className="font-semibold text-[#1A1A1A] text-sm">{stop.activity}</p>
+                            {stop.description && <p className="text-[#5A504A] text-xs leading-relaxed mt-1">{stop.description}</p>}
+                            {stop.insider_tip && <p className="text-[#C97552]/80 text-xs italic mt-1">💡 {stop.insider_tip}</p>}
+                            {stop.estimated_cost && <p className="text-[#8A7E6E] text-xs mt-1">{stop.estimated_cost}</p>}
+                          </div>
+                          {canEdit && (
+                            <button
+                              onClick={() => {
+                                setLocalDests(prev => prev.map(d => {
+                                  if (d.id !== dest.id) return d
+                                  const itinerary = (d.itinerary_json ?? []).map(dy =>
+                                    dy.day === day.day
+                                      ? { ...dy, extra_stops: (dy.extra_stops ?? []).filter((_, i) => i !== idx) }
+                                      : dy
+                                  )
+                                  return { ...d, itinerary_json: itinerary }
+                                }))
+                                fetch(`/api/trip/${tripId}/extra-stop`, {
+                                  method:  'DELETE',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body:    JSON.stringify({ destination_id: dest.id, day: day.day, index: idx }),
+                                })
+                              }}
+                              className="flex-shrink-0 text-[#B8B0A4] hover:text-red-400 transition-colors p-1 mt-0.5"
+                              title="Remove"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Day total + Add stop */}
+                <div className="px-5 py-3 border-t border-[#E8E0D6] flex items-center justify-between bg-[#FAF8F5]">
                   <span className="text-xs text-[#C97552]/70">Day total: ~{day.day_total_estimate}</span>
+                  {canEdit && (
+                    <button
+                      onClick={() => setAddStopFor({ destId: dest.id, day: day.day })}
+                      className="text-[11px] text-[#6b5f54] border border-[#D8D0C4] rounded-full px-3 py-1 hover:border-[#C97552]/40 hover:text-[#C97552] transition-colors"
+                    >
+                      + Add stop
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -781,6 +873,78 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
           <BudgetPanel tripId={tripId} totalDays={totalDays} />
         )}
       </main>
+
+      {/* ── Add extra stop modal ──────────────────────────────────────────────── */}
+      {addStopFor && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-[#1A1A1A]">Add to this day</h3>
+              <button onClick={() => setAddStopFor(null)} className="text-[#9A8E7E] hover:text-[#1A1A1A]">✕</button>
+            </div>
+
+            <input
+              autoFocus
+              value={addStopForm.activity}
+              onChange={e => setAddStopForm(f => ({ ...f, activity: e.target.value }))}
+              placeholder="What are you adding? (e.g. Alcatraz tour)"
+              className="w-full text-sm border border-[#D8D0C4] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C97552]/60"
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-[#9A8E7E] mb-1 block">Start time</label>
+                <input
+                  type="time"
+                  value={addStopForm.start_time}
+                  onChange={e => setAddStopForm(f => ({ ...f, start_time: e.target.value }))}
+                  className="w-full text-sm border border-[#D8D0C4] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C97552]/60"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[#9A8E7E] mb-1 block">End time</label>
+                <input
+                  type="time"
+                  value={addStopForm.end_time}
+                  onChange={e => setAddStopForm(f => ({ ...f, end_time: e.target.value }))}
+                  className="w-full text-sm border border-[#D8D0C4] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C97552]/60"
+                />
+              </div>
+            </div>
+
+            <textarea
+              value={addStopForm.description}
+              onChange={e => setAddStopForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="Notes (optional)"
+              rows={2}
+              className="w-full text-sm border border-[#D8D0C4] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C97552]/60 resize-none"
+            />
+
+            <input
+              value={addStopForm.estimated_cost}
+              onChange={e => setAddStopForm(f => ({ ...f, estimated_cost: e.target.value }))}
+              placeholder="Estimated cost (e.g. $45/person)"
+              className="w-full text-sm border border-[#D8D0C4] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C97552]/60"
+            />
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setAddStopFor(null)}
+                className="flex-1 py-2.5 text-sm border border-[#E0D8CF] rounded-full text-[#6b5f54] hover:border-[#C8C0B4] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveExtraStop}
+                disabled={!addStopForm.activity.trim() || addStopSaving}
+                className="flex-1 py-2.5 text-sm bg-[#C97552] text-white rounded-full hover:bg-[#b86644] disabled:opacity-40 transition-colors font-semibold"
+              >
+                {addStopSaving ? 'Saving…' : 'Add stop'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

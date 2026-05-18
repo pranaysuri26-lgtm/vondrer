@@ -35,6 +35,7 @@ export interface ItineraryDay {
   dinner:              ItineraryBlock   // always a restaurant / food recommendation
   evening:             ItineraryBlock   // optional: bars, dessert, nightlife, or early night
   day_total_estimate:  string
+  extra_stops?:        ItineraryBlock[] // user-added custom activities
 }
 
 export interface FlightRecommendation {
@@ -1157,7 +1158,7 @@ export async function POST(req: NextRequest) {
     const keyHash = createHash('sha256').update(bearerKey).digest('hex')
     const { data: keyRow } = await supabaseAdmin
       .from('api_keys')
-      .select('user_id, id')
+      .select('user_id, id, requests_count')
       .eq('key_hash', keyHash)
       .single()
 
@@ -1168,7 +1169,7 @@ export async function POST(req: NextRequest) {
     // Update last_used_at and increment requests_count (fire-and-forget)
     supabaseAdmin.from('api_keys').update({
       last_used_at:   new Date().toISOString(),
-      requests_count: supabaseAdmin.rpc('increment_requests', { key_id: keyRow.id }),
+      requests_count: (keyRow.requests_count ?? 0) + 1,
     }).eq('id', keyRow.id).then(() => {})
 
   } else {

@@ -150,7 +150,7 @@ function BlockWithComments({
   const [open,   setOpen]   = useState(false)
   const [text,   setText]   = useState('')
   const pending = comments.filter(c => c.status === 'pending').length
-  const photo   = useWikiPhoto(block.activity)
+  const photo   = useWikiPhoto(block.activity, '')
 
   function submit() {
     if (!text.trim()) return

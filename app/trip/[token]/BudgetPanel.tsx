@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { BudgetExpense } from '@/app/api/trip/[tripId]/budget/route'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -40,13 +40,20 @@ function fmt(n: number | null, currency = 'USD') {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BudgetPanel({ tripId, totalDays, currency = 'USD' }: Props) {
-  const [expenses, setExpenses] = useState<BudgetExpense[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [saving,   setSaving]   = useState(false)
-  const [addOpen,  setAddOpen]  = useState(false)
-  const [editId,   setEditId]   = useState<string | null>(null)
-  const [form,     setForm]     = useState<Omit<BudgetExpense, 'id'>>(BLANK)
-  const [filter,   setFilter]   = useState<Category | 'all'>('all')
+  const [expenses,  setExpenses]  = useState<BudgetExpense[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [saving,    setSaving]    = useState(false)
+  const [addOpen,   setAddOpen]   = useState(false)
+  const [editId,    setEditId]    = useState<string | null>(null)
+  const [form,      setForm]      = useState<Omit<BudgetExpense, 'id'>>(BLANK)
+  const [filter,    setFilter]    = useState<Category | 'all'>('all')
+
+  // AI generation state
+  const [aiLoading,   setAiLoading]   = useState(false)
+  const [aiExpenses,  setAiExpenses]  = useState<BudgetExpense[] | null>(null)
+  const [aiSelected,  setAiSelected]  = useState<Set<string>>(new Set())
+  const [aiError,     setAiError]     = useState('')
+  const autoGenFired = useRef(false)
 
   // ── Load ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -55,6 +62,38 @@ export default function BudgetPanel({ tripId, totalDays, currency = 'USD' }: Pro
       .then(d => setExpenses(d.expenses ?? []))
       .finally(() => setLoading(false))
   }, [tripId])
+
+  // ── Auto-generate when empty ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (loading || expenses.length > 0 || autoGenFired.current) return
+    autoGenFired.current = true
+    generateAI()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, expenses.length])
+
+  async function generateAI() {
+    setAiLoading(true)
+    setAiError('')
+    try {
+      const res  = await fetch(`/api/trip/${tripId}/budget`, { method: 'POST' })
+      const data = await res.json() as { expenses?: BudgetExpense[]; error?: string }
+      if (!res.ok || !data.expenses) throw new Error(data.error ?? 'Generation failed')
+      setAiExpenses(data.expenses)
+      setAiSelected(new Set(data.expenses.map(e => e.id)))
+    } catch (err: unknown) {
+      setAiError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  function acceptAI() {
+    if (!aiExpenses) return
+    const approved = aiExpenses.filter(e => aiSelected.has(e.id))
+    setExpenses(approved)
+    persist(approved)
+    setAiExpenses(null)
+  }
 
   // ── Persist ───────────────────────────────────────────────────────────────────
   const persist = useCallback(async (list: BudgetExpense[]) => {
@@ -109,6 +148,105 @@ export default function BudgetPanel({ tripId, totalDays, currency = 'USD' }: Pro
   if (loading) return (
     <div className="py-20 text-center text-[#9A8E7E] text-sm">Loading budget…</div>
   )
+
+  // ── AI estimate preview (shown when expenses empty + AI has generated) ────────
+  if (expenses.length === 0 && (aiLoading || aiExpenses || aiError)) {
+    const totalAiPlanned = aiExpenses
+      ? [...aiSelected].reduce((s, id) => {
+          const e = aiExpenses.find(x => x.id === id)
+          return s + (e?.planned ?? 0)
+        }, 0)
+      : 0
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-0.5">AI budget estimate</p>
+            <p className="text-sm text-[#6b5f54]">Based on your budget tier and itinerary. Deselect anything that doesn&apos;t apply.</p>
+          </div>
+          {aiExpenses && (
+            <p className="text-sm font-semibold text-[#1A1A1A] flex-shrink-0 ml-4">
+              {fmt(totalAiPlanned, currency)} total
+            </p>
+          )}
+        </div>
+
+        {aiLoading && (
+          <div className="space-y-2">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="h-12 bg-[#F0EBE3] rounded-xl animate-pulse" />
+            ))}
+            <p className="text-xs text-[#9A8E7E] text-center pt-1">Estimating costs for your trip…</p>
+          </div>
+        )}
+
+        {aiError && (
+          <div className="py-6 text-center space-y-3">
+            <p className="text-sm text-red-400">{aiError}</p>
+            <button onClick={generateAI} className="text-xs text-[#C97552] underline">Try again</button>
+          </div>
+        )}
+
+        {aiExpenses && !aiLoading && (
+          <>
+            <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1">
+              {aiExpenses.map(exp => {
+                const cat     = CATEGORIES.find(c => c.value === exp.category)!
+                const checked = aiSelected.has(exp.id)
+                return (
+                  <button
+                    key={exp.id}
+                    onClick={() => {
+                      const next = new Set(aiSelected)
+                      checked ? next.delete(exp.id) : next.add(exp.id)
+                      setAiSelected(next)
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                      checked ? 'bg-white border-[#E8E0D6]' : 'bg-[#F8F5F1] border-transparent opacity-50'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-colors ${
+                      checked ? 'bg-[#C97552] border-[#C97552]' : 'border-[#C0B8B0]'
+                    }`}>
+                      {checked && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
+                    </div>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${cat.color}`}>{cat.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[#1A1A1A] truncate">{exp.name}</p>
+                      {(exp.day || exp.note) && (
+                        <p className="text-[10px] text-[#9A8E7E]">
+                          {exp.day ? `Day ${exp.day}` : 'Trip total'}
+                          {exp.note ? ` · ${exp.note}` : ''}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold text-[#1A1A1A] flex-shrink-0">{fmt(exp.planned, currency)}</p>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setAiExpenses(null); setAiError('') }}
+                className="flex-1 py-2.5 text-sm border border-[#E0D8CF] rounded-full text-[#6b5f54] hover:border-[#C8C0B4] transition-colors"
+              >
+                Start from scratch
+              </button>
+              <button
+                onClick={acceptAI}
+                disabled={aiSelected.size === 0}
+                className="flex-1 py-2.5 text-sm bg-[#C97552] text-white rounded-full hover:bg-[#b86644] disabled:opacity-40 transition-colors font-semibold"
+              >
+                Use this budget ({aiSelected.size})
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -183,9 +321,19 @@ export default function BudgetPanel({ tripId, totalDays, currency = 'USD' }: Pro
       {/* ── Expense list ──────────────────────────────────────────────────────── */}
       <div className="space-y-2">
         {shown.length === 0 && (
-          <p className="text-sm text-[#9A8E7E] italic text-center py-8">
-            {filter === 'all' ? 'No expenses yet. Tap + Add to start tracking.' : 'No expenses in this category.'}
-          </p>
+          <div className="text-center py-8 space-y-3">
+            <p className="text-sm text-[#9A8E7E] italic">
+              {filter === 'all' ? 'No expenses yet.' : 'No expenses in this category.'}
+            </p>
+            {filter === 'all' && (
+              <button
+                onClick={() => { autoGenFired.current = false; generateAI() }}
+                className="text-xs text-[#C97552] border border-[#C97552]/30 px-4 py-2 rounded-full hover:bg-[#C97552]/5 transition-colors"
+              >
+                Generate AI budget estimate
+              </button>
+            )}
+          </div>
         )}
         {shown.map(exp => {
           const cat = CATEGORIES.find(c => c.value === exp.category)!

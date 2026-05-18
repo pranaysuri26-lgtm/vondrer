@@ -310,6 +310,13 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
     window.addEventListener('vondrer-pin-click', handlePinClick)
     return () => window.removeEventListener('vondrer-pin-click', handlePinClick)
   }, [])
+
+  // ── Notify map when active tab changes so it can filter pins ───────────────
+  useEffect(() => {
+    const dayMatch = activeTab.match(/^day-(\d+)$/)
+    const day = dayMatch ? parseInt(dayMatch[1], 10) : null
+    window.dispatchEvent(new CustomEvent('vondrer-tab-change', { detail: { day } }))
+  }, [activeTab])
   const [replanReason,  setReplanReason]  = useState('')
   const [showReplanFor, setShowReplanFor] = useState<number | null>(null)
 

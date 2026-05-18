@@ -53,11 +53,22 @@ interface TripMapProps {
 }
 
 export default function TripMap({ pins }: TripMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef       = useRef<any>(null)
-  const markersRef   = useRef<any[]>([])
-  const [geoPins, setGeoPins] = useState<GeoPin[]>([])
-  const [status, setStatus]   = useState<'idle' | 'geocoding' | 'done'>('idle')
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const mapRef        = useRef<any>(null)
+  const markersRef    = useRef<Array<{ marker: any; day: number; lat: number; lng: number }>>([])
+  const [geoPins, setGeoPins]     = useState<GeoPin[]>([])
+  const [status, setStatus]       = useState<'idle' | 'geocoding' | 'done'>('idle')
+  const [activeDay, setActiveDay] = useState<number | null>(null)
+
+  // ── Listen for tab-change events from ItineraryTabs ──────────────────────────
+  useEffect(() => {
+    function handleTabChange(e: Event) {
+      const day = (e as CustomEvent<{ day: number | null }>).detail?.day ?? null
+      setActiveDay(day)
+    }
+    window.addEventListener('vondrer-tab-change', handleTabChange)
+    return () => window.removeEventListener('vondrer-tab-change', handleTabChange)
+  }, [])
 
   // ── Geocode pins via Photon (free, no key, OSM-based) ────────────────────────
   useEffect(() => {
@@ -218,10 +229,8 @@ export default function TripMap({ pins }: TripMapProps) {
       if (!map) return
 
       // Clear old markers
-      markersRef.current.forEach(m => m.remove())
+      markersRef.current.forEach(({ marker }) => marker.remove())
       markersRef.current = []
-
-      const latLngs: [number, number][] = []
 
       geoPins.forEach(pin => {
         const col  = dayColor(pin.day)
@@ -279,10 +288,11 @@ export default function TripMap({ pins }: TripMapProps) {
           `, { closeButton: false })
           .addTo(map)
 
-        markersRef.current.push(marker)
-        latLngs.push([pin.lat, pin.lng])
+        markersRef.current.push({ marker, day: pin.day, lat: pin.lat, lng: pin.lng })
       })
 
+      // Fit bounds to all pins on initial load
+      const latLngs = geoPins.map(p => [p.lat, p.lng] as [number, number])
       if (latLngs.length > 0) {
         try {
           map.fitBounds(latLngs as any, { padding: [48, 48], maxZoom: 14, animate: true })
@@ -290,6 +300,32 @@ export default function TripMap({ pins }: TripMapProps) {
       }
     })
   }, [geoPins])
+
+  // ── Show/hide markers when activeDay changes ──────────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current || markersRef.current.length === 0) return
+
+    import('leaflet').then(() => {
+      const map = mapRef.current
+      if (!map) return
+
+      const visible: [number, number][] = []
+      markersRef.current.forEach(({ marker, day, lat, lng }) => {
+        if (activeDay === null || day === activeDay) {
+          marker.addTo(map)
+          visible.push([lat, lng])
+        } else {
+          marker.remove()
+        }
+      })
+
+      if (visible.length > 0) {
+        try {
+          map.fitBounds(visible as any, { padding: [48, 48], maxZoom: 14, animate: true })
+        } catch { /* ignore */ }
+      }
+    })
+  }, [activeDay])
 
   // ── Derive sorted unique days for legend ──────────────────────────────────────
   const uniqueDays = [...new Set(geoPins.map(p => p.day))].sort((a, b) => a - b)
@@ -314,7 +350,11 @@ export default function TripMap({ pins }: TripMapProps) {
           <p className="text-[9px] text-[#9A8E7E] uppercase tracking-widest mb-2">Days</p>
           <div className="space-y-1.5">
             {uniqueDays.map(d => (
-              <div key={d} className="flex items-center gap-2">
+              <div
+                key={d}
+                className="flex items-center gap-2"
+                style={{ opacity: activeDay !== null && activeDay !== d ? 0.35 : 1, transition: 'opacity 0.2s' }}
+              >
                 <div
                   className="w-3.5 h-3.5 rounded-full flex-shrink-0"
                   style={{ background: dayColor(d) }}

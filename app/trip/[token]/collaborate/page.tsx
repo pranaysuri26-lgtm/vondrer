@@ -503,6 +503,15 @@ export default function CollaboratePage({
       <div className="border-b border-[#E8E0D6] sticky top-0 bg-[#FAF8F5]/95 backdrop-blur z-20">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-start justify-between gap-4">
           <div>
+            <button
+              onClick={() => window.history.back()}
+              className="flex items-center gap-1.5 text-xs text-[#9A8E7E] hover:text-[#5A504A] transition-colors group mb-2"
+            >
+              <svg className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="uppercase tracking-widest">Back</span>
+            </button>
             <p className="text-xs text-[#9A8E7E] uppercase tracking-widest mb-1">
               {isOrganizer ? 'Your trip' : 'Collaborating on'}
             </p>

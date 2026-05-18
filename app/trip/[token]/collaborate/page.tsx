@@ -249,11 +249,14 @@ export default function CollaboratePage({
   const [commenterName, setCommenterName]   = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem('vondrer_collab_name') || '' : ''
   )
-  const [nameInput,   setNameInput]   = useState('')
-  const [nameSet,     setNameSet]     = useState(!!commenterName)
-  const [loading,     setLoading]     = useState(true)
-  const [notFound,    setNotFound]    = useState(false)
-  const [pendingCount, setPendingCount] = useState(0)
+  const [nameInput,     setNameInput]     = useState('')
+  const [nameSet,       setNameSet]       = useState(!!commenterName)
+  const [loading,       setLoading]       = useState(true)
+  const [notFound,      setNotFound]      = useState(false)
+  const [pendingCount,  setPendingCount]  = useState(0)
+  const [copiedInvite,  setCopiedInvite]  = useState(false)
+  const [revoking,      setRevoking]      = useState(false)
+  const [revokeConfirm, setRevokeConfirm] = useState(false)
 
   const channelRef = useRef<ReturnType<typeof anonClient.channel> | null>(null)
 
@@ -417,6 +420,41 @@ export default function CollaboratePage({
     channelRef.current?.track({ name: nameInput.trim(), online_at: new Date().toISOString() })
   }
 
+  function collabLink(token: string) {
+    return `${window.location.origin}/trip/${token}/collaborate`
+  }
+
+  async function copyInviteLink() {
+    if (!trip) return
+    await navigator.clipboard.writeText(collabLink(trip.share_token))
+    setCopiedInvite(true)
+    setTimeout(() => setCopiedInvite(false), 2000)
+  }
+
+  async function regenerateLink() {
+    if (!trip || revoking) return
+    setRevoking(true)
+    setRevokeConfirm(false)
+    try {
+      const supabase = getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`/api/trip/${trip.id}/regenerate-token`, {
+        method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
+      if (!res.ok) throw new Error('Failed')
+      const { share_token } = await res.json()
+      setTrip(prev => prev ? { ...prev, share_token } : prev)
+      // Copy the new link immediately
+      await navigator.clipboard.writeText(collabLink(share_token))
+      setCopiedInvite(true)
+      setTimeout(() => setCopiedInvite(false), 3000)
+    } catch {
+      // Silently fail — user can try again
+    }
+    setRevoking(false)
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   if (loading) return (
@@ -486,19 +524,64 @@ export default function CollaboratePage({
         </div>
       </div>
 
-      {/* Organizer tip banner — full features live on the main trip page */}
+      {/* Organizer controls — invite link + revoke */}
       {isOrganizer && (
         <div className="bg-[#FFF8F5] border-b border-[#F0E0D0]">
-          <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
-            <p className="text-xs text-[#9A8E7E]">
-              💡 <span className="text-[#6b5f54]">This is the collaboration view.</span> For AI Chat, Budget &amp; Map →
-            </p>
-            <a
-              href={`/trip/${trip.share_token}`}
-              className="flex-shrink-0 text-xs font-semibold text-[#C97552] hover:text-[#b86644] transition-colors"
-            >
-              Full trip →
-            </a>
+          <div className="max-w-2xl mx-auto px-4 py-3 space-y-2">
+
+            {/* Top row: invite button + full trip link */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={copyInviteLink}
+                  className="flex items-center gap-1.5 text-xs font-medium text-[#C97552] hover:text-[#b86644] border border-[#C97552]/30 hover:border-[#C97552]/60 rounded-full px-3 py-1.5 transition-all"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  {copiedInvite ? 'Link copied!' : 'Copy invite link'}
+                </button>
+                <span className="text-[10px] text-[#B8B0A4]">Friends comment &amp; suggest — you approve all changes</span>
+              </div>
+              <a
+                href={`/trip/${trip.share_token}`}
+                className="flex-shrink-0 text-xs font-semibold text-[#C97552] hover:text-[#b86644] transition-colors"
+              >
+                Full trip →
+              </a>
+            </div>
+
+            {/* Revoke row */}
+            {!revokeConfirm ? (
+              <p className="text-[10px] text-[#C0B8B0]">
+                Link leaked?{' '}
+                <button
+                  onClick={() => setRevokeConfirm(true)}
+                  className="underline underline-offset-2 hover:text-[#9A8E7E] transition-colors"
+                >
+                  Regenerate link
+                </button>
+                {' '}— old link stops working instantly.
+              </p>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-[#9A8E7E]">Old link will stop working for everyone. Continue?</span>
+                <button
+                  onClick={regenerateLink}
+                  disabled={revoking}
+                  className="text-[10px] font-medium text-red-600 hover:text-red-700 border border-red-300/50 rounded-full px-2.5 py-0.5 transition-colors disabled:opacity-50"
+                >
+                  {revoking ? 'Regenerating…' : 'Yes, regenerate'}
+                </button>
+                <button
+                  onClick={() => setRevokeConfirm(false)}
+                  className="text-[10px] text-[#9A8E7E] hover:text-[#5A504A] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       )}

@@ -737,7 +737,13 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
                     { label: '🌙 Evening',   slotKey: 'evening',   block: day.evening,   stopNum: day.dinner ? 4 : 3 },
                   ]
                   return slots.map(({ label, slotKey, block, stopNum }, i) => (
-                    <div key={slotKey}>
+                    <div key={slotKey} style={{
+                      animationName: 'slotFadeUp',
+                      animationDuration: '0.35s',
+                      animationTimingFunction: 'ease',
+                      animationFillMode: 'both',
+                      animationDelay: `${i * 90}ms`,
+                    }}>
                       <div className="px-5 pt-4 pb-4">
                         {canEdit ? (
                           <EditableBlock

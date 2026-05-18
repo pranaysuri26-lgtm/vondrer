@@ -1261,6 +1261,8 @@ export default function DiscoverPage() {
   const [mode, setMode]                 = useState<Mode>('discover')
   const [searchQuery, setSearchQuery]   = useState('')
 
+  const [isReturner, setIsReturner] = useState<boolean | null>(null)
+
   // Saved / bookmarked destinations — persisted in Supabase `saved_destinations` table
   const [savedIds, setSavedIds]                     = useState<Set<string>>(new Set())
   const [savedDestinations, setSavedDestinations]   = useState<RecommendedDestination[]>([])
@@ -1292,6 +1294,11 @@ export default function DiscoverPage() {
       const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+      const { count } = await supabase
+        .from('trips')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+      setIsReturner((count ?? 0) > 0)
       const { data, error } = await supabase
         .from('saved_destinations')
         .select('name, country, destination')
@@ -1509,12 +1516,20 @@ export default function DiscoverPage() {
         <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-8">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs text-[#6b5f54] uppercase tracking-widest font-label mb-3">Your results</p>
-              <h1 className="font-serif italic text-5xl text-[#1A1A1A] leading-tight">
-                {destinations.length} destinations
-                <br />
-                <span className="text-[#6b5f54]">matched your profile</span>
+              <h1 className="font-serif italic text-5xl text-[#1A1A1A] leading-tight mb-2">
+                {isReturner === null
+                  ? 'Discover'
+                  : isReturner
+                  ? 'Welcome back, Vondrer!'
+                  : 'Hi! Welcome to Vondrer'}
               </h1>
+              <p className="text-[#6b5f54] text-sm">
+                {isReturner === null
+                  ? ''
+                  : isReturner
+                  ? 'Ready to plan your next adventure?'
+                  : "Let's build your first trip."}
+              </p>
             </div>
             <a
               href="/plan/new"

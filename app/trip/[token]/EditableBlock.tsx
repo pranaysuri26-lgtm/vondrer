@@ -66,6 +66,7 @@ export default function EditableBlock({
   const [alternatives, setAlternatives] = useState<ItineraryBlock[]>([])
   const [error, setError]             = useState('')
   const [savedFlash, setSavedFlash]   = useState(false)
+  const [describing, setDescribing]   = useState(false)
 
   // Read mode always renders from the `block` prop — the parent is the single source
   // of truth. No local copy needed; onSaved() updates the parent which re-passes block.
@@ -92,6 +93,35 @@ export default function EditableBlock({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save. Try again.')
       setMode('edit')
+    }
+  }
+
+  // ── AI: write description for the current draft activity name ────────────────
+  async function describeActivity() {
+    setDescribing(true)
+    setError('')
+    try {
+      const res = await fetch('/api/itinerary/describe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          activity:    draft.activity,
+          destination, country, slot,
+          day_context: dayContext,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      setDraft(d => ({
+        ...d,
+        description:    data.description    || d.description,
+        insider_tip:    data.insider_tip    || d.insider_tip,
+        estimated_cost: data.estimated_cost || d.estimated_cost,
+      }))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not generate description.')
+    } finally {
+      setDescribing(false)
     }
   }
 
@@ -280,17 +310,31 @@ export default function EditableBlock({
         className="w-full text-sm font-medium text-[#1A1A1A] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
       />
 
-      {/* Warn when activity name changed but description wasn't updated yet */}
+      {/* When activity name changed but description hasn't been updated */}
       {draft.activity.trim() !== block.activity.trim() && draft.description === block.description && block.description && (
-        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-700">
-          <span>Description still refers to the old activity</span>
-          <button
-            type="button"
-            onClick={() => setDraft(d => ({ ...d, description: '' }))}
-            className="font-medium underline underline-offset-2 flex-shrink-0"
-          >
-            Clear it
-          </button>
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+          <span className="text-[11px] text-amber-700 leading-snug">
+            Description still refers to the old activity
+          </span>
+          <div className="flex gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setDraft(d => ({ ...d, description: '' }))}
+              disabled={describing || isSaving}
+              className="text-[11px] text-amber-700 underline underline-offset-2 disabled:opacity-40"
+            >
+              Clear
+            </button>
+            <span className="text-amber-300 text-[11px]">·</span>
+            <button
+              type="button"
+              onClick={describeActivity}
+              disabled={describing || isSaving}
+              className="text-[11px] font-semibold text-[#C97552] hover:text-[#b86644] transition-colors disabled:opacity-40 flex items-center gap-1"
+            >
+              {describing ? <><Spinner /> Writing…</> : '✨ AI write'}
+            </button>
+          </div>
         </div>
       )}
       <textarea

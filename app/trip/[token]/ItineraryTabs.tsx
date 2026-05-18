@@ -307,8 +307,8 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
         document.getElementById('itinerary-tabs-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       })
     }
-    window.addEventListener('voya-pin-click', handlePinClick)
-    return () => window.removeEventListener('voya-pin-click', handlePinClick)
+    window.addEventListener('vondrer-pin-click', handlePinClick)
+    return () => window.removeEventListener('vondrer-pin-click', handlePinClick)
   }, [])
   const [replanReason,  setReplanReason]  = useState('')
   const [showReplanFor, setShowReplanFor] = useState<number | null>(null)
@@ -454,10 +454,10 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
             <div className="border-t border-[#E8E0D6] pt-8 text-center space-y-3">
               <p className="text-[#6b5f54] text-sm">Want to plan your own trip?</p>
               <a
-                href="https://getvoya.net"
+                href="https://getvondrer.com"
                 className="inline-block bg-[#C97552] text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#b86644] transition-colors"
               >
-                Plan with Voya →
+                Plan with Vondrer →
               </a>
             </div>
           </div>
@@ -635,20 +635,20 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
               />
             </div>
 
-            {/* Voya CTA */}
+            {/* Vondrer CTA */}
             <div className="p-5 rounded-2xl border border-[#C97552]/20 bg-[#C97552]/5">
-              <p className="text-xs text-[#C97552] uppercase tracking-widest mb-2">Voya Deals</p>
+              <p className="text-xs text-[#C97552] uppercase tracking-widest mb-2">Vondrer Deals</p>
               <p className="text-[#1A1A1A] font-medium text-sm mb-1">Daily curated travel offers</p>
               <p className="text-[#6b5f54] text-xs mb-4">
                 Flight promotions, hotel deals, card bonuses and travel tips — AI-curated daily for your home country.
               </p>
               <a
-                href="https://getvoya.net"
+                href="https://getvondrer.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block text-xs bg-[#C97552] text-white px-4 py-2 rounded-full hover:bg-[#b86644] transition-colors"
               >
-                Explore Voya Deals →
+                Explore Vondrer Deals →
               </a>
             </div>
           </div>

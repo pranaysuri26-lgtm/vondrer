@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 
-export const metadata: Metadata = { title: 'Trip Templates — Voya' }
+export const metadata: Metadata = { title: 'Trip Templates — Vondrer' }
 export const revalidate = 3600   // re-fetch every hour
 
 const CATEGORIES = ['beach','city','adventure','culture','foodie','romantic','family','backpacker']

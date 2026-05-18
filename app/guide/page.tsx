@@ -248,7 +248,7 @@ function GuideContent() {
     <div className="min-h-screen bg-[#FAF8F5]">
       {/* Nav */}
       <nav className="sticky top-0 z-20 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E8E0D6] px-5 py-4 flex items-center justify-between">
-        <span className="font-serif italic text-xl text-[#1A1A1A] tracking-wide">Voya</span>
+        <span className="font-serif italic text-xl text-[#1A1A1A] tracking-wide">Vondrer</span>
         <button
           onClick={() => router.back()}
           className="text-[10px] text-[#9A8E7E] hover:text-[#5C564E] transition-colors font-label tracking-widest uppercase"

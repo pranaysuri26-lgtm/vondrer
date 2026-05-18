@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
   if (!message?.trim()) return new Response(JSON.stringify({ error: 'message required' }), { status: 400 })
 
-  const system = `You are Voya, a warm and knowledgeable AI travel assistant.
+  const system = `You are Vondrer, a warm and knowledgeable AI travel assistant.
 ${pageContext ? `The user is currently on: ${pageContext}` : ''}
 
 ITINERARY CREATION — when the user asks you to plan/create/build a trip or itinerary (e.g. "plan me 5 days in Tokyo", "create a Paris trip", "I want to visit Bali for a week"):

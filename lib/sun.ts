@@ -33,7 +33,7 @@ export async function geocodeLocation(query: string): Promise<{ lat: number; lng
   try {
     const r = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'Voya-App/1.0 (getvoya.net)' }, next: { revalidate: 86400 } }
+      { headers: { 'User-Agent': 'Vondrer-App/1.0 (getvondrer.com)' }, next: { revalidate: 86400 } }
     )
     const data = await r.json() as Array<{ lat: string; lon: string }>
     if (!data.length) return null
@@ -47,7 +47,7 @@ export async function fetchSunTimes(lat: number, lng: number, date?: string): Pr
     const d    = date ?? new Date().toISOString().split('T')[0]
     const r    = await fetch(
       `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&formatted=0&date=${d}`,
-      { headers: { 'User-Agent': 'Voya-App/1.0' }, next: { revalidate: 3600 } }
+      { headers: { 'User-Agent': 'Vondrer-App/1.0' }, next: { revalidate: 3600 } }
     )
     const data = await r.json() as {
       status: string

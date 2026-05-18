@@ -40,7 +40,7 @@ export default function TripChat({ tripId, tripName, dests }: Props) {
     if (open && messages.length === 0) {
       setMessages([{
         role:    'assistant',
-        content: `Hi! I'm your Voya travel assistant for **${tripName}**. Ask me anything — logistics, restaurant swaps, what to pack, or how to tweak any day. 🗺️`,
+        content: `Hi! I'm your Vondrer travel assistant for **${tripName}**. Ask me anything — logistics, restaurant swaps, what to pack, or how to tweak any day. 🗺️`,
       }])
     }
     if (open) setTimeout(() => inputRef.current?.focus(), 150)
@@ -117,7 +117,7 @@ export default function TripChat({ tripId, tripName, dests }: Props) {
       {/* ── Floating button ──────────────────────────────────────────────────── */}
       <button
         onClick={() => setOpen(o => !o)}
-        title="Chat with Voya AI"
+        title="Chat with Vondrer AI"
         className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 ${
           open ? 'bg-[#5A504A] hover:bg-[#1A1A1A]' : 'bg-[#C97552] hover:bg-[#b86644]'
         }`}
@@ -143,7 +143,7 @@ export default function TripChat({ tripId, tripName, dests }: Props) {
               V
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#1A1A1A] leading-tight">Voya AI</p>
+              <p className="text-sm font-semibold text-[#1A1A1A] leading-tight">Vondrer AI</p>
               <p className="text-[10px] text-[#9A8E7E] truncate">{tripName}</p>
             </div>
             <div className="ml-auto flex items-center gap-1">

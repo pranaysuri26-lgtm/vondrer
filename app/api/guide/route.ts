@@ -88,7 +88,7 @@ export interface LocalGuide {
   accommodation?: GuideAccommodation
 }
 
-const SYSTEM = `You are a local guide writer for Voya — a travel app that shows the side of cities most visitors never see.
+const SYSTEM = `You are a local guide writer for Vondrer — a travel app that shows the side of cities most visitors never see.
 Your voice: direct, specific, never generic. Zero filler. You write like a local friend who knows the city deeply.
 
 RULES:

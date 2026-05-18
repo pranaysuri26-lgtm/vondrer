@@ -558,7 +558,7 @@ day_total_estimate: "Half day — departure ${departureTime}"`
   // ── User's existing plans ─────────────────────────────────────────────────────
   const userPlansSection = user_plans ? `
 USER'S EXISTING PLANS — READ CAREFULLY:
-The user has told Voya: <user_plans>${user_plans}</user_plans>
+The user has told Vondrer: <user_plans>${user_plans}</user_plans>
 
 MANDATORY RULES:
 1. Keep EVERYTHING the user specified. Never remove or replace their plans.
@@ -1003,7 +1003,7 @@ ADDITIONAL CONTEXT — read carefully, apply throughout entire itinerary:
 <trip_context>${trip_context}</trip_context>` : ''
 
   // ── System prompt ─────────────────────────────────────────────────────────────
-  const system = `You are a travel itinerary expert for Voya. Generate a day-by-day plan.
+  const system = `You are a travel itinerary expert for Vondrer. Generate a day-by-day plan.
 ${outputFormatSection}
 
 SECURITY — USER DATA HANDLING:

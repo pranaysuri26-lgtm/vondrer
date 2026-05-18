@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
-export const metadata: Metadata = { title: 'Voya Pro — Unlock everything' }
+export const metadata: Metadata = { title: 'Vondrer Pro — Unlock everything' }
 
 const FEATURES = [
   { icon: '🤖', title: 'AI Chat assistant',          desc: 'Ask anything about your trip — logistics, swaps, packing.' },
@@ -12,7 +12,7 @@ const FEATURES = [
   { icon: '🛂', title: 'Visa intelligence',           desc: 'Instant visa requirements for your passport + destination.' },
   { icon: '📱', title: 'Offline trip access',         desc: 'Full itinerary available without wifi — day-of ready.' },
   { icon: '📋', title: 'Trip templates',              desc: 'Save and share your trips as reusable community templates.' },
-  { icon: '🌐', title: 'White-label API access',      desc: 'Embed Voya itinerary generation in your own product.' },
+  { icon: '🌐', title: 'White-label API access',      desc: 'Embed Vondrer itinerary generation in your own product.' },
   { icon: '🔴', title: 'Live trip mode',              desc: 'Real-time day view, GPS check-ins, activity streaks.' },
 ]
 
@@ -95,12 +95,12 @@ export default function ProPage() {
 
       {/* Hero */}
       <div className="max-w-3xl mx-auto px-4 pt-16 pb-12 text-center">
-        <p className="text-xs text-[#C97552] uppercase tracking-widest mb-3">Voya Pro</p>
+        <p className="text-xs text-[#C97552] uppercase tracking-widest mb-3">Vondrer Pro</p>
         <h1 className="font-serif italic text-4xl sm:text-5xl text-[#1A1A1A] leading-tight mb-4">
           Plan smarter.<br />Travel better.
         </h1>
         <p className="text-[#6b5f54] text-lg max-w-xl mx-auto">
-          Unlock AI chat, smart re-planning, collaboration, live trip mode, and everything else Voya has to offer.
+          Unlock AI chat, smart re-planning, collaboration, live trip mode, and everything else Vondrer has to offer.
         </p>
       </div>
 

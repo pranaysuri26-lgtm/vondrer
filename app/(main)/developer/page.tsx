@@ -66,8 +66,8 @@ export default function DeveloperPage() {
           <p className="text-xs text-[#C97552] uppercase tracking-widest mb-2">Developer</p>
           <h1 className="font-serif italic text-3xl text-[#1A1A1A] mb-2">API Keys</h1>
           <p className="text-sm text-[#6b5f54]">
-            Use the Voya API to embed AI itinerary generation in your own product.
-            Keys authenticate via <code className="bg-[#F0EBE3] px-1 rounded text-xs">Authorization: Bearer voya_…</code>
+            Use the Vondrer API to embed AI itinerary generation in your own product.
+            Keys authenticate via <code className="bg-[#F0EBE3] px-1 rounded text-xs">Authorization: Bearer vondrer_…</code>
           </p>
         </div>
 
@@ -143,8 +143,8 @@ export default function DeveloperPage() {
         {/* Quick-start docs */}
         <div className="bg-[#1A1A1A] rounded-2xl p-5 space-y-3">
           <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">Quick start</p>
-          <pre className="text-xs text-emerald-400 overflow-auto leading-relaxed">{`curl -X POST https://getvoya.net/api/itinerary \\
-  -H "Authorization: Bearer voya_your_key_here" \\
+          <pre className="text-xs text-emerald-400 overflow-auto leading-relaxed">{`curl -X POST https://getvondrer.com/api/itinerary \\
+  -H "Authorization: Bearer vondrer_your_key_here" \\
   -H "Content-Type: application/json" \\
   -d '{
     "destination": "Tokyo",

@@ -191,7 +191,7 @@ export default function DealsPage() {
         {/* Footer */}
         <div className="mt-12 pt-8 border-t border-[#E8E0D6] text-center">
           <p className="text-[#A8A09A] text-xs">
-            Deals curated by Voya's AI for {country} travellers · Updated daily
+            Deals curated by Vondrer's AI for {country} travellers · Updated daily
           </p>
         </div>
       </main>

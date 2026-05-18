@@ -86,7 +86,7 @@ function LoadingScreen({ slow }: { slow: boolean }) {
           <span className="text-2xl" style={{ animation: 'spin 3s linear infinite reverse' }}>🧭</span>
         </div>
       </div>
-      <span className="font-serif italic text-3xl text-[#1A1A1A] tracking-wide mb-8">Voya</span>
+      <span className="font-serif italic text-3xl text-[#1A1A1A] tracking-wide mb-8">Vondrer</span>
       <p key={lineIdx} className="text-[#5C564E] text-sm tracking-wide"
         style={{ animation: 'fadeIn 0.4s ease' }}>
         {LOADING_LINES[lineIdx]}

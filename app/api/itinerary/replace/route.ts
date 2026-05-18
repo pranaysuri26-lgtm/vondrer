@@ -108,7 +108,7 @@ Do not repeat activities already in this day.`
     ? `Replace the ${body.time_of_day} activity "${body.current_activity ?? 'current activity'}" with: ${body.replacement_request}`
     : `Add a new ${body.time_of_day} activity: ${body.replacement_request}`
 
-  const systemPrompt = `You are a travel expert for Voya. ${actionInstruction} for Day ${body.day} in ${body.destination}, ${body.country}.
+  const systemPrompt = `You are a travel expert for Vondrer. ${actionInstruction} for Day ${body.day} in ${body.destination}, ${body.country}.
 ${mixedDietWarning}${halalNote}${gfNote}${hotelNote}${dayCtx}
 
 Return ONLY a single JSON object (no array, no markdown, no explanation):

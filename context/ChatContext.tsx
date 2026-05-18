@@ -22,7 +22,7 @@ interface ChatContextValue {
 
 const ChatContext = createContext<ChatContextValue | null>(null)
 
-const SS_KEY = 'voya-global-chat'
+const SS_KEY = 'vondrer-global-chat'
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [messages,  setMessages]  = useState<ChatMessage[]>([])

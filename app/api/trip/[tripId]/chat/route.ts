@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     return `${d.destination_name}, ${d.country} (${d.start_date}–${d.end_date})\n${days}`
   }).join('\n\n')
 
-  const system = `You are Voya's AI travel assistant — knowledgeable, warm, and genuinely helpful.
+  const system = `You are Vondrer's AI travel assistant — knowledgeable, warm, and genuinely helpful.
 
 Trip: "${tripName}"
 

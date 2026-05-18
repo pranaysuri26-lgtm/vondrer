@@ -62,7 +62,7 @@ export async function GET() {
     // ── Generate with GPT-4o ──────────────────────────────────────────────────
     const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
-    const system = `You are a travel deals curator for Voya.
+    const system = `You are a travel deals curator for Vondrer.
 Return ONLY valid JSON. No explanation. No prose. No markdown fences.
 Response schema: { "deals": [{ "id": string, "category": "flight"|"hotel"|"card"|"alert", "title": string, "description": string, "value": string, "expires": string|null, "action_label": string, "action_url": string }] }
 

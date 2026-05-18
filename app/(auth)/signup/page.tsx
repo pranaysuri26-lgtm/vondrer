@@ -113,7 +113,7 @@ function ProgressBar({ step }: { step: Step }) {
   return (
     <div className="w-full mb-8">
       <div className="flex justify-between mb-1.5">
-        <span className="text-xs text-white/40 tracking-widest uppercase">Setting up your Voya profile</span>
+        <span className="text-xs text-white/40 tracking-widest uppercase">Setting up your Vondrer profile</span>
         <span className="text-xs text-white/40">{idx + 1} / {total}</span>
       </div>
       <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
@@ -318,7 +318,7 @@ export default function SignupPage() {
       <div className="relative w-full max-w-md">
 
         <div className="text-center mb-10">
-          <span className="font-serif italic text-3xl text-white/90 tracking-wide">Voya</span>
+          <span className="font-serif italic text-3xl text-white/90 tracking-wide">Vondrer</span>
           <p className="text-white/25 text-xs mt-1 font-label tracking-widest uppercase">Your travel intelligence</p>
         </div>
 

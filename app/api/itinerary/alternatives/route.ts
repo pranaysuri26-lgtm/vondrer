@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     ? `Traveling as: ${user_profile.group_type}. `
     : ''
 
-  const systemPrompt = `You are a travel expert generating alternative activity suggestions for Voya.
+  const systemPrompt = `You are a travel expert generating alternative activity suggestions for Vondrer.
 ${budgetNote}${groupNote}
 Return ONLY a JSON object in this exact shape — no markdown, no explanation:
 {

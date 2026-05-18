@@ -16,16 +16,16 @@ function pageLabel(pathname: string): string {
   if (pathname.startsWith('/templates'))   return 'Templates'
   if (pathname.startsWith('/trip/'))       return 'Trip view'
   if (pathname.startsWith('/profile'))     return 'Profile'
-  return 'Voya'
+  return 'Vondrer'
 }
 
 function placeholder(pathname: string): string {
-  if (pathname === '/discover')          return 'Ask Voya — plan a trip, get tips…'
+  if (pathname === '/discover')          return 'Ask Vondrer — plan a trip, get tips…'
   if (pathname.startsWith('/deals'))     return 'Ask about deals, flights, hotels…'
   if (pathname.startsWith('/plan'))      return 'Where do you want to go?'
   if (pathname.startsWith('/trips'))     return 'Ask about one of your trips…'
   if (pathname.startsWith('/trip/'))     return 'Ask about this trip…'
-  return 'Ask Voya anything…'
+  return 'Ask Vondrer anything…'
 }
 
 // ─── Quick chips shown before first message ────────────────────────────────────
@@ -171,7 +171,7 @@ export default function GlobalChatBar() {
                   V
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-[#1A1A1A]">Voya Assistant</p>
+                  <p className="text-xs font-semibold text-[#1A1A1A]">Vondrer Assistant</p>
                   <p className="text-[10px] text-[#9A8E7E]">{pageLabel(pathname)}</p>
                 </div>
               </div>
@@ -231,7 +231,7 @@ export default function GlobalChatBar() {
           md:mx-0 md:rounded-2xl
         ">
           <div className="flex items-end gap-2 px-3 py-2.5">
-            {/* Voya dot */}
+            {/* Vondrer dot */}
             <button
               onClick={() => setOpen(o => !o)}
               className="w-7 h-7 rounded-full bg-[#C97552] text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mb-0.5 hover:bg-[#b86644] transition-colors"

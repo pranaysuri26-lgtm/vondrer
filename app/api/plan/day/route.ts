@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   async function nominatim(q: string): Promise<GeoResult> {
     const r = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&addressdetails=0`,
-      { headers: { 'User-Agent': 'Voya-App/1.0 (getvoya.net)' } }
+      { headers: { 'User-Agent': 'Vondrer-App/1.0 (getvondrer.com)' } }
     )
     return r.json()
   }
@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
     : 'Weather data unavailable'
 
   // ── 3. Generate the day plan with OpenAI ─────────────────────────────────────
-  const systemPrompt = `You are Voya's spontaneous day planner. Generate a specific, timed itinerary for one day at a real place.
+  const systemPrompt = `You are Vondrer's spontaneous day planner. Generate a specific, timed itinerary for one day at a real place.
 
 Rules:
 - All stops must be REAL, named places within or directly part of the destination

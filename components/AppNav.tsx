@@ -76,7 +76,7 @@ const NAV: NavItem[] = [
     href:  '/profile',
     children: [
       { label: 'Profile',    href: '/profile',   icon: '👤' },
-      { label: 'Voya Pro',   href: '/pro',        icon: '✦'  },
+      { label: 'Vondrer Pro',   href: '/pro',        icon: '✦'  },
       { label: 'Developer',  href: '/developer',  icon: '🔑' },
       { label: 'Passport',   href: '/passport',   icon: '🛂' },
     ],
@@ -130,7 +130,7 @@ export default function AppNav() {
   const DesktopNav = (
     <nav className="hidden md:flex sticky top-0 z-30 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E8E0D6] px-8 h-14 items-center justify-between">
       <Link href="/discover" className="font-serif italic text-xl text-[#1A1A1A] select-none tracking-wide hover:text-[#C97552] transition-colors">
-        Voya
+        Vondrer
       </Link>
 
       <div className="flex items-center gap-0.5">

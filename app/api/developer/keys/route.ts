@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
   if ((count ?? 0) >= 5)
     return NextResponse.json({ error: 'Maximum 5 API keys per account' }, { status: 400 })
 
-  const rawKey    = `voya_${randomBytes(24).toString('hex')}`
+  const rawKey    = `vondrer_${randomBytes(24).toString('hex')}`
   const keyHash   = createHash('sha256').update(rawKey).digest('hex')
   const keyPrefix = rawKey.slice(0, 12)
 

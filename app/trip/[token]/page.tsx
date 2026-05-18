@@ -184,12 +184,12 @@ export default async function SharedTripPage({
                   </p>
                 )}
               </div>
-              {/* Voya wordmark */}
+              {/* Vondrer wordmark */}
               <a
-                href="https://getvoya.net"
+                href="https://vondrer.com"
                 className="flex-shrink-0 text-[#9A8E7E] text-xs hover:text-[#5A504A] transition-colors mt-1"
               >
-                Made with Voya
+                Made with Vondrer
               </a>
             </div>
 
@@ -284,18 +284,18 @@ export async function generateMetadata({
     .single()
 
   if (!trip) {
-    return { title: 'Trip not found · Voya' }
+    return { title: 'Trip not found · Vondrer' }
   }
 
   return {
-    title: `${trip.trip_name} · Voya`,
+    title: `${trip.trip_name} · Vondrer`,
     description: trip.start_date
-      ? `${formatDateRange(trip.start_date, trip.end_date)} — planned with Voya`
-      : 'A trip planned with Voya',
+      ? `${formatDateRange(trip.start_date, trip.end_date)} — planned with Vondrer`
+      : 'A trip planned with Vondrer',
     openGraph: {
-      title: `${trip.trip_name} · Voya`,
-      description: 'View this trip itinerary planned with Voya',
-      siteName: 'Voya',
+      title: `${trip.trip_name} · Vondrer`,
+      description: 'View this trip itinerary planned with Vondrer',
+      siteName: 'Vondrer',
     },
   }
 }

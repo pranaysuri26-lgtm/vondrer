@@ -46,7 +46,7 @@ export default function LiveModeStrip({ startDate, endDate, dests }: Props) {
   // Persist checked-off activities in localStorage
   useEffect(() => {
     if (!today) return
-    const saved = localStorage.getItem(`voya-live-done-${today}`)
+    const saved = localStorage.getItem(`vondrer-live-done-${today}`)
     if (saved) setDone(new Set(JSON.parse(saved) as string[]))
   }, [today])
 
@@ -54,7 +54,7 @@ export default function LiveModeStrip({ startDate, endDate, dests }: Props) {
     setDone(prev => {
       const next = new Set(prev)
       next.has(key) ? next.delete(key) : next.add(key)
-      localStorage.setItem(`voya-live-done-${today}`, JSON.stringify([...next]))
+      localStorage.setItem(`vondrer-live-done-${today}`, JSON.stringify([...next]))
       return next
     })
   }
@@ -88,7 +88,7 @@ export default function LiveModeStrip({ startDate, endDate, dests }: Props) {
         <span className="text-xl">✅</span>
         <div>
           <p className="text-sm font-semibold text-[#1A1A1A]">Hope you had an amazing trip!</p>
-          <p className="text-xs text-[#6b5f54]">Share a review or plan your next adventure with Voya.</p>
+          <p className="text-xs text-[#6b5f54]">Share a review or plan your next adventure with Vondrer.</p>
         </div>
       </div>
     )

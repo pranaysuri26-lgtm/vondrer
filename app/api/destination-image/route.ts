@@ -38,7 +38,7 @@ async function fromWikipedia(destination: string): Promise<string[]> {
       const res = await fetch(
         `https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`,
         {
-          headers: { 'User-Agent': 'Voya-App/1.0 (contact@voya.app)' },
+          headers: { 'User-Agent': 'Vondrer-App/1.0 (contact@vondrer.app)' },
           next: { revalidate: 86400 },
         }
       )
@@ -67,7 +67,7 @@ async function fromWikimediaSearch(destination: string, count: number): Promise<
       `&iiurlwidth=1200` +
       `&format=json&origin=*`,
       {
-        headers: { 'User-Agent': 'Voya-App/1.0' },
+        headers: { 'User-Agent': 'Vondrer-App/1.0' },
         next: { revalidate: 86400 },
       }
     )

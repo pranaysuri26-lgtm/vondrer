@@ -98,7 +98,7 @@ async function geocode(query: string): Promise<{ lat: number; lng: number; displ
   try {
     const r = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
-      { headers: { 'User-Agent': 'Voya-App/1.0 (getvoya.net)' } }
+      { headers: { 'User-Agent': 'Vondrer-App/1.0 (getvondrer.com)' } }
     )
     const data = await r.json() as Array<{ lat: string; lon: string; display_name: string }>
     if (!data.length) return null

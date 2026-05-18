@@ -15,7 +15,7 @@ export default function PassportPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#FAF8F5]/40 to-[#FAF8F5]" />
         <div className="relative px-6 pt-12 pb-8 text-center">
-          <p className="text-xs text-[#8A7E6E] uppercase tracking-widest font-label mb-4">Voya Passport</p>
+          <p className="text-xs text-[#8A7E6E] uppercase tracking-widest font-label mb-4">Vondrer Passport</p>
           <div className="text-6xl mb-4">📔</div>
           <h1 className="font-serif italic text-3xl text-[#1A1A1A] leading-tight">Your travel story</h1>
         </div>
@@ -31,7 +31,7 @@ export default function PassportPage() {
               <span className="text-xl">🌍</span>
             </div>
             <div className="text-center">
-              <p className="text-[#4A4440] text-[10px] font-label tracking-widest uppercase">Voya</p>
+              <p className="text-[#4A4440] text-[10px] font-label tracking-widest uppercase">Vondrer</p>
               <p className="text-[#6b5f54] text-[9px] font-label tracking-widest uppercase mt-0.5">Travel Passport</p>
             </div>
             <div className="w-full border-t border-[#E8E0D6] pt-3 mt-1">

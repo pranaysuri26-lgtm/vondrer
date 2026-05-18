@@ -160,9 +160,9 @@ export default function TripMap({ pins }: TripMapProps) {
     }
 
     // Inject popup style override
-    if (!document.getElementById('voya-map-css')) {
+    if (!document.getElementById('vondrer-map-css')) {
       const style = document.createElement('style')
-      style.id    = 'voya-map-css'
+      style.id    = 'vondrer-map-css'
       style.textContent = `
         .leaflet-popup-content-wrapper {
           border-radius: 12px !important;
@@ -269,7 +269,7 @@ export default function TripMap({ pins }: TripMapProps) {
                 </a>
                 <span style="color:#E8E0D6;font-size:11px;">|</span>
                 <button
-                  onclick="window.dispatchEvent(new CustomEvent('voya-pin-click',{detail:{day:${pin.day}}}))"
+                  onclick="window.dispatchEvent(new CustomEvent('vondrer-pin-click',{detail:{day:${pin.day}}}))"
                   style="font-size:11px;color:#5A504A;font-weight:500;font-family:-apple-system,sans-serif;background:none;border:none;cursor:pointer;padding:0;"
                 >
                   View day →

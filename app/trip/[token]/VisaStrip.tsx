@@ -16,7 +16,7 @@ const STATUS_CONFIG: Record<VisaInfo['requirement'], { icon: string; label: stri
   unknown:         { icon: 'ℹ️', label: 'Check requirements', bg: 'bg-stone-50',   text: 'text-stone-700',   border: 'border-stone-200'   },
 }
 
-const LS_KEY = 'voya-passport-country'
+const LS_KEY = 'vondrer-passport-country'
 
 export default function VisaStrip({ homeCountry, destCountry }: Props) {
   // ── Passport country — localStorage > profile home_country ──────────────────

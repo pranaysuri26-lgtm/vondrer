@@ -247,7 +247,7 @@ export default function CollaboratePage({
   const [userId,   setUserId]   = useState<string | null>(null)
 
   const [commenterName, setCommenterName]   = useState(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('voya_collab_name') || '' : ''
+    typeof window !== 'undefined' ? localStorage.getItem('vondrer_collab_name') || '' : ''
   )
   const [nameInput,   setNameInput]   = useState('')
   const [nameSet,     setNameSet]     = useState(!!commenterName)
@@ -412,7 +412,7 @@ export default function CollaboratePage({
   function saveName() {
     if (!nameInput.trim()) return
     setCommenterName(nameInput.trim())
-    localStorage.setItem('voya_collab_name', nameInput.trim())
+    localStorage.setItem('vondrer_collab_name', nameInput.trim())
     setNameSet(true)
     channelRef.current?.track({ name: nameInput.trim(), online_at: new Date().toISOString() })
   }

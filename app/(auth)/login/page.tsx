@@ -39,7 +39,7 @@ export default function LoginPage() {
 
         {/* Wordmark */}
         <Link href="/" className="font-serif italic text-2xl text-[#1A1A1A] tracking-wide">
-          voya
+          vondrer
         </Link>
 
         {/* Form */}
@@ -115,7 +115,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm text-[#9A8E7E] mt-6">
-            New to Voya?{' '}
+            New to Vondrer?{' '}
             <Link href="/signup" className="text-[#C97552] hover:underline font-medium">
               Start for free
             </Link>
@@ -124,7 +124,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-xs text-[#C8C0B4] text-center lg:text-left">
-          © {new Date().getFullYear()} Voya · AI Travel Intelligence
+          © {new Date().getFullYear()} Vondrer · AI Travel Intelligence
         </p>
       </div>
 
@@ -141,8 +141,8 @@ export default function LoginPage() {
         <div className="absolute bottom-12 left-10 right-10">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 shadow-2xl max-w-sm">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">Voya · AI Itinerary</span>
-              <span className="font-serif italic text-sm text-[#1A1A1A]">Voya</span>
+              <span className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">Vondrer · AI Itinerary</span>
+              <span className="font-serif italic text-sm text-[#1A1A1A]">Vondrer</span>
             </div>
             <p className="font-serif italic text-2xl text-[#1A1A1A] mb-3">5 Days in Tokyo</p>
             <div className="grid grid-cols-3 gap-3 text-xs">

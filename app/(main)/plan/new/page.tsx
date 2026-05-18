@@ -1238,7 +1238,7 @@ function MustDoSection({
     <div className="mt-2 bg-[#F5F2ED] border border-[#E8E0D6] rounded-xl p-4 space-y-4">
       <div>
         <p className="text-xs text-[#7A6E64] uppercase tracking-widest font-label">Things you <span className="text-[#4A4440]">MUST</span> do</p>
-        <p className="text-xs text-[#9A8E7E] mt-0.5">Voya includes all of these — non-negotiable</p>
+        <p className="text-xs text-[#9A8E7E] mt-0.5">Vondrer includes all of these — non-negotiable</p>
         <textarea
           value={mustDo}
           onChange={e => onChange(e.target.value, niceToDo)}

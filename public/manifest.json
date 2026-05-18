@@ -1,6 +1,6 @@
 {
-  "name": "Voya — AI Travel Planner",
-  "short_name": "Voya",
+  "name": "Vondrer — AI Travel Planner",
+  "short_name": "Vondrer",
   "description": "AI-powered travel itinerary planner. Plan, edit, and explore trips.",
   "start_url": "/",
   "display": "standalone",

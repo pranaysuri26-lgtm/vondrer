@@ -22,20 +22,20 @@ const josefin = Josefin_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Voya — AI Travel Planner',
+  title: 'Vondrer — AI Travel Planner',
   description: 'Plan, edit, and share AI-generated trip itineraries. Real photos, time windows, and local insights.',
   keywords: ['travel', 'itinerary planner', 'AI travel', 'trip planning'],
   manifest: '/manifest.json',
   appleWebApp: {
     capable:        true,
     statusBarStyle: 'default',
-    title:          'Voya',
+    title:          'Vondrer',
   },
   openGraph: {
-    title:       'Voya — AI Travel Planner',
+    title:       'Vondrer — AI Travel Planner',
     description: 'Plan and share beautiful trip itineraries with AI.',
-    url:         'https://getvoya.net',
-    siteName:    'Voya',
+    url:         'https://getvondrer.com',
+    siteName:    'Vondrer',
     type:        'website',
   },
   icons: {

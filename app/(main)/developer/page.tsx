@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 interface ApiKey {
   id:             string
@@ -19,13 +20,22 @@ export default function DeveloperPage() {
   const [newKey,     setNewKey]     = useState<string | null>(null)
   const [copied,     setCopied]     = useState(false)
   const [error,      setError]      = useState('')
+  const [isPro,      setIsPro]      = useState<boolean | null>(null)
 
   useEffect(() => {
+    fetch('/api/user/status')
+      .then(r => r.json())
+      .then(d => setIsPro(d.isPro ?? false))
+      .catch(() => setIsPro(false))
+  }, [])
+
+  useEffect(() => {
+    if (isPro === false) return  // don't fetch keys for free users
     fetch('/api/developer/keys')
       .then(r => r.json())
       .then(d => setKeys(d.keys ?? []))
       .finally(() => setLoading(false))
-  }, [])
+  }, [isPro])
 
   async function create() {
     if (!name.trim()) return
@@ -55,6 +65,45 @@ export default function DeveloperPage() {
   async function copy(text: string) {
     await navigator.clipboard.writeText(text)
     setCopied(true); setTimeout(() => setCopied(false), 2000)
+  }
+
+  // ── Pro gate ────────────────────────────────────────────────────────────────
+  if (isPro === false) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-[#F0EBE3] text-3xl flex items-center justify-center mx-auto">🔑</div>
+          <div>
+            <p className="text-xs text-[#C97552] uppercase tracking-widest mb-2">Developer API</p>
+            <h1 className="font-serif italic text-3xl text-[#1A1A1A] mb-3">Pro feature</h1>
+            <p className="text-sm text-[#6b5f54] leading-relaxed">
+              API keys let you embed Vondrer's itinerary engine in your own product.
+              Upgrade to Pro to generate keys and start building.
+            </p>
+          </div>
+          <div className="bg-white border border-[#E8E0D6] rounded-2xl p-5 text-left space-y-3">
+            <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">What you get</p>
+            {[
+              'Up to 5 API keys',
+              'Full itinerary JSON responses',
+              'Usage tracking per key',
+              'Bearer token authentication',
+            ].map(item => (
+              <div key={item} className="flex items-center gap-2 text-sm text-[#1A1A1A]">
+                <span className="text-[#C97552]">✓</span> {item}
+              </div>
+            ))}
+          </div>
+          <Link
+            href="/pro"
+            className="block w-full bg-[#C97552] text-white text-sm font-medium py-3 rounded-xl hover:bg-[#b86644] transition-colors"
+          >
+            Upgrade to Pro →
+          </Link>
+          <p className="text-xs text-[#9A8E7E]">Already Pro? Try refreshing the page.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -143,7 +192,7 @@ export default function DeveloperPage() {
         {/* Quick-start docs */}
         <div className="bg-[#1A1A1A] rounded-2xl p-5 space-y-3">
           <p className="text-xs text-[#9A8E7E] uppercase tracking-widest">Quick start</p>
-          <pre className="text-xs text-emerald-400 overflow-auto leading-relaxed">{`curl -X POST https://www.vondrer.com/api/itinerary \\
+          <pre className="text-xs text-emerald-400 overflow-auto leading-relaxed">{`curl -X POST https://vondrer.com/api/itinerary \\
   -H "Authorization: Bearer vondrer_your_key_here" \\
   -H "Content-Type: application/json" \\
   -d '{

@@ -8,18 +8,27 @@ import { useWikiPhoto } from '@/hooks/useWikiPhoto'
 
 type Mode = 'read' | 'edit' | 'loading-alts' | 'alts' | 'saving'
 
+export interface AvailableDay {
+  globalDay: number
+  destId:    string
+  destName:  string
+  day:       number
+}
+
 export interface EditableBlockProps {
-  label:        string
-  block:        ItineraryBlock
-  tripId:       string
-  destId:       string
-  day:          number
-  slot:         'morning' | 'afternoon' | 'dinner' | 'evening'
-  destination:  string
-  country:      string
-  dayContext?:  Record<string, string | undefined>
-  stopNum?:     number
-  onSaved:      (updated: ItineraryBlock) => void
+  label:         string
+  block:         ItineraryBlock
+  tripId:        string
+  destId:        string
+  day:           number
+  slot:          'morning' | 'afternoon' | 'dinner' | 'evening'
+  destination:   string
+  country:       string
+  dayContext?:   Record<string, string | undefined>
+  stopNum?:      number
+  availableDays?: AvailableDay[]
+  onSaved:       (updated: ItineraryBlock) => void
+  onSwapped?:    (toDestId: string, toDay: number, toSlot: string, newBlock: ItineraryBlock) => void
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -59,7 +68,8 @@ function Spinner() {
 
 export default function EditableBlock({
   label, block, tripId, destId, day, slot,
-  destination, country, dayContext, stopNum, onSaved,
+  destination, country, dayContext, stopNum,
+  availableDays, onSaved, onSwapped,
 }: EditableBlockProps) {
   const [mode, setMode]               = useState<Mode>('read')
   const [draft, setDraft]             = useState<ItineraryBlock>(block)
@@ -67,6 +77,10 @@ export default function EditableBlock({
   const [error, setError]             = useState('')
   const [savedFlash, setSavedFlash]   = useState(false)
   const [describing, setDescribing]   = useState(false)
+  const [showMovePanel, setShowMovePanel] = useState(false)
+  const [moveTarget, setMoveTarget]       = useState('')   // "destId|day" key
+  const [moveSlot, setMoveSlot]           = useState<'morning'|'afternoon'|'dinner'|'evening'>('morning')
+  const [moving, setMoving]               = useState(false)
 
   // Read mode always renders from the `block` prop — the parent is the single source
   // of truth. No local copy needed; onSaved() updates the parent which re-passes block.
@@ -76,17 +90,21 @@ export default function EditableBlock({
   async function save(blockToSave: ItineraryBlock) {
     setMode('saving')
     setError('')
+    // Clear cached photo when activity name changes so useWikiPhoto re-fetches for the new name
+    const toSave = blockToSave.activity.trim() !== block.activity.trim()
+      ? { ...blockToSave, photo_url: undefined }
+      : blockToSave
     try {
       const res = await fetch(`/api/trip/${tripId}/save-block`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ destination_id: destId, day, slot, block: blockToSave }),
+        body:    JSON.stringify({ destination_id: destId, day, slot, block: toSave }),
       })
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.error ?? 'Save failed')
       }
-      onSaved(blockToSave)   // parent updates its localDests → block prop refreshes
+      onSaved(toSave)   // parent updates its localDests → block prop refreshes
       setMode('read')
       setSavedFlash(true)
       setTimeout(() => setSavedFlash(false), 1800)
@@ -146,6 +164,37 @@ export default function EditableBlock({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not load alternatives.')
       setMode('edit')
+    }
+  }
+
+  // ── Swap this block with another day/slot ────────────────────────────────────
+  async function moveBlock() {
+    if (!moveTarget || !onSwapped) return
+    const [toDestId, toDayStr] = moveTarget.split('|')
+    const toDay = parseInt(toDayStr, 10)
+    setMoving(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/trip/${tripId}/swap-blocks`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          from: { dest_id: destId, day, slot },
+          to:   { dest_id: toDestId, day: toDay, slot: moveSlot },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      onSaved(data.result_at_from)                          // update source slot
+      onSwapped(toDestId, toDay, moveSlot, data.result_at_to)  // update target slot
+      setShowMovePanel(false)
+      setMode('read')
+      setSavedFlash(true)
+      setTimeout(() => setSavedFlash(false), 1800)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not swap activities.')
+    } finally {
+      setMoving(false)
     }
   }
 
@@ -349,7 +398,7 @@ export default function EditableBlock({
 
       <div className="flex gap-2 pt-0.5">
         <button
-          onClick={() => { setMode('read'); setError('') }}
+          onClick={() => { setMode('read'); setError(''); setShowMovePanel(false) }}
           disabled={isSaving}
           className="flex-1 py-2 text-xs text-[#6b5f54] border border-[#E0D8CF] rounded-full hover:border-[#C8C0B4] transition-colors disabled:opacity-40"
         >
@@ -372,6 +421,70 @@ export default function EditableBlock({
           {isSaving ? <><Spinner /> Saving…</> : '✓ Save'}
         </button>
       </div>
+
+      {/* Move to another day */}
+      {availableDays && availableDays.length > 1 && (
+        <div className="border-t border-[#EDE8E1] pt-2.5">
+          {!showMovePanel ? (
+            <button
+              type="button"
+              onClick={() => setShowMovePanel(true)}
+              disabled={isSaving || moving}
+              className="text-xs text-[#9A8E7E] hover:text-[#5A504A] disabled:opacity-40 flex items-center gap-1 transition-colors"
+            >
+              ↕ Swap with another day
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] text-[#9A8E7E] font-medium uppercase tracking-wider">Swap with</p>
+              <div className="flex gap-2">
+                <select
+                  value={moveTarget}
+                  onChange={e => setMoveTarget(e.target.value)}
+                  className="flex-1 text-xs border border-[#D8D0C4] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C97552]/60 bg-white text-[#1A1A1A]"
+                >
+                  <option value="">Day…</option>
+                  {availableDays
+                    .filter(d => !(d.destId === destId && d.day === day))
+                    .map(d => (
+                      <option key={d.globalDay} value={`${d.destId}|${d.day}`}>
+                        Day {d.globalDay} – {d.destName}
+                      </option>
+                    ))}
+                </select>
+                <select
+                  value={moveSlot}
+                  onChange={e => setMoveSlot(e.target.value as typeof moveSlot)}
+                  className="text-xs border border-[#D8D0C4] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#C97552]/60 bg-white text-[#1A1A1A]"
+                >
+                  <option value="morning">Morning</option>
+                  <option value="afternoon">Afternoon</option>
+                  <option value="dinner">Dinner</option>
+                  <option value="evening">Evening</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowMovePanel(false); setMoveTarget('') }}
+                  disabled={moving}
+                  className="text-xs text-[#9A8E7E] hover:text-[#5A504A] disabled:opacity-40 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={moveBlock}
+                  disabled={!moveTarget || moving || !onSwapped}
+                  className="text-xs text-[#C97552] font-semibold hover:text-[#b86644] disabled:opacity-40 transition-colors flex items-center gap-1"
+                >
+                  {moving ? <><Spinner /> Swapping…</> : '↕ Swap'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

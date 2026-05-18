@@ -52,13 +52,24 @@ interface TripMapProps {
   pins: MapPin[]
 }
 
-export default function TripMap({ pins }: TripMapProps) {
+export default function TripMap({ pins: initialPins }: TripMapProps) {
   const containerRef  = useRef<HTMLDivElement>(null)
   const mapRef        = useRef<any>(null)
   const markersRef    = useRef<Array<{ marker: any; day: number; lat: number; lng: number }>>([])
+  const [pins, setPins]           = useState<MapPin[]>(initialPins)
   const [geoPins, setGeoPins]     = useState<GeoPin[]>([])
   const [status, setStatus]       = useState<'idle' | 'geocoding' | 'done'>('idle')
   const [activeDay, setActiveDay] = useState<number | null>(null)
+
+  // ── Receive live pin updates from ItineraryTabs when blocks are edited ────────
+  useEffect(() => {
+    function handlePinsUpdate(e: Event) {
+      const newPins = (e as CustomEvent<{ pins: MapPin[] }>).detail?.pins
+      if (newPins) setPins(newPins)
+    }
+    window.addEventListener('vondrer-pins-update', handlePinsUpdate)
+    return () => window.removeEventListener('vondrer-pins-update', handlePinsUpdate)
+  }, [])
 
   // ── Listen for tab-change events from ItineraryTabs ──────────────────────────
   useEffect(() => {
@@ -72,9 +83,15 @@ export default function TripMap({ pins }: TripMapProps) {
 
   // ── Geocode pins via Photon (free, no key, OSM-based) ────────────────────────
   useEffect(() => {
-    if (pins.length === 0) { setStatus('done'); return }
+    if (pins.length === 0) { setGeoPins([]); setStatus('done'); return }
     setStatus('geocoding')
     let cancelled = false
+
+    // Drop cached coords for any pin whose activity name has changed — forces re-geocode
+    setGeoPins(prev => {
+      const nameMap = new Map(pins.map(p => [p.id, p.name]))
+      return prev.filter(g => nameMap.get(g.id) === g.name)
+    })
 
     async function geocodeAll() {
       const BATCH = 4    // parallel per round

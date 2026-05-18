@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import type { ItineraryDay, ItineraryBlock } from '@/app/api/itinerary/route'
 import type { SunTimes } from '@/lib/sun'
 import type { DealsResult, DealTip, HotelPick } from '@/app/api/trip/[tripId]/deals/route'
-import EditableBlock from './EditableBlock'
+import EditableBlock, { type AvailableDay } from './EditableBlock'
+import type { MapPin } from './TripMap'
 import BudgetPanel from './BudgetPanel'
 import DestSpotlights from './DestSpotlights'
 
@@ -329,6 +330,39 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
 
   // ── Mutable local copy of destinations (optimistic update on block save) ──────
   const [localDests, setLocalDests] = useState<SerializableDest[]>(dests)
+  const isFirstRender = useRef(true)
+
+  // Keep TripMap pins in sync whenever localDests changes after initial mount
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    const newPins: MapPin[] = []
+    localDests.forEach((dest, idx) => {
+      const dayOffset = localDests.slice(0, idx).reduce((s, d) => s + d.days, 0)
+      const days = Array.isArray(dest.itinerary_json) ? dest.itinerary_json : []
+      days.forEach(day => {
+        const globalDay = dayOffset + day.day
+        const slots = [
+          { slot: 'Morning',   block: day.morning   },
+          { slot: 'Afternoon', block: day.afternoon },
+          { slot: 'Dinner',    block: day.dinner    },
+          { slot: 'Evening',   block: day.evening   },
+        ]
+        slots.forEach(({ slot, block }) => {
+          if (block?.activity) {
+            newPins.push({
+              id:          `${dest.id}-${globalDay}-${slot}`,
+              name:        block.activity,
+              day:         globalDay,
+              slot,
+              destination: dest.destination_name,
+              country:     dest.country,
+            })
+          }
+        })
+      })
+    })
+    window.dispatchEvent(new CustomEvent('vondrer-pins-update', { detail: { pins: newPins } }))
+  }, [localDests])
 
   function handleBlockUpdate(destId: string, day: number, slot: string, block: ItineraryBlock) {
     setLocalDests(prev => prev.map(dest => {
@@ -351,6 +385,14 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
       dest,
     }))
   })
+
+  // Flat list passed to each EditableBlock so it can offer "swap with another day"
+  const availableDays: AvailableDay[] = allEntries.map(e => ({
+    globalDay: e.globalDay,
+    destId:    e.dest.id,
+    destName:  e.dest.destination_name,
+    day:       e.day.day,
+  }))
 
   const [activeTab,    setActiveTab]    = useState<string>('overview')
   const [replanningDay, setReplanningDay] = useState<number | null>(null)
@@ -401,6 +443,9 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
   const [replanReason,  setReplanReason]  = useState('')
   const [showReplanFor, setShowReplanFor] = useState<number | null>(null)
   const [addStopFor,    setAddStopFor]    = useState<{ destId: string; day: number } | null>(null)
+  const [promoteState, setPromoteState] = useState<{ destId: string; day: number; idx: number; stop: ItineraryBlock } | null>(null)
+  const [promoteSlot,  setPromoteSlot]  = useState<'morning'|'afternoon'|'dinner'|'evening'>('morning')
+  const [promoteSaving, setPromoteSaving] = useState(false)
   const [addStopForm,   setAddStopForm]   = useState({ activity: '', start_time: '', end_time: '', description: '', estimated_cost: '' })
   const [addStopSaving, setAddStopSaving] = useState(false)
 
@@ -433,6 +478,38 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
     setAddStopFor(null)
     setAddStopForm({ activity: '', start_time: '', end_time: '', description: '', estimated_cost: '' })
     setAddStopSaving(false)
+  }
+
+  async function promoteExtraStop() {
+    if (!promoteState || !tripId) return
+    const { destId, day, idx, stop } = promoteState
+    setPromoteSaving(true)
+    await Promise.all([
+      fetch(`/api/trip/${tripId}/save-block`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ destination_id: destId, day, slot: promoteSlot, block: stop }),
+      }),
+      fetch(`/api/trip/${tripId}/extra-stop`, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ destination_id: destId, day, index: idx }),
+      }),
+    ])
+    setLocalDests(prev => prev.map(d => {
+      if (d.id !== destId) return d
+      const itinerary = (d.itinerary_json ?? []).map(dy => {
+        if (dy.day !== day) return dy
+        return {
+          ...dy,
+          [promoteSlot]: stop,
+          extra_stops: (dy.extra_stops ?? []).filter((_, i) => i !== idx),
+        }
+      })
+      return { ...d, itinerary_json: itinerary }
+    }))
+    setPromoteState(null)
+    setPromoteSaving(false)
   }
 
   async function replanDay(destId: string, dayNumber: number, destName: string, country: string, existingDay: ItineraryDay) {
@@ -669,7 +746,9 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
                             destination={dest.destination_name} country={dest.country}
                             dayContext={dayContext}
                             stopNum={stopNum}
+                            availableDays={availableDays}
                             onSaved={b => handleBlockUpdate(dest.id, day.day, slotKey, b)}
+                            onSwapped={handleBlockUpdate}
                           />
                         ) : (
                           <BlockCard label={label} block={block} stopNum={stopNum} destination={dest.destination_name} />
@@ -704,30 +783,44 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
                             {stop.estimated_cost && <p className="text-[#8A7E6E] text-xs mt-1">{stop.estimated_cost}</p>}
                           </div>
                           {canEdit && (
-                            <button
-                              onClick={() => {
-                                setLocalDests(prev => prev.map(d => {
-                                  if (d.id !== dest.id) return d
-                                  const itinerary = (d.itinerary_json ?? []).map(dy =>
-                                    dy.day === day.day
-                                      ? { ...dy, extra_stops: (dy.extra_stops ?? []).filter((_, i) => i !== idx) }
-                                      : dy
-                                  )
-                                  return { ...d, itinerary_json: itinerary }
-                                }))
-                                fetch(`/api/trip/${tripId}/extra-stop`, {
-                                  method:  'DELETE',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body:    JSON.stringify({ destination_id: dest.id, day: day.day, index: idx }),
-                                })
-                              }}
-                              className="flex-shrink-0 text-[#B8B0A4] hover:text-red-400 transition-colors p-1 mt-0.5"
-                              title="Remove"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                              </svg>
-                            </button>
+                            <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                              <button
+                                onClick={() => {
+                                  setPromoteState({ destId: dest.id, day: day.day, idx, stop })
+                                  setPromoteSlot('morning')
+                                }}
+                                className="text-[#C97552]/70 hover:text-[#C97552] transition-colors p-1"
+                                title="Promote to main slot"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setLocalDests(prev => prev.map(d => {
+                                    if (d.id !== dest.id) return d
+                                    const itinerary = (d.itinerary_json ?? []).map(dy =>
+                                      dy.day === day.day
+                                        ? { ...dy, extra_stops: (dy.extra_stops ?? []).filter((_, i) => i !== idx) }
+                                        : dy
+                                    )
+                                    return { ...d, itinerary_json: itinerary }
+                                  }))
+                                  fetch(`/api/trip/${tripId}/extra-stop`, {
+                                    method:  'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body:    JSON.stringify({ destination_id: dest.id, day: day.day, index: idx }),
+                                  })
+                                }}
+                                className="text-[#B8B0A4] hover:text-red-400 transition-colors p-1"
+                                title="Remove"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -875,6 +968,57 @@ export default function ItineraryTabs({ dests, sunTimesMap, totalDays, startDate
       </main>
 
       {/* ── Add extra stop modal ──────────────────────────────────────────────── */}
+      {/* ── Promote extra stop modal ─────────────────────────────────────────── */}
+      {promoteState && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-[#1A1A1A]">Promote to main slot</h3>
+              <button onClick={() => setPromoteState(null)} className="text-[#9A8E7E] hover:text-[#1A1A1A]">✕</button>
+            </div>
+
+            <p className="text-sm text-[#5A504A]">
+              Move <span className="font-medium text-[#1A1A1A]">{promoteState.stop.activity}</span> into which slot?
+              <br />
+              <span className="text-xs text-[#9A8E7E]">The existing activity in that slot will be replaced.</span>
+            </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              {(['morning','afternoon','dinner','evening'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setPromoteSlot(s)}
+                  className={`py-2.5 text-sm rounded-xl border transition-all ${
+                    promoteSlot === s
+                      ? 'border-[#C97552] bg-[#FFF8F5] text-[#C97552] font-semibold'
+                      : 'border-[#E0D8CF] text-[#6b5f54] hover:border-[#C97552]/40'
+                  }`}
+                >
+                  {s === 'morning' ? '🌅' : s === 'afternoon' ? '☀️' : s === 'dinner' ? '🍽️' : '🌙'}{' '}
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setPromoteState(null)}
+                className="flex-1 py-2.5 text-sm border border-[#E0D8CF] rounded-full text-[#6b5f54] hover:border-[#C8C0B4] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={promoteExtraStop}
+                disabled={promoteSaving}
+                className="flex-1 py-2.5 text-sm bg-[#C97552] text-white rounded-full hover:bg-[#b86644] disabled:opacity-40 transition-colors font-semibold"
+              >
+                {promoteSaving ? 'Promoting…' : '↑ Promote'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {addStopFor && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">

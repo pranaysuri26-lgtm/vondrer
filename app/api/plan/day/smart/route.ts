@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
   // ── Step 1: Geocode ───────────────────────────────────────────────────────
   const geoRes = await fetch(
     `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`,
-    { headers: { 'User-Agent': 'Vondrer-App/1.0 (getvondrer.com)' } }
+    { headers: { 'User-Agent': 'Vondrer-App/1.0 (vondrer.com)' } }
   )
   const geoData = await geoRes.json() as Array<{ lat: string; lon: string; display_name: string }>
   const geo = geoData[0]

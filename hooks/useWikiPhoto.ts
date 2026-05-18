@@ -6,12 +6,18 @@ import { useEffect, useState } from 'react'
  * Fetches a Wikipedia thumbnail for any activity / place name.
  * Two-step: search for the best-matching article, then get its thumbnail.
  * This handles spelling variants, subtitles, and descriptive names.
+ *
+ * Re-fetches whenever the activity or destination changes (e.g. after editing a block).
  */
 export function useWikiPhoto(activity: string, destination: string, existingUrl?: string): string {
   const [url, setUrl] = useState(existingUrl ?? '')
 
   useEffect(() => {
-    if (url) return
+    // Reset to provided URL (or empty) so stale photos don't linger after edits
+    setUrl(existingUrl ?? '')
+
+    if (existingUrl) return  // already have a usable URL
+
     const ctrl = new AbortController()
 
     async function load() {
@@ -47,8 +53,7 @@ export function useWikiPhoto(activity: string, destination: string, existingUrl?
 
     load()
     return () => ctrl.abort()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activity, destination])
+  }, [activity, destination, existingUrl])
 
   return url
 }

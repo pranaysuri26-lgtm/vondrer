@@ -86,12 +86,24 @@ export default function TripMap({ pins }: TripMapProps) {
       let biasLng = 0
       try {
         const firstPin = pins[0]
-        const destQ    = encodeURIComponent(`${firstPin.destination}, ${firstPin.country}`)
-        const destRes  = await fetch(`https://photon.komoot.io/api/?q=${destQ}&limit=1&lang=en`)
-        const destData = await destRes.json()
-        const destFeat = destData.features?.[0]
-        if (destFeat) {
-          ;[biasLng, biasLat] = destFeat.geometry.coordinates as [number, number]
+        // Try "City, Country" first, then just "City" as fallback
+        const queries = [
+          `${firstPin.destination}, ${firstPin.country}`,
+          firstPin.destination,
+        ].filter(Boolean)
+
+        for (const q of queries) {
+          const destRes  = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=3&lang=en`)
+          const destData = await destRes.json()
+          // Pick the first result that is a city/town/county (not a street or POI)
+          const feat = (destData.features ?? []).find((f: any) => {
+            const t = f.properties?.type ?? f.properties?.osm_value ?? ''
+            return ['city', 'town', 'village', 'county', 'state', 'country', 'district', 'municipality'].includes(t)
+          }) ?? destData.features?.[0]
+          if (feat) {
+            ;[biasLng, biasLat] = feat.geometry.coordinates as [number, number]
+            break
+          }
         }
       } catch { /* fallback: no bias */ }
 
@@ -110,10 +122,10 @@ export default function TripMap({ pins }: TripMapProps) {
               const feat = data.features?.[0]
               if (!feat) return null
               const [lng, lat] = feat.geometry.coordinates as [number, number]
-              // Sanity-check: reject results more than ~300 km from destination center
+              // Sanity-check: reject results more than ~200 km from destination center
               if (biasLat && biasLng) {
                 const distDeg = Math.sqrt((lat - biasLat) ** 2 + (lng - biasLng) ** 2)
-                if (distDeg > 3) return null
+                if (distDeg > 2) return null
               }
               return [lat, lng]
             } catch { return null }

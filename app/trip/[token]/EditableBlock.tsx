@@ -69,8 +69,16 @@ export default function EditableBlock({
   const [alternatives, setAlternatives]   = useState<ItineraryBlock[]>([])
   const [error, setError]                 = useState('')
   const [savedFlash, setSavedFlash]       = useState(false)
+
+  // Keep displayed in sync with block prop when not actively editing
+  // (handles parent repopulating the block, e.g. after replan)
+  useEffect(() => {
+    if (mode === 'read') setDisplayed(block)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [block])
+
   // Search-based Wikipedia photo (handles fuzzy / variant names)
-  const photoUrl = useWikiPhoto(displayed.activity, destination, block.photo_url ?? undefined)
+  const photoUrl = useWikiPhoto(displayed.activity, destination, displayed.photo_url ?? undefined)
 
   // ── Persist block to DB ───────────────────────────────────────────────────────
   async function save(blockToSave: ItineraryBlock) {

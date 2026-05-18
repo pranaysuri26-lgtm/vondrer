@@ -310,8 +310,9 @@ export default function EditableBlock({
         className="w-full text-sm font-medium text-[#1A1A1A] bg-white border border-[#D8D0C4] rounded-lg px-3 py-2 focus:outline-none focus:border-[#C97552]/60 disabled:opacity-50"
       />
 
-      {/* When activity name changed but description hasn't been updated */}
-      {draft.activity.trim() !== block.activity.trim() && draft.description === block.description && block.description && (
+      {/* When activity name changed and description is still the old one OR is empty */}
+      {draft.activity.trim() !== block.activity.trim() &&
+       (!draft.description.trim() || draft.description === block.description) && (
         <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
           <span className="text-[11px] text-amber-700 leading-snug">
             Description still refers to the old activity

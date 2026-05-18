@@ -78,7 +78,10 @@ export default function InspirationPage() {
           <p className="text-xs text-[#C97552] uppercase tracking-widest mb-2">Plan from inspiration</p>
           <h1 className="font-serif italic text-3xl text-[#1A1A1A] mb-3">Show us what inspires you</h1>
           <p className="text-[#6b5f54] text-sm">
-            Paste a URL, drop a photo, or describe a place — we&apos;ll extract the destination and pre-fill your plan.
+            Paste a travel article URL, drop a photo, or describe a place — we&apos;ll extract the destination and pre-fill your plan.
+          </p>
+          <p className="text-[11px] text-[#9A8E7E] mt-2">
+            Works with travel blogs, articles &amp; websites. For Instagram posts, use a screenshot or copy the caption.
           </p>
         </div>
 
@@ -94,17 +97,19 @@ export default function InspirationPage() {
 
             {/* URL input */}
             <div className="bg-white border border-[#E8E0D6] rounded-2xl p-4 space-y-2">
-              <label className="text-xs text-[#9A8E7E] uppercase tracking-widest">Article / website URL</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-[#9A8E7E] uppercase tracking-widest">Travel article / blog URL</label>
+                <span className="text-[10px] text-[#B8B0A4]">Not Instagram / TikTok</span>
+              </div>
               <input
                 value={url}
                 onChange={e => { setUrl(e.target.value); setImgB64(null); setPreview(null) }}
-                placeholder="https://www.afar.com/destinations/paris…"
+                placeholder="e.g. afar.com, lonelyplanet.com, any travel blog…"
                 className="w-full text-sm text-[#1A1A1A] bg-[#F8F5F1] border border-[#E0D8CF] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C97552]/60"
               />
               {/instagram\.com|tiktok\.com|twitter\.com|x\.com/i.test(url) && (
                 <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-snug">
-                  Instagram, TikTok & Twitter posts can&apos;t be fetched directly.
-                  Copy the <strong>caption text</strong> into the description box below, or take a <strong>screenshot</strong> and upload it instead.
+                  Social posts can&apos;t be fetched. Upload a <strong>screenshot</strong> or copy the <strong>caption text</strong> below instead.
                 </p>
               )}
             </div>

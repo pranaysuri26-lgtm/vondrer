@@ -15,8 +15,9 @@ export interface InspirationResult {
   days:         number
   interests:    string[]
   budget:       string
-  summary:      string   // 1-sentence "We detected…"
+  summary:      string
   confidence:   'high' | 'medium' | 'low'
+  activities:   string[]  // specific places/activities extracted from the content
 }
 
 // ─── POST /api/plan/inspiration ───────────────────────────────────────────────
@@ -60,9 +61,11 @@ JSON shape:
   "interests":    ["food", "culture"],
   "budget":       "50-150",
   "summary":      "One sentence: what you detected and why.",
-  "confidence":   "high" | "medium" | "low"
+  "confidence":   "high" | "medium" | "low",
+  "activities":   ["Golden Gate Bridge", "Alcatraz", "Chinatown"]
 }
 Budget tiers: "under-20" | "20-50" | "50-150" | "150-300" | "300+"
+activities: extract every specific place, landmark, restaurant, neighbourhood, or experience explicitly mentioned. Max 12. Empty array [] if none mentioned.
 If you can't determine destination confidently, use confidence "low" and best guess.`
 
   type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
@@ -120,7 +123,7 @@ If you can't determine destination confidently, use confidence "low" and best gu
   try {
     const msg = await anthropic.messages.create({
       model:    body.image_base64 ? 'claude-haiku-4-5' : 'claude-haiku-4-5',
-      max_tokens: 400,
+      max_tokens: 600,
       system,
       messages: [{ role: 'user', content }],
     })

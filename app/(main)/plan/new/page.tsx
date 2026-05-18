@@ -2202,7 +2202,8 @@ function PlanNewInner() {
   const prefillCountry   = searchParams.get('country')   ?? ''
   const prefillDays      = parseInt(searchParams.get('days') ?? '0', 10) || 0
   const prefillInterests = (searchParams.get('interests') ?? '').split(',').map(s => s.trim()).filter(Boolean)
-  const prefillBudget    = searchParams.get('budget') ?? ''
+  const prefillBudget    = searchParams.get('budget')   ?? ''
+  const prefillMustDo   = searchParams.get('must_do')  ?? ''
 
   const [tripName,     setTripName]     = useState('')
   const [destinations, setDestinations] = useState<TripDestination[]>([])
@@ -2273,10 +2274,13 @@ function PlanNewInner() {
     }
   }, [prefillDest, prefillCountry, formPrefillUsed])
 
-  // Pre-fill interests from inspiration extractor
+  // Pre-fill interests + must-do activities from inspiration extractor
   useEffect(() => {
     if (prefillInterests.length > 0) {
       setTripInterests(prefillInterests.slice(0, 4))
+    }
+    if (prefillMustDo) {
+      setTripContext(`Must include these places/activities from my inspiration:\n${prefillMustDo}`)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

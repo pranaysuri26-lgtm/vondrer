@@ -66,6 +66,9 @@ export default function InspirationPage() {
       budget:    result.budget,
       interests: result.interests.join(','),
     })
+    if (result.activities?.length > 0) {
+      params.set('must_do', result.activities.join('\n'))
+    }
     router.push(`/plan/new?${params}`)
   }
 
@@ -202,6 +205,20 @@ export default function InspirationPage() {
                   {result.interests.map(i => (
                     <span key={i} className="text-xs bg-[#F0EBE3] text-[#8A7E6E] px-2.5 py-1 rounded-full">{i}</span>
                   ))}
+                </div>
+              )}
+
+              {result.activities?.length > 0 && (
+                <div className="border-t border-[#F0EBE3] pt-3 space-y-2">
+                  <p className="text-[10px] text-[#9A8E7E] uppercase tracking-widest">Places we&apos;ll include</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {result.activities.map((a, i) => (
+                      <span key={i} className="text-xs bg-[#EAF4EF] text-[#3D7A5A] border border-[#C0DFD0] px-2.5 py-1 rounded-full">
+                        📍 {a}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-[#B8B0A4]">These will be added as must-do items in your itinerary</p>
                 </div>
               )}
             </div>

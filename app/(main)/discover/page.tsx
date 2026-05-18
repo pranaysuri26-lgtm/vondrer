@@ -1261,7 +1261,8 @@ export default function DiscoverPage() {
   const [mode, setMode]                 = useState<Mode>('discover')
   const [searchQuery, setSearchQuery]   = useState('')
 
-  const [isReturner, setIsReturner] = useState<boolean | null>(null)
+  const [isReturner,  setIsReturner]  = useState<boolean | null>(null)
+  const [isReelEmail, setIsReelEmail] = useState(false)
 
   // Saved / bookmarked destinations — persisted in Supabase `saved_destinations` table
   const [savedIds, setSavedIds]                     = useState<Set<string>>(new Set())
@@ -1294,6 +1295,7 @@ export default function DiscoverPage() {
       const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+      if (user.email === 'suri.pranay99@gmail.com') setIsReelEmail(true)
       const { count } = await supabase
         .from('trips')
         .select('id', { count: 'exact', head: true })
@@ -1726,6 +1728,23 @@ export default function DiscoverPage() {
         <div className="mt-12 pt-8 border-t border-[#E8E0D6] text-center">
           <p className="text-[#A8A09A] text-xs">Results refresh when your profile changes.</p>
         </div>
+
+        {/* Coming Soon — reel preview only */}
+        {isReelEmail && (
+          <div className="mt-8 mb-4 rounded-3xl border border-[#E8E0D6] bg-white px-8 py-10 text-center">
+            <p className="text-2xl mb-3">🚀</p>
+            <h3 className="font-serif italic text-2xl text-[#1A1A1A] mb-2">More coming soon</h3>
+            <p className="text-[#6b5f54] text-sm max-w-sm mx-auto mb-6">
+              Real-time collaboration, budget tracking, visa intelligence, and more — all in the works.
+            </p>
+            <a
+              href="https://vondrer.com"
+              className="inline-block bg-[#C97552] text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#b86644] transition-colors"
+            >
+              Join the waitlist →
+            </a>
+          </div>
+        )}
       </main>
     </div>
   )

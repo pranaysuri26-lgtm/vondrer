@@ -60,13 +60,13 @@ export default function InspirationPage() {
   function usePlan() {
     if (!result) return
     const params = new URLSearchParams({
-      destination: result.destination,
-      country:     result.country,
-      days:        String(result.days),
-      budget:      result.budget,
-      interests:   result.interests.join(','),
+      dest:      result.destination,
+      country:   result.country,
+      days:      String(result.days),
+      budget:    result.budget,
+      interests: result.interests.join(','),
     })
-    router.push(`/plan?${params}`)
+    router.push(`/plan/new?${params}`)
   }
 
   return (
@@ -94,13 +94,19 @@ export default function InspirationPage() {
 
             {/* URL input */}
             <div className="bg-white border border-[#E8E0D6] rounded-2xl p-4 space-y-2">
-              <label className="text-xs text-[#9A8E7E] uppercase tracking-widest">Instagram / article / website URL</label>
+              <label className="text-xs text-[#9A8E7E] uppercase tracking-widest">Article / website URL</label>
               <input
                 value={url}
                 onChange={e => { setUrl(e.target.value); setImgB64(null); setPreview(null) }}
-                placeholder="https://www.instagram.com/p/..."
+                placeholder="https://www.afar.com/destinations/paris…"
                 className="w-full text-sm text-[#1A1A1A] bg-[#F8F5F1] border border-[#E0D8CF] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C97552]/60"
               />
+              {/instagram\.com|tiktok\.com|twitter\.com|x\.com/i.test(url) && (
+                <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-snug">
+                  Instagram, TikTok & Twitter posts can&apos;t be fetched directly.
+                  Copy the <strong>caption text</strong> into the description box below, or take a <strong>screenshot</strong> and upload it instead.
+                </p>
+              )}
             </div>
 
             <div className="relative flex items-center gap-3">

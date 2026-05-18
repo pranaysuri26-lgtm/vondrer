@@ -82,11 +82,39 @@ If you can't determine destination confidently, use confidence "low" and best gu
       },
     })
     content.push({ type: 'text', text: 'Extract travel destination info from this image.' })
+  } else if (body.url) {
+    const isSocial = /instagram\.com|tiktok\.com|twitter\.com|x\.com/i.test(body.url)
+    let pageText = ''
+
+    if (!isSocial) {
+      try {
+        const fetched = await fetch(body.url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Vondrer/1.0; +https://vondrer.com)' },
+          signal: AbortSignal.timeout(8000),
+        })
+        if (fetched.ok) {
+          const html = await fetched.text()
+          // Strip tags, collapse whitespace, cap at 4000 chars to stay in token budget
+          pageText = html
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim()
+            .slice(0, 4000)
+        }
+      } catch { /* timeout or blocked — fall back to URL-only */ }
+    }
+
+    const prompt = pageText
+      ? `Extract travel destination from this web page content:\n\n${pageText}`
+      : isSocial
+        ? `Extract travel destination from this social media URL (no page content available — infer from URL structure if possible): ${body.url}\n${body.text ?? ''}`
+        : `Extract travel destination from this URL: ${body.url}\n${body.text ?? ''}`
+
+    content.push({ type: 'text', text: prompt })
   } else {
-    const userText = body.url
-      ? `Extract travel destination from this URL or caption: ${body.url}\n${body.text ?? ''}`
-      : (body.text ?? '')
-    content.push({ type: 'text', text: userText })
+    content.push({ type: 'text', text: body.text ?? '' })
   }
 
   try {

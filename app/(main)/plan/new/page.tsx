@@ -1736,16 +1736,17 @@ function TransportConnectorSection({
 
 // ─── Add destination form ─────────────────────────────────────────────────────
 
-function AddDestForm({ nextStart, onAdd, onCancel, prefillName = '', prefillCountry = '' }: {
+function AddDestForm({ nextStart, onAdd, onCancel, prefillName = '', prefillCountry = '', prefillDays = 0 }: {
   nextStart:       string
   onAdd:           (dest: TripDestination) => void
   onCancel:        () => void
   prefillName?:    string
   prefillCountry?: string
+  prefillDays?:    number
 }) {
   const [name,    setName]    = useState(prefillName)
   const [country, setCountry] = useState(prefillCountry)
-  const [days,    setDays]    = useState(3)
+  const [days,    setDays]    = useState(prefillDays > 0 ? prefillDays : 3)
   const [start,   setStart]   = useState(nextStart)
   const endDate = calcEndDate(start, days)
 
@@ -2197,8 +2198,10 @@ function AddOverlay({
 function PlanNewInner() {
   const router       = useRouter()
   const searchParams = useSearchParams()
-  const prefillDest    = searchParams.get('dest')    ?? ''
-  const prefillCountry = searchParams.get('country') ?? ''
+  const prefillDest      = searchParams.get('dest')      ?? ''
+  const prefillCountry   = searchParams.get('country')   ?? ''
+  const prefillDays      = parseInt(searchParams.get('days') ?? '0', 10) || 0
+  const prefillInterests = (searchParams.get('interests') ?? '').split(',').map(s => s.trim()).filter(Boolean)
 
   const [tripName,     setTripName]     = useState('')
   const [destinations, setDestinations] = useState<TripDestination[]>([])
@@ -2257,7 +2260,7 @@ function PlanNewInner() {
   const [occasionEventName,  setOccasionEventName]  = useState<string>('')
   const [tripContext,     setTripContext]      = useState<string>('')
 
-  // Pre-open add form if dest pre-filled from discover
+  // Pre-open add form if dest pre-filled from discover or inspiration
   useEffect(() => {
     if ((prefillDest || prefillCountry) && !formPrefillUsed) {
       setFormPrefillName(prefillDest)
@@ -2266,6 +2269,14 @@ function PlanNewInner() {
       setFormPrefillUsed(true)
     }
   }, [prefillDest, prefillCountry, formPrefillUsed])
+
+  // Pre-fill interests from inspiration extractor
+  useEffect(() => {
+    if (prefillInterests.length > 0) {
+      setTripInterests(prefillInterests.slice(0, 4))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Load user profile + cached recommendations for suggestions
   useEffect(() => {
@@ -2939,6 +2950,7 @@ function PlanNewInner() {
               }}
               prefillName={formPrefillName}
               prefillCountry={formPrefillCountry}
+              prefillDays={prefillDays}
             />
           )}
 

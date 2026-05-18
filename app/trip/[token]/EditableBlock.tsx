@@ -76,7 +76,8 @@ export default function EditableBlock({
   const [alternatives, setAlternatives] = useState<ItineraryBlock[]>([])
   const [error, setError]             = useState('')
   const [savedFlash, setSavedFlash]   = useState(false)
-  const [describing, setDescribing]   = useState(false)
+  const [describing, setDescribing]           = useState(false)
+  const [describingSubIdx, setDescribingSubIdx] = useState<number | null>(null)
   const [showMovePanel, setShowMovePanel] = useState(false)
   const [moveTarget, setMoveTarget]       = useState('')   // "destId|day" key
   const [moveSlot, setMoveSlot]           = useState<'morning'|'afternoon'|'dinner'|'evening'>('morning')
@@ -111,6 +112,35 @@ export default function EditableBlock({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save. Try again.')
       setMode('edit')
+    }
+  }
+
+  // ── AI: write description for a sub-stop by index ───────────────────────────
+  async function describeSubStop(idx: number) {
+    const subActivity = draft.also_visit?.[idx]?.activity?.trim()
+    if (!subActivity) return
+    setDescribingSubIdx(idx)
+    setError('')
+    try {
+      const res = await fetch('/api/itinerary/describe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ activity: subActivity, destination, country, slot, day_context: dayContext }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      setDraft(d => ({
+        ...d,
+        also_visit: (d.also_visit ?? []).map((s, j) =>
+          j === idx
+            ? { ...s, description: data.description || s.description, estimated_cost: data.estimated_cost || s.estimated_cost }
+            : s
+        ),
+      }))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not generate description.')
+    } finally {
+      setDescribingSubIdx(null)
     }
   }
 
@@ -426,17 +456,27 @@ export default function EditableBlock({
                 </svg>
               </button>
             </div>
-            <textarea
-              value={sub.description}
-              onChange={e => setDraft(d => ({
-                ...d,
-                also_visit: (d.also_visit ?? []).map((s, j) => j === i ? { ...s, description: e.target.value } : s)
-              }))}
-              rows={2}
-              placeholder="Description (optional)"
-              disabled={isSaving}
-              className="w-full text-xs text-[#5A504A] bg-white border border-[#D8D0C4] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C97552]/60 resize-none disabled:opacity-50"
-            />
+            <div className="relative">
+              <textarea
+                value={sub.description}
+                onChange={e => setDraft(d => ({
+                  ...d,
+                  also_visit: (d.also_visit ?? []).map((s, j) => j === i ? { ...s, description: e.target.value } : s)
+                }))}
+                rows={2}
+                placeholder="Description (optional)"
+                disabled={isSaving || describingSubIdx === i}
+                className="w-full text-xs text-[#5A504A] bg-white border border-[#D8D0C4] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C97552]/60 resize-none disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => describeSubStop(i)}
+                disabled={describingSubIdx !== null || isSaving || !sub.activity.trim()}
+                className="absolute bottom-1.5 right-1.5 flex items-center gap-1 text-[10px] font-medium text-[#C97552] bg-white border border-[#E8D8CC] rounded-full px-2 py-0.5 hover:bg-[#FFF8F5] hover:border-[#C97552]/50 transition-all disabled:opacity-40 shadow-sm"
+              >
+                {describingSubIdx === i ? <><Spinner /> Writing…</> : '✨ AI write'}
+              </button>
+            </div>
             <input
               value={sub.estimated_cost ?? ''}
               onChange={e => setDraft(d => ({

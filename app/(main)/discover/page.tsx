@@ -1110,11 +1110,18 @@ function DestinationCard({
           {/* CTAs */}
           <div className="space-y-2">
             <a
-              href={`/plan/ai/${encodeURIComponent(dest.name)}?country=${encodeURIComponent(dest.country)}${dest.state_province ? `&state=${encodeURIComponent(dest.state_province)}` : ''}&from=discover`}
+              href={`/plan/quick/${encodeURIComponent(dest.name)}?country=${encodeURIComponent(dest.country)}${dest.state_province ? `&state=${encodeURIComponent(dest.state_province)}` : ''}`}
               onClick={e => e.stopPropagation()}
               className="block w-full text-center bg-[#C97552] text-white font-semibold text-sm py-3 rounded-full hover:bg-[#b86644] transition-colors"
             >
-              Plan this trip →
+              Just build it for me →
+            </a>
+            <a
+              href={`/plan/ai/${encodeURIComponent(dest.name)}?country=${encodeURIComponent(dest.country)}${dest.state_province ? `&state=${encodeURIComponent(dest.state_province)}` : ''}&from=discover`}
+              onClick={e => e.stopPropagation()}
+              className="block w-full text-center border border-[#E0D8CF] text-[#6b5f54] text-sm py-2.5 rounded-full hover:border-[#C97552]/40 hover:text-[#C97552] transition-colors"
+            >
+              Pick activities myself →
             </a>
             <a
               href={`/guide?q=${encodeURIComponent(dest.name)}&c=${encodeURIComponent(dest.country)}${dest.state_province ? `&s=${encodeURIComponent(dest.state_province)}` : ''}`}

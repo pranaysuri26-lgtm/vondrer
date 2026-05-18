@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import TemplateGallery from './TemplateGallery'
 
 export const metadata: Metadata = { title: 'Trip Templates — Vondrer' }
-export const revalidate = 3600   // re-fetch every hour
+export const revalidate = 60   // re-fetch every minute
 
 interface Template {
   id:               string

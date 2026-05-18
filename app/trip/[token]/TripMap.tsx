@@ -80,39 +80,44 @@ export default function TripMap({ pins }: TripMapProps) {
       const BATCH = 4    // parallel per round
       const DELAY = 120  // ms between batches
 
-      // Step 1: get destination center for location bias so all pins land in
-      // the right country, not a false match on another continent.
-      let biasLat = 0
-      let biasLng = 0
-      try {
-        const firstPin = pins[0]
-        // Try "City, Country" first, then just "City" as fallback
-        const queries = [
-          `${firstPin.destination}, ${firstPin.country}`,
-          firstPin.destination,
-        ].filter(Boolean)
-
+      // Step 1: resolve bias coords for every unique destination in this trip.
+      // A single global bias breaks multi-destination trips (e.g. Miami→SF: all SF
+      // pins end up biased toward Miami and fall back to Miami jitter).
+      async function fetchDestBias(dest: string, country: string): Promise<[number, number] | null> {
+        const queries = [`${dest}, ${country}`, dest].filter(Boolean)
         for (const q of queries) {
-          const destRes  = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=3&lang=en`)
-          const destData = await destRes.json()
-          // Pick the first result that is a city/town/county (not a street or POI)
-          const feat = (destData.features ?? []).find((f: any) => {
-            const t = f.properties?.type ?? f.properties?.osm_value ?? ''
-            return ['city', 'town', 'village', 'county', 'state', 'country', 'district', 'municipality'].includes(t)
-          }) ?? destData.features?.[0]
-          if (feat) {
-            ;[biasLng, biasLat] = feat.geometry.coordinates as [number, number]
-            break
-          }
+          try {
+            const res  = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=3&lang=en`)
+            const data = await res.json()
+            const feat = (data.features ?? []).find((f: any) => {
+              const t = f.properties?.osm_value ?? ''
+              return ['city', 'town', 'village', 'county', 'state', 'district', 'municipality'].includes(t)
+            }) ?? data.features?.[0]
+            if (feat) {
+              const [lng, lat] = feat.geometry.coordinates as [number, number]
+              return [lat, lng]
+            }
+          } catch { /* continue */ }
         }
-      } catch { /* fallback: no bias */ }
+        return null
+      }
 
-      // Step 2: geocode each activity with location bias toward destination
+      // Collect unique destinations, fetch their centers in parallel
+      const uniqueDestKeys = [...new Map(pins.map(p => [`${p.destination}|${p.country}`, p])).values()]
+      const biasMap = new Map<string, [number, number]>()
+      await Promise.all(uniqueDestKeys.map(async (p) => {
+        const coords = await fetchDestBias(p.destination, p.country)
+        if (coords) biasMap.set(`${p.destination}|${p.country}`, coords)
+      }))
+
+      // Step 2: geocode each activity with location bias toward its own destination
       for (let i = 0; i < pins.length; i += BATCH) {
         if (cancelled) return
         const batch = pins.slice(i, i + BATCH)
 
         const results = await Promise.all(batch.map(async (pin): Promise<GeoPin | null> => {
+          const pinBias = biasMap.get(`${pin.destination}|${pin.country}`)
+          const [biasLat, biasLng] = pinBias ?? [0, 0]
           const bias = biasLat && biasLng ? `&lat=${biasLat}&lon=${biasLng}` : ''
 
           async function tryQuery(q: string): Promise<[number, number] | null> {
@@ -122,7 +127,7 @@ export default function TripMap({ pins }: TripMapProps) {
               const feat = data.features?.[0]
               if (!feat) return null
               const [lng, lat] = feat.geometry.coordinates as [number, number]
-              // Sanity-check: reject results more than ~200 km from destination center
+              // Sanity-check: reject results more than ~200 km from this pin's destination center
               if (biasLat && biasLng) {
                 const distDeg = Math.sqrt((lat - biasLat) ** 2 + (lng - biasLng) ** 2)
                 if (distDeg > 2) return null

@@ -44,7 +44,7 @@ export default async function RootPage({
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/landing.html')
+  if (!user) redirect('/login')
 
   // Check onboarding_responses — more reliable than profiles.onboarding_done flag
   // If the user has answered onboarding questions, send them to /discover

@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useChat } from '@/context/ChatContext'
 import type { ChatMessage } from '@/context/ChatContext'
-import { getSupabaseClient } from '@/lib/supabase'
 
 // ─── Page context labels ───────────────────────────────────────────────────────
 
@@ -109,24 +108,12 @@ export default function GlobalChatBar() {
   const inputRef   = useRef<HTMLTextAreaElement>(null)
   const panelRef   = useRef<HTMLDivElement>(null)
 
-  // Check pro status on mount
+  // Check pro/admin status on mount
   useEffect(() => {
-    async function checkPro() {
-      try {
-        const supabase = getSupabaseClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) { setIsPro(false); return }
-        const { data } = await supabase
-          .from('subscriptions')
-          .select('tier, expires_at')
-          .eq('user_id', user.id)
-          .single()
-        if (!data) { setIsPro(false); return }
-        const active = !data.expires_at || new Date(data.expires_at) > new Date()
-        setIsPro(active && data.tier !== 'free')
-      } catch { setIsPro(false) }
-    }
-    checkPro()
+    fetch('/api/user/status')
+      .then(r => r.json())
+      .then(d => setIsPro(d.isPro ?? false))
+      .catch(() => setIsPro(false))
   }, [])
 
   // Auto-scroll to bottom when messages change

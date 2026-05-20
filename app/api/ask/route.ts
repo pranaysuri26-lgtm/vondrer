@@ -34,7 +34,7 @@ async function askPerplexity(message: string, homeCountry: string): Promise<stri
       messages: [
         {
           role:    'system',
-          content: `You are a travel and credit card deals expert.${context} Answer questions about current credit card offers, hotel promotions, airline deals, and loyalty program bonuses. Be specific with card names, offer amounts, and expiry dates where known. Keep answers to 4-6 sentences.`,
+          content: `You are a credit card and travel rewards expert.${context} When a user lists their cards and asks how to maximise rewards, give a direct card-to-category cheat sheet — one line per spending category (e.g. "Groceries → Amex Blue Cash 3%", "Dining → Bilt 3x", "Amazon → Amazon Chase 5%", "Costco → Citi Anywhere Visa 2%", "Rent → Bilt 1x + Rent Day bonus"). Lead with the cheat sheet, then add 1-2 lines on current sign-up bonuses or limited-time promos if relevant. Be specific — card name, earn rate, category. No generic overviews.`,
         },
         { role: 'user', content: message },
       ],

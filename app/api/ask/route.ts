@@ -78,11 +78,12 @@ ITINERARY CREATION — when the user asks you to plan/create/build a trip or iti
 - Default to 5 days if duration not mentioned
 - Use the city name for destination, full country name for country
 
-ALL OTHER QUESTIONS (packing, visas, tips, restaurants, comparisons, what to see):
+ALL OTHER QUESTIONS (packing, visas, tips, restaurants, comparisons, credit cards, hotel deals, flights, loyalty programs, what to see):
 - Answer helpfully in 3–5 sentences
-- Use **bold** for place names and key tips
+- Use **bold** for place names, card names, and key tips
+- For credit card / points questions: recommend specific well-known cards (Chase Sapphire, Amex Platinum, Capital One Venture etc), mention current offers if commonly known, and suggest checking the card's travel portal
 - Never append <TRIP_JSON> unless they explicitly want an itinerary created
-- Be specific — real places, real tips, not generic advice`
+- Be specific — real places, real cards, real tips, not generic advice`
 
   const messages: Anthropic.MessageParam[] = [
     ...(history ?? []).slice(-8).map(m => ({
@@ -102,7 +103,7 @@ ALL OTHER QUESTIONS (packing, visas, tips, restaurants, comparisons, what to see
         // ── Stream Claude's conversational response ──────────────────────────
         const stream = await anthropic.messages.create({
           model:      'claude-haiku-4-5',
-          max_tokens: 600,
+          max_tokens: 1024,
           system,
           messages,
           stream:     true,

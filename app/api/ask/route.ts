@@ -67,8 +67,20 @@ export async function POST(req: NextRequest) {
 
   if (!message?.trim()) return new Response(JSON.stringify({ error: 'message required' }), { status: 400 })
 
+  // Fetch user's home country for localised card recommendations
+  let homeCountry = ''
+  try {
+    const { data: profile } = await supabase
+      .from('onboarding_responses')
+      .select('home_country')
+      .eq('user_id', user.id)
+      .single()
+    homeCountry = profile?.home_country ?? ''
+  } catch { /* non-fatal */ }
+
   const system = `You are Vondrer, a warm and knowledgeable AI travel assistant.
 ${pageContext ? `The user is currently on: ${pageContext}` : ''}
+${homeCountry ? `The user is from ${homeCountry} — recommend credit cards, banks, and loyalty programs available in ${homeCountry}. Do not recommend US-only cards like Chase Sapphire to non-US users.` : ''}
 
 ITINERARY CREATION — when the user asks you to plan/create/build a trip or itinerary (e.g. "plan me 5 days in Tokyo", "create a Paris trip", "I want to visit Bali for a week"):
 1. Respond with 2–3 enthusiastic sentences about the destination and what you're building.

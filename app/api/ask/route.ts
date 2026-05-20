@@ -9,6 +9,41 @@ export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
+// ─── Perplexity — live deals/offers lookup ────────────────────────────────────
+
+function isDealsQuestion(msg: string): boolean {
+  const lower = msg.toLowerCase()
+  return ['deal', 'offer', 'promotion', 'discount', 'free night', 'bonus point',
+    'sign.up bonus', 'current offer', 'right now', 'this month', 'limited time',
+    'cashback', 'miles bonus', 'reward', 'welcome bonus',
+  ].some(kw => lower.includes(kw))
+}
+
+async function askPerplexity(message: string, homeCountry: string): Promise<string> {
+  const context = homeCountry ? ` The user is from ${homeCountry}.` : ''
+  const res = await fetch('https://api.perplexity.ai/chat/completions', {
+    method:  'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      model:    'sonar',
+      messages: [
+        {
+          role:    'system',
+          content: `You are a travel and credit card deals expert.${context} Answer questions about current credit card offers, hotel promotions, airline deals, and loyalty program bonuses. Be specific with card names, offer amounts, and expiry dates where known. Keep answers to 4-6 sentences.`,
+        },
+        { role: 'user', content: message },
+      ],
+      max_tokens: 512,
+    }),
+  })
+  if (!res.ok) throw new Error(`Perplexity ${res.status}`)
+  const data = await res.json() as { choices: Array<{ message: { content: string } }> }
+  return data.choices[0]?.message?.content ?? ''
+}
+
 // ─── Quick itinerary generator (Claude Haiku, no HTTP round-trip) ──────────────
 
 async function generateItinerary(destination: string, country: string, days: number, interests: string[]) {
@@ -106,6 +141,26 @@ ALL OTHER QUESTIONS (packing, visas, tips, restaurants, comparisons, credit card
   ]
 
   const encoder = new TextEncoder()
+
+  // ── Route deal/offer questions to Perplexity for live data ──────────────────
+  if (isDealsQuestion(message) && process.env.PERPLEXITY_API_KEY) {
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          const answer = await askPerplexity(message, homeCountry)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: answer })}\n\n`))
+        } catch {
+          // Fallback to Claude if Perplexity fails
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: 'I couldn\'t fetch live deals right now — try checking the card issuer\'s website directly for current offers.' })}\n\n`))
+        }
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+        controller.close()
+      },
+    })
+    return new Response(readable, {
+      headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
+    })
+  }
 
   const readable = new ReadableStream({
     async start(controller) {

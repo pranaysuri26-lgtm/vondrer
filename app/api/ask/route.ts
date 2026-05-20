@@ -15,7 +15,9 @@ function isDealsQuestion(msg: string): boolean {
   const lower = msg.toLowerCase()
   return ['deal', 'offer', 'promotion', 'discount', 'free night', 'bonus point',
     'sign.up bonus', 'current offer', 'right now', 'this month', 'limited time',
-    'cashback', 'miles bonus', 'reward', 'welcome bonus',
+    'cashback', 'miles bonus', 'reward', 'welcome bonus', 'which card',
+    'best card', 'credit card', 'bilt', 'amex', 'chase', 'citi', 'discover',
+    'marriott', 'hilton', 'hyatt', 'points', 'miles', 'travel card',
   ].some(kw => lower.includes(kw))
 }
 

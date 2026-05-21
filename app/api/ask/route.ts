@@ -181,8 +181,8 @@ ALL OTHER QUESTIONS (packing, visas, flights, loyalty programs, comparisons):
       try {
         // ── Stream Claude's conversational response ──────────────────────────
         const stream = await anthropic.messages.create({
-          model:      'claude-haiku-4-5',
-          max_tokens: 1024,
+          model:      'claude-haiku-4-5-20251001',
+          max_tokens: 2048,
           system,
           messages,
           stream:     true,
@@ -287,7 +287,8 @@ ALL OTHER QUESTIONS (packing, visas, flights, loyalty programs, comparisons):
           }
         }
       } catch (err) {
-        console.error('[Ask]', err)
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('[Ask Claude]', msg)
         controller.enqueue(encoder.encode(
           `data: ${JSON.stringify({ text: 'Sorry, something went wrong. Please try again.' })}\n\n`
         ))

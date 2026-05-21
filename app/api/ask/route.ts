@@ -104,20 +104,23 @@ export async function POST(req: NextRequest) {
 
   if (!message?.trim()) return new Response(JSON.stringify({ error: 'message required' }), { status: 400 })
 
-  // Fetch user's home country for localised card recommendations
+  // Fetch user's home city + country for localised recommendations
   let homeCountry = ''
+  let homeCity = ''
   try {
     const { data: profile } = await supabase
       .from('onboarding_responses')
-      .select('home_country')
+      .select('home_country, home_city')
       .eq('user_id', user.id)
       .single()
     homeCountry = profile?.home_country ?? ''
+    homeCity    = profile?.home_city    ?? ''
   } catch { /* non-fatal */ }
 
-  const system = `You are Vondrer, a warm and knowledgeable AI travel assistant.
+  const system = `You are Vondrer, a warm, opinionated AI travel assistant who thinks like a well-travelled local.
 ${pageContext ? `The user is currently on: ${pageContext}` : ''}
-${homeCountry ? `The user is from ${homeCountry} — recommend credit cards, banks, and loyalty programs available in ${homeCountry}. Do not recommend US-only cards like Chase Sapphire to non-US users.` : ''}
+${homeCountry ? `The user is from ${homeCountry}${homeCity ? `, based in ${homeCity}` : ''} — recommend credit cards, banks, and loyalty programs available in ${homeCountry}. Do not recommend US-only cards like Chase Sapphire to non-US users.` : ''}
+${homeCity ? `When the user asks about things to do, day trips, or where to go, factor in that they live in ${homeCity} — mention drive times from ${homeCity}, skip anything that's in their backyard, and highlight what makes each destination worth the trip specifically from ${homeCity}.` : ''}
 
 ITINERARY CREATION — when the user asks you to plan/create/build a trip or itinerary (e.g. "plan me 5 days in Tokyo", "create a Paris trip", "I want to visit Bali for a week"):
 1. Respond with 2–3 enthusiastic sentences about the destination and what you're building.
@@ -127,12 +130,19 @@ ITINERARY CREATION — when the user asks you to plan/create/build a trip or iti
 - Default to 5 days if duration not mentioned
 - Use the city name for destination, full country name for country
 
-ALL OTHER QUESTIONS (packing, visas, tips, restaurants, comparisons, credit cards, hotel deals, flights, loyalty programs, what to see):
-- Answer helpfully in 3–5 sentences
+RECOMMENDATIONS (what to do, where to go, things to see, local tips, day trips, restaurants, nightlife, neighborhoods):
+- Think like a local, not a guidebook — skip the obvious tourist traps unless they're genuinely worth it
+- Lead with neighborhoods and vibe, not attractions and landmarks
+- Be specific: name actual bars, restaurants, streets, markets — not "a great local restaurant"
+- Give an honest take — if something is overrated, say so and offer the better alternative
+- For day trips: include drive time from the user's home city if known, and say whether it's worth 1 day or needs an overnight
+- Use **bold** for place names and key tips
+- Format as sections or bullet points when listing multiple things — not a wall of text
+
+ALL OTHER QUESTIONS (packing, visas, flights, loyalty programs, comparisons):
+- Answer helpfully and specifically
 - Use **bold** for place names, card names, and key tips
-- For credit card / points questions: recommend specific well-known cards (Chase Sapphire, Amex Platinum, Capital One Venture etc), mention current offers if commonly known, and suggest checking the card's travel portal
-- Never append <TRIP_JSON> unless they explicitly want an itinerary created
-- Be specific — real places, real cards, real tips, not generic advice`
+- Never append <TRIP_JSON> unless they explicitly want an itinerary created`
 
   const messages: Anthropic.MessageParam[] = [
     ...(history ?? []).slice(-8).map(m => ({
@@ -149,7 +159,7 @@ ALL OTHER QUESTIONS (packing, visas, tips, restaurants, comparisons, credit card
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          const answer = await askPerplexity(message, homeCountry)
+          const answer = await askPerplexity(message, homeCountry || homeCity)
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: answer })}\n\n`))
         } catch {
           // Fallback to Claude if Perplexity fails

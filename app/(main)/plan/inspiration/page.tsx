@@ -6,17 +6,47 @@ import type { InspirationResult } from '@/app/api/plan/inspiration/route'
 
 type Step = 'input' | 'loading' | 'result' | 'generating'
 
+function isInstagramUrl(val: string) {
+  return /instagram\.com\/(p|reel|tv)\/[\w-]+/i.test(val)
+}
+
 export default function InspirationPage() {
   const router = useRouter()
-  const [step,     setStep]     = useState<Step>('input')
-  const [url,      setUrl]      = useState('')
-  const [text,     setText]     = useState('')
-  const [result,   setResult]   = useState<InspirationResult | null>(null)
-  const [error,    setError]    = useState('')
-  const [preview,  setPreview]  = useState<string | null>(null)
-  const [imgB64,   setImgB64]   = useState<string | null>(null)
-  const [imgType,  setImgType]  = useState<string>('image/jpeg')
+  const [step,        setStep]        = useState<Step>('input')
+  const [url,         setUrl]         = useState('')
+  const [text,        setText]        = useState('')
+  const [result,      setResult]      = useState<InspirationResult | null>(null)
+  const [error,       setError]       = useState('')
+  const [preview,     setPreview]     = useState<string | null>(null)
+  const [imgB64,      setImgB64]      = useState<string | null>(null)
+  const [imgType,     setImgType]     = useState<string>('image/jpeg')
+  const [igFetching,  setIgFetching]  = useState(false)
+  const [igCaption,   setIgCaption]   = useState<string | null>(null)
+  const [igThumb,     setIgThumb]     = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  async function fetchInstagramCaption(igUrl: string) {
+    setIgFetching(true)
+    setIgCaption(null)
+    setIgThumb(null)
+    setError('')
+    try {
+      const res  = await fetch('/api/instagram-caption', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ url: igUrl }),
+      })
+      const data = await res.json() as { caption?: string; thumbnail_url?: string; error?: string }
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Could not fetch post')
+      setIgCaption(data.caption ?? null)
+      setIgThumb(data.thumbnail_url ?? null)
+      if (data.caption) setText(data.caption)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not fetch caption — make sure the post is public.')
+    } finally {
+      setIgFetching(false)
+    }
+  }
 
   function handleFile(file: File) {
     if (!file.type.startsWith('image/')) { setError('Please upload an image file.'); return }
@@ -36,9 +66,9 @@ export default function InspirationPage() {
     setStep('loading')
     try {
       const body: Record<string, string> = {}
-      if (imgB64)        { body.image_base64 = imgB64; body.media_type = imgType }
-      else if (url.trim()) body.url = url.trim()
-      else if (text.trim()) body.text = text.trim()
+      if (imgB64)                              { body.image_base64 = imgB64; body.media_type = imgType }
+      else if (text.trim())                    body.text = text.trim()
+      else if (url.trim() && !isInstagramUrl(url.trim())) body.url = url.trim()
       else { setError('Paste a URL, describe a place, or upload a photo.'); setStep('input'); return }
 
       const res = await fetch('/api/plan/inspiration', {
@@ -94,7 +124,7 @@ export default function InspirationPage() {
             Paste a travel article URL, drop a photo, or describe a place — we&apos;ll extract the destination and build your itinerary.
           </p>
           <p className="text-[11px] text-[#9A8E7E] mt-2">
-            Works with travel blogs, articles &amp; websites. For Instagram posts, use a screenshot or copy the caption.
+            Paste a travel article URL, an Instagram post link, drop a photo, or describe a place.
           </p>
         </div>
 
@@ -118,18 +148,53 @@ export default function InspirationPage() {
             {/* URL input */}
             <div className="bg-white border border-[#E8E0D6] rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs text-[#9A8E7E] uppercase tracking-widest">Travel article / blog URL</label>
-                <span className="text-[10px] text-[#B8B0A4]">Not Instagram / TikTok</span>
+                <label className="text-xs text-[#9A8E7E] uppercase tracking-widest">URL</label>
+                <span className="text-[10px] text-[#B8B0A4]">Article, blog or Instagram post</span>
               </div>
               <input
                 value={url}
-                onChange={e => { setUrl(e.target.value); setImgB64(null); setPreview(null) }}
-                placeholder="e.g. afar.com, lonelyplanet.com, any travel blog…"
+                onChange={e => {
+                  setUrl(e.target.value)
+                  setImgB64(null)
+                  setPreview(null)
+                  setIgCaption(null)
+                  setIgThumb(null)
+                }}
+                placeholder="e.g. afar.com, lonelyplanet.com, instagram.com/p/…"
                 className="w-full text-sm text-[#1A1A1A] bg-[#F8F5F1] border border-[#E0D8CF] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#C97552]/60"
               />
-              {/instagram\.com|tiktok\.com|twitter\.com|x\.com/i.test(url) && (
+
+              {/* Instagram detected */}
+              {isInstagramUrl(url) && !igCaption && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] text-[#6b5f54]">Instagram post detected</span>
+                  <button
+                    type="button"
+                    onClick={() => fetchInstagramCaption(url)}
+                    disabled={igFetching}
+                    className="text-[11px] font-semibold text-[#C97552] hover:text-[#b86644] disabled:opacity-50 transition-colors"
+                  >
+                    {igFetching ? 'Fetching…' : 'Import caption →'}
+                  </button>
+                </div>
+              )}
+
+              {/* Caption imported */}
+              {igCaption && (
+                <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
+                  {igThumb && (
+                    <img src={igThumb} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-emerald-700 font-semibold uppercase tracking-widest mb-0.5">Caption imported ✓</p>
+                    <p className="text-[11px] text-emerald-800 line-clamp-2">{igCaption}</p>
+                  </div>
+                </div>
+              )}
+
+              {/tiktok\.com|twitter\.com|x\.com/i.test(url) && (
                 <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-snug">
-                  Social posts can&apos;t be fetched. Upload a <strong>screenshot</strong> or copy the <strong>caption text</strong> below instead.
+                  TikTok/Twitter can&apos;t be fetched. Upload a <strong>screenshot</strong> or paste the <strong>caption text</strong> below.
                 </p>
               )}
             </div>
